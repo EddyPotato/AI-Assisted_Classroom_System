@@ -94,7 +94,7 @@ function App() {
       <div className="flex-1 flex overflow-hidden">
         
         {/* LEFT SIDEBAR NAVIGATION */}
-        <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex shrink-0">
+        <aside className="w-64 bg-white border-r border-gray-200 flex flex-col md:flex shrink-0">
           <nav className="p-4 space-y-2">
             <a href="#" className="flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-lg font-semibold transition-colors">
               <LayoutDashboard size={20} /> Room Dashboard
