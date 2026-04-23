@@ -14,6 +14,7 @@ namespace campus_backend.Repositories
                 ?? throw new InvalidOperationException("Oracle connection string is missing.");
         }
 
+<<<<<<< HEAD
         // --- GET ALL SCHEDULES ---
         public async Task<IEnumerable<Schedule>> GetAllSchedulesAsync()
         {
@@ -62,10 +63,16 @@ namespace campus_backend.Repositories
         }
 
         // --- CREATE SCHEDULE ---
+=======
+>>>>>>> 06fa0a3888e78074df4696dedfc693e4e92f76fd
         public async Task CreateScheduleAsync(Schedule schedule)
         {
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
+<<<<<<< HEAD
+=======
+                // Generate a random Schedule ID (e.g., SCH-8492)
+>>>>>>> 06fa0a3888e78074df4696dedfc693e4e92f76fd
                 Random rnd = new Random();
                 string newId = $"SCH-{rnd.Next(1000, 9999)}";
 
@@ -89,6 +96,7 @@ namespace campus_backend.Repositories
                 }
             }
         }
+<<<<<<< HEAD
 
         // --- UPDATE SCHEDULE ---
         public async Task UpdateScheduleAsync(Schedule schedule)
@@ -117,5 +125,7 @@ namespace campus_backend.Repositories
                 }
             }
         }
+=======
+>>>>>>> 06fa0a3888e78074df4696dedfc693e4e92f76fd
     }
 }
