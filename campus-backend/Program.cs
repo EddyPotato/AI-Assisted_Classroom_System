@@ -5,6 +5,12 @@ builder.Services.AddScoped<campus_backend.Repositories.IStudentRepository, campu
 
 builder.Services.AddControllers();
 
+builder.Services.AddCors(options => {
+    options.AddPolicy("AllowAll", policy => {
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+    });
+});
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -39,6 +45,8 @@ app.MapGet("/weatherforecast", () =>
 .WithName("GetWeatherForecast");
 
 app.MapControllers();
+
+app.UseCors("AllowAll");
 
 app.Run();
 
