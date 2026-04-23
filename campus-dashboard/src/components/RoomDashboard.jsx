@@ -1,14 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardContent from './DashboardContent';
 
 export default function RoomDashboard({ roomState, occupancy, lastScanned }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [facilities, setFacilities] = useState([]);
 
-  const facilities = [
-    { id: '302', name: 'Room 302', type: 'Computer Laboratory', capacity: 50, status: 'Active' },
-    { id: '303', name: 'Room 303', type: 'Lecture Hall', capacity: 40, status: 'Inactive' },
-    { id: '304', name: 'Room 304', type: 'Cisco Networking Lab', capacity: 30, status: 'Active' },
-  ];
+  useEffect(() => {
+    // Fetch live room data from the C# Oracle API
+    const fetchRooms = async () => {
+      try {
+        const response = await fetch('http://localhost:5106/api/rooms');
+        if (response.ok) {
+          const data = await response.json();
+          setFacilities(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch rooms:", error);
+      }
+    };
+    fetchRooms();
+  }, []);
 
   if (selectedRoom) {
     return (
@@ -31,19 +42,22 @@ export default function RoomDashboard({ roomState, occupancy, lastScanned }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
           {facilities.map(room => (
             <div 
-              key={room.id}
-              onClick={() => setSelectedRoom(room.name)}
+              key={room.room_ID}
+              onClick={() => setSelectedRoom(room.room_Name)}
               className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-blue-400 transition-all cursor-pointer group"
             >
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-black text-gray-800 group-hover:text-blue-600 transition-colors">{room.name}</h3>
+                <h3 className="text-xl font-black text-gray-800 group-hover:text-blue-600 transition-colors">{room.room_Name}</h3>
                 <span className={`px-3 py-1 text-xs font-bold rounded-lg ${room.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-gray-100 text-gray-500'}`}>
                   {room.status}
                 </span>
               </div>
               <div className="space-y-3 pt-2 border-t border-gray-50">
                 <p className="text-sm font-bold text-gray-500 flex items-center justify-between">
-                  <span>Type:</span> <span className="text-gray-800">{room.type}</span>
+                  <span>Professor:</span> <span className="text-gray-800">{room.faculty_Name}</span>
+                </p>
+                <p className="text-sm font-bold text-gray-500 flex items-center justify-between">
+                  <span>Type:</span> <span className="text-gray-800">{room.room_Type}</span>
                 </p>
                 <p className="text-sm font-bold text-gray-500 flex items-center justify-between">
                   <span>Capacity:</span> <span className="text-gray-800">{room.capacity}</span>
@@ -51,6 +65,12 @@ export default function RoomDashboard({ roomState, occupancy, lastScanned }) {
               </div>
             </div>
           ))}
+          
+          {facilities.length === 0 && (
+            <div className="col-span-full p-8 text-center text-gray-400 font-bold bg-gray-100 rounded-xl border border-gray-200 border-dashed">
+               Connecting to Oracle Database to fetch facilities...
+            </div>
+          )}
         </div>
       </div>
     </main>
