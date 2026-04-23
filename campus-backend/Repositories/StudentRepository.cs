@@ -8,29 +8,25 @@ namespace campus_backend.Repositories
     {
         private readonly string _connectionString;
 
-        // This injects your OracleConnection string from appsettings.json
         public StudentRepository(IConfiguration configuration)
         {
             _connectionString = configuration.GetConnectionString("OracleConnection") 
                 ?? throw new InvalidOperationException("Oracle connection string is missing.");
         }
 
-        public async Task<Student?> GetStudentByBarcodeAsync(string barcodeData)
+        public async Task<Student?> GetStudentByIdAsync(string studentId)
         {
-            // USING block ensures the database connection closes automatically, even if it crashes
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
-                // This is your raw, bare-metal Oracle SQL query
-                // Notice the :barcode parameter? That protects your database from SQL injection!
+                // Updated raw SQL query
                 string sql = @"
-                    SELECT Student_ID, Full_Name, Barcode_Data, Face_Reference_Path 
+                    SELECT Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path 
                     FROM Students 
-                    WHERE Barcode_Data = :barcode";
+                    WHERE Student_ID = :studentId";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
-                    // Bind the C# variable to the Oracle SQL parameter safely
-                    cmd.Parameters.Add(new OracleParameter("barcode", barcodeData));
+                    cmd.Parameters.Add(new OracleParameter("studentId", studentId));
 
                     await con.OpenAsync();
 
@@ -41,13 +37,13 @@ namespace campus_backend.Repositories
                             return new Student
                             {
                                 Student_ID = reader["Student_ID"].ToString(),
-                                Full_Name = reader["Full_Name"].ToString(),
-                                Barcode_Data = reader["Barcode_Data"].ToString(),
+                                First_Name = reader["First_Name"].ToString(),
+                                Middle_Name = reader["Middle_Name"].ToString(),
+                                Last_Name = reader["Last_Name"].ToString(),
                                 Face_Reference_Path = reader["Face_Reference_Path"].ToString()
                             };
                         }
                         
-                        // Return null if no student matches that barcode
                         return null; 
                     }
                 }
