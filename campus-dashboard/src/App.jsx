@@ -3,21 +3,21 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 
 // Layout & UI Components
-import Header from './components/Header';
-import Sidebar from './components/Sidebar';
-import SimulationPanel from './components/SimulationPanel';
+import Header from './components/ui/Header';
+import Sidebar from './components/ui/Sidebar';
+import SimulationPanel from './components/ui/SimulationPanel';
 import Login from './components/Login';
 
 // Functional Pages (Faculty/Admin Shared)
-import RoomDashboard from './components/RoomDashboard';
-import StudentProfiles from './components/StudentProfiles';
-import AttendanceLogs from './components/AttendanceLogs';
-import SystemSettings from './components/SystemSettings';
+import RoomDashboard from './portals/Faculty/views/RoomDashboard';
+import StudentProfiles from './portals/Faculty/views/StudentProfiles';
+import AttendanceLogs from './portals/Faculty/views/AttendanceLogs';
+import SystemSettings from './portals/Faculty/views/SystemSettings';
 
 // Role-Specific Portals
-import GuardPortal from './components/GuardPortal';
-import RegistrarPortal from './components/RegistrarPortal';
-import PrincipalPortal from './components/PrincipalPortal';
+import GuardPortal from './portals/Guard/GuardPortal';
+import RegistrarPortal from './portals/Registrar/RegistrarPortal';
+import PrincipalPortal from './portals/Principal/PrincipalPortal';
 
 // --- STRICT ROUTING GUARD ---
 function ProtectedRoute({ children }) {
@@ -28,7 +28,6 @@ function ProtectedRoute({ children }) {
 
 // --- MASTER LAYOUT & LOGIC (FACULTY VIEW) ---
 function CampusLayout() {
-  // Removed setRoomState to fix ESLint warning
   const [roomState] = useState('UNLOCKED (Class Ongoing)'); 
   const [occupancy, setOccupancy] = useState(0);
   const [lastScanned, setLastScanned] = useState(null);
@@ -105,7 +104,7 @@ function CampusLayout() {
           newMessage = `Manual Override: Access Granted for ${student.first_Name}.`;
           newType = 'success';
         }
-      } catch { // Removed the unused 'error' variable here to fix ESLint warning
+      } catch {
         newMessage = 'Network Error: Cannot connect to API.';
         newType = 'error';
       }
@@ -140,7 +139,6 @@ function RoleDispatcher() {
 
   if (!user) return <Navigate to="/login" replace />;
 
-  // THE FIX: Check for user.role (lowercase 'r') because of C# JSON serialization
   const userRole = user.role || user.Role; 
 
   switch (userRole) {
