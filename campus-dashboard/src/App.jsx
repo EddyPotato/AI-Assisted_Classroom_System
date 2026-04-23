@@ -1,14 +1,24 @@
 import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 
-// Import our new modular components
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import DashboardContent from './components/DashboardContent';
 import SimulationPanel from './components/SimulationPanel';
+import Login from './components/Login';
 
-function App() {
-  // STATE MANAGEMENT
+// --- STRICT ROUTING GUARD ---
+function ProtectedRoute({ children }) {
+  const user = localStorage.getItem('campus_user');
+  if (!user) {
+    return <Navigate to="/login" replace />; // Kick back to login if no session exists
+  }
+  return children;
+}
+
+// --- EXTRACTED DASHBOARD LOGIC ---
+function DashboardLayout() {
   const [roomState, setRoomState] = useState('UNLOCKED (Class Ongoing)'); 
   const [occupancy, setOccupancy] = useState(0);
   const [lastScanned, setLastScanned] = useState(null);
@@ -16,40 +26,54 @@ function App() {
     { time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), message: 'System Initialized. Awaiting Events.', type: 'system' }
   ]);
 
-  // API ROUTES
   const API_BASE_URL = 'http://localhost:5106/api';
   const HUB_URL = 'http://localhost:5106/campushub';
 
-  // SIGNALR REAL-TIME CONNECTION
   useEffect(() => {
+    let isMounted = true;
+
     const connection = new HubConnectionBuilder()
       .withUrl(HUB_URL)
+      .withAutomaticReconnect()
       .configureLogging(LogLevel.Information)
       .build();
 
     connection.on("ReceiveScanEvent", (student) => {
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       
-      setLastScanned(student);
-      setOccupancy(prev => prev + 1);
-      
-      setEventLogs(prev => [{ 
-        time: now, 
-        message: `AI CAMERA: ${student.first_Name} ${student.last_Name} verified and logged.`, 
-        type: 'success' 
-      }, ...prev]);
+      if (isMounted) {
+        setLastScanned(student);
+        setOccupancy(prev => prev + 1);
+        
+        setEventLogs(prev => [{ 
+          time: now, 
+          message: `AI CAMERA: ${student.first_Name} ${student.last_Name} verified and logged.`, 
+          type: 'success' 
+        }, ...prev]);
+      }
     });
 
-    connection.start()
-      .then(() => console.log("Connected to SignalR Hub successfully!"))
-      .catch(err => console.error("SignalR Connection Error: ", err));
+    const startSignalR = async () => {
+      try {
+        if (connection.state === 'Disconnected') {
+          await connection.start();
+          if (isMounted) console.log("Connected to SignalR Hub successfully! 🚀");
+        }
+      } catch (err) {
+        if (isMounted) console.error("SignalR Connection Error: ", err);
+      }
+    };
+
+    startSignalR();
 
     return () => {
-      connection.stop();
+      isMounted = false;
+      if (connection.state === 'Connected') {
+        connection.stop();
+      }
     };
   }, []);
 
-  // MANUAL RPG SIMULATION HANDLER
   const triggerEvent = async (actionType) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     let newMessage = '';
@@ -83,7 +107,6 @@ function App() {
     setEventLogs(prev => [{ time: now, message: newMessage, type: newType }, ...prev]);
   };
 
-  // UI LAYOUT RENDER
   return (
     <div className="h-screen flex flex-col bg-slate-50 font-sans overflow-hidden">
       <Header />
@@ -100,6 +123,28 @@ function App() {
         />
       </div>
     </div>
+  );
+}
+
+// --- MASTER ROUTER ---
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/login" element={<Login />} />
+        
+        {/* Protected Dashboard Route */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          } 
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

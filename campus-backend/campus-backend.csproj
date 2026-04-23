@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.7" />
     <PackageReference Include="MQTTnet" Version="5.1.0.1559" />
     <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.26.200" />

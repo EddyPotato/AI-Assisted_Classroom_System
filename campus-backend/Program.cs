@@ -6,16 +6,22 @@ var builder = WebApplication.CreateBuilder(args);
 // Register the Oracle Repository
 builder.Services.AddScoped<campus_backend.Repositories.IStudentRepository, campus_backend.Repositories.StudentRepository>();
 
+// Professor Repository for Authentication
+builder.Services.AddScoped<campus_backend.Repositories.IProfessorRepository, campus_backend.Repositories.ProfessorRepository>();
+
 builder.Services.AddControllers();
 
-// Configure CORS so React can talk to C#
+// --- THE FIX: STRICT CORS FOR SIGNALR ---
 builder.Services.AddCors(options => {
-    options.AddPolicy("AllowAll", policy => {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+    options.AddPolicy("AllowReactApp", policy => {
+        policy.WithOrigins("http://localhost:5173") // Your React Frontend URL
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // CRITICAL: SignalR requires this to be true!
     });
 });
 
-// --- THE MISSING IOT SERVICES ---
+// Register IoT Services
 builder.Services.AddSignalR();
 builder.Services.AddHostedService<MqttListenerService>();
 
@@ -30,12 +36,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// CORS must be used before mapping the controllers and hubs
-app.UseCors("AllowAll");
+// Apply the new CORS policy BEFORE mapping hubs/controllers
+app.UseCors("AllowReactApp");
 
 app.MapControllers();
-
-// --- THE MISSING HUB ENDPOINT ---
 app.MapHub<CampusHub>("/campushub");
 
 app.Run();
