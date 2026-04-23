@@ -10,6 +10,8 @@ builder.Services.AddScoped<campus_backend.Repositories.IUserRepository, campus_b
 
 builder.Services.AddScoped<campus_backend.Repositories.IRoomRepository, campus_backend.Repositories.RoomRepository>();
 
+builder.Services.AddScoped<campus_backend.Repositories.IScheduleRepository, campus_backend.Repositories.ScheduleRepository>();
+
 builder.Services.AddControllers();
 
 // --- THE FIX: STRICT CORS FOR SIGNALR ---
