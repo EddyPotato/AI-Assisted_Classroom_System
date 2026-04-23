@@ -5,6 +5,7 @@ import { Users, UserPlus, Database, Search, LogOut, Camera, Calendar, Plus } fro
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import ScheduleForm from './components/ScheduleForm';
 import MasterScheduleTable from './components/MasterScheduleTable';
+import StudentEnrollmentModal from './components/StudentEnrollmentModal';
 
 // PURE FUNCTION: Safe outside component to avoid cascading renders
 const getSchedulesData = async () => {
@@ -26,6 +27,10 @@ export default function RegistrarPortal() {
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [schedules, setSchedules] = useState([]); 
   
+  // Student Directory State
+  const [students, setStudents] = useState([]);
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+
   // Custom Modal State
   const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '', onConfirm: null });
 
@@ -41,7 +46,7 @@ export default function RegistrarPortal() {
   const userString = localStorage.getItem('campus_user');
   const user = userString ? JSON.parse(userString) : null;
 
-  // STRICT FETCHING: Uses useCallback + isMounted flag 
+  // STRICT FETCHING: Uses useCallback + isMounted flag for Schedules
   const fetchSchedules = useCallback(() => {
     let isMounted = true;
     getSchedulesData().then(data => {
@@ -52,10 +57,27 @@ export default function RegistrarPortal() {
     return () => { isMounted = false; };
   }, []);
 
+  // STRICT FETCHING: Uses useCallback + isMounted flag for Students
+  const fetchStudents = useCallback(() => {
+    let isMounted = true;
+    fetch('http://localhost:5106/api/student')
+      .then(res => res.json())
+      .then(data => {
+        if (isMounted && Array.isArray(data)) setStudents(data);
+      })
+      .catch(err => console.error("Failed to fetch students", err));
+    return () => { isMounted = false; };
+  }, []);
+
   useEffect(() => {
-    const cleanup = fetchSchedules();
-    return cleanup;
-  }, [fetchSchedules]);
+    const cleanupSchedules = fetchSchedules();
+    const cleanupStudents = fetchStudents();
+    
+    return () => {
+      cleanupSchedules();
+      cleanupStudents();
+    };
+  }, [fetchSchedules, fetchStudents]);
 
   const handleLogout = () => {
     localStorage.removeItem('campus_user');
@@ -124,7 +146,7 @@ export default function RegistrarPortal() {
             setShowScheduleForm(false);
             setIsEditing(false);
             setFormData(initialFormState);
-            fetchSchedules(); // Triggers a clean re-fetch natively 
+            fetchSchedules(); 
           }
         });
       } else {
@@ -145,7 +167,7 @@ export default function RegistrarPortal() {
   return (
     <div className="h-screen flex flex-col bg-slate-50 font-sans overflow-hidden relative">
       
-      {/* EXTRACTED UI COMPONENT */}
+      {/* GLOBAL UI MODALS */}
       <ConfirmModal 
         isOpen={modal.isOpen}
         type={modal.type}
@@ -155,6 +177,13 @@ export default function RegistrarPortal() {
         onCancel={() => setModal({ ...modal, isOpen: false })}
       />
 
+      <StudentEnrollmentModal 
+        isOpen={showEnrollModal} 
+        onClose={() => setShowEnrollModal(false)}
+        onSuccess={fetchStudents} 
+      />
+
+      {/* HEADER */}
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
           <Database className="text-blue-600" size={24} />
@@ -171,6 +200,7 @@ export default function RegistrarPortal() {
         </div>
       </header>
 
+      {/* MAIN CONTENT */}
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           
@@ -195,7 +225,6 @@ export default function RegistrarPortal() {
                 </button>
               </div>
 
-              {/* MODULAR FORM COMPONENT */}
               {showScheduleForm && (
                 <ScheduleForm 
                   formData={formData}
@@ -206,7 +235,6 @@ export default function RegistrarPortal() {
                 />
               )}
 
-              {/* MODULAR TABLE COMPONENT */}
               <MasterScheduleTable 
                 schedules={schedules}
                 handleEditClick={handleEditClick}
@@ -216,12 +244,13 @@ export default function RegistrarPortal() {
 
           {activeTab === 'users' && (
             <div className="space-y-6 animate-in fade-in duration-300">
+              
               <div className="flex justify-between items-end">
                 <div>
                   <h2 className="text-3xl font-black text-slate-800 tracking-tight">User Directory</h2>
-                  <p className="text-slate-500 mt-1 font-medium">Manage student enrollments and staff access.</p>
+                  <p className="text-slate-500 mt-1 font-medium">Manage student enrollments and face data references.</p>
                 </div>
-                <button className="bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center gap-2">
+                <button onClick={() => setShowEnrollModal(true)} className="bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center gap-2 active:scale-95">
                   <UserPlus size={18} /> Enroll New User
                 </button>
               </div>
@@ -245,18 +274,33 @@ export default function RegistrarPortal() {
                       <th className="p-4">ID Number</th>
                       <th className="p-4">Full Name</th>
                       <th className="p-4">Role</th>
-                      <th className="p-4 text-center">Face Data</th>
+                      <th className="p-4">Face Reference Path</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    <tr className="hover:bg-blue-50/50 transition-colors">
-                      <td className="p-4 font-bold text-slate-600 font-mono text-sm">24-1507</td>
-                      <td className="p-4 font-bold text-slate-800">Edrian Cortes Rodriguez</td>
-                      <td className="p-4"><span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold border border-blue-100">Student</span></td>
-                      <td className="p-4 text-center">
-                        <span className="inline-flex items-center gap-1 text-emerald-600 text-xs font-bold bg-emerald-50 px-2 py-1 rounded border border-emerald-100"><Camera size={12}/> Enrolled</span>
-                      </td>
-                    </tr>
+                    {students.map((student) => (
+                      <tr key={student.student_ID} className="hover:bg-blue-50/50 transition-colors">
+                        <td className="p-4 font-bold text-slate-600 font-mono text-sm">{student.student_ID}</td>
+                        <td className="p-4 font-bold text-slate-800">
+                          {student.first_Name} {student.middle_Name} {student.last_Name}
+                        </td>
+                        <td className="p-4">
+                          <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold border border-blue-100">Student</span>
+                        </td>
+                        <td className="p-4 text-xs font-mono text-slate-500 truncate max-w-xs">
+                          {student.face_Reference_Path ? (
+                            <span className="text-emerald-600 font-bold flex items-center gap-1">
+                              <Camera size={12}/> {student.face_Reference_Path}
+                            </span>
+                          ) : (
+                            <span className="text-rose-400 font-bold">No Data</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {students.length === 0 && (
+                      <tr><td colSpan="4" className="p-6 text-center text-slate-400 font-bold bg-slate-50">No students found in Oracle DB.</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>

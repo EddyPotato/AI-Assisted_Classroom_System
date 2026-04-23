@@ -4,34 +4,97 @@ using campus_backend.Repositories;
 
 namespace campus_backend.Controllers
 {
-    // This sets the base URL for this controller to: http://localhost:[port]/api/student
+    // DTO to handle incoming Multipart Form Data (Text + File)
+    public class StudentRegistrationDto
+    {
+        public string Student_ID { get; set; } = string.Empty;
+        public string First_Name { get; set; } = string.Empty;
+        public string Middle_Name { get; set; } = string.Empty;
+        public string Last_Name { get; set; } = string.Empty;
+        public IFormFile? Photo { get; set; }
+    }
+
     [Route("api/[controller]")]
     [ApiController]
     public class StudentController : ControllerBase
     {
         private readonly IStudentRepository _studentRepository;
 
-        // Dependency Injection: The API automatically provides the repository we registered earlier
         public StudentController(IStudentRepository studentRepository)
         {
             _studentRepository = studentRepository;
         }
 
-        // This creates an endpoint that looks like: GET /api/student/24-1507
         [HttpGet("{id}")]
         public async Task<IActionResult> GetStudent(string id)
         {
-            // 1. Ask the repository to run the Oracle SQL query
             var student = await _studentRepository.GetStudentByIdAsync(id);
-
-            // 2. If the SQL query returns nothing, send a 404 Not Found error
-            if (student == null)
-            {
-                return NotFound(new { message = $"No student found with ID: {id}" });
-            }
-
-            // 3. If found, send the student data back with a 200 OK status!
+            if (student == null) return NotFound(new { message = $"No student found with ID: {id}" });
             return Ok(student);
+        }
+
+        // --- NEW: GET ALL STUDENTS ---
+        [HttpGet]
+        public async Task<IActionResult> GetAllStudents()
+        {
+            try
+            {
+                var students = await _studentRepository.GetAllStudentsAsync();
+                return Ok(students);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Database Error: " + ex.Message });
+            }
+        }
+
+        // --- NEW: REGISTER STUDENT & SAVE FACE DATA ---
+        [HttpPost]
+        public async Task<IActionResult> RegisterStudent([FromForm] StudentRegistrationDto dto)
+        {
+            try
+            {
+                if (dto.Photo == null || dto.Photo.Length == 0)
+                {
+                    return BadRequest(new { message = "Face reference photo is required." });
+                }
+
+                // 1. Setup the Local Directory
+                string directoryPath = @"C:\CampusSystem\ReferenceFaces";
+                if (!Directory.Exists(directoryPath))
+                {
+                    Directory.CreateDirectory(directoryPath);
+                }
+
+                // 2. Format the Filename: e.g., rodriguez_24-1507_face.jpg
+                string cleanLastName = dto.Last_Name.Replace(" ", "").ToLower();
+                string fileName = $"{cleanLastName}_{dto.Student_ID}_face.jpg";
+                string fullPath = Path.Combine(directoryPath, fileName);
+
+                // 3. Save the actual file to the C: Drive
+                using (var stream = new FileStream(fullPath, FileMode.Create))
+                {
+                    await dto.Photo.CopyToAsync(stream);
+                }
+
+                // 4. Save the string path to Oracle Database
+                var newStudent = new Student
+                {
+                    Student_ID = dto.Student_ID,
+                    First_Name = dto.First_Name,
+                    Middle_Name = dto.Middle_Name,
+                    Last_Name = dto.Last_Name,
+                    Face_Reference_Path = fullPath
+                };
+
+                await _studentRepository.CreateStudentAsync(newStudent);
+
+                return Ok(new { message = "Student registered and face data saved successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to register: " + ex.Message });
+            }
         }
     }
 }
