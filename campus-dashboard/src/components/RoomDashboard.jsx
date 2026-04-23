@@ -6,7 +6,6 @@ export default function RoomDashboard({ roomState, occupancy, lastScanned }) {
   const [facilities, setFacilities] = useState([]);
 
   useEffect(() => {
-    // Fetch live room data from the C# Oracle API
     const fetchRooms = async () => {
       try {
         const response = await fetch('http://localhost:5106/api/rooms');
@@ -43,25 +42,30 @@ export default function RoomDashboard({ roomState, occupancy, lastScanned }) {
           {facilities.map(room => (
             <div 
               key={room.room_ID}
-              onClick={() => setSelectedRoom(room.room_Name)}
-              className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-blue-400 transition-all cursor-pointer group"
+              onClick={() => setSelectedRoom(room.room_ID)}
+              className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-blue-400 transition-all cursor-pointer group flex flex-col justify-between"
             >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-black text-gray-800 group-hover:text-blue-600 transition-colors">{room.room_Name}</h3>
-                <span className={`px-3 py-1 text-xs font-bold rounded-lg ${room.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-gray-100 text-gray-500'}`}>
-                  {room.status}
-                </span>
-              </div>
-              <div className="space-y-3 pt-2 border-t border-gray-50">
-                <p className="text-sm font-bold text-gray-500 flex items-center justify-between">
-                  <span>Professor:</span> <span className="text-gray-800">{room.faculty_Name}</span>
-                </p>
-                <p className="text-sm font-bold text-gray-500 flex items-center justify-between">
-                  <span>Type:</span> <span className="text-gray-800">{room.room_Type}</span>
-                </p>
-                <p className="text-sm font-bold text-gray-500 flex items-center justify-between">
-                  <span>Capacity:</span> <span className="text-gray-800">{room.capacity}</span>
-                </p>
+              <div>
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-2xl font-black text-gray-800 group-hover:text-blue-600 transition-colors tracking-tight">
+                    {room.room_ID}
+                  </h3>
+                  <span className={`px-3 py-1 text-xs font-bold rounded-lg border ${room.status === 'In Session' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                    {room.status}
+                  </span>
+                </div>
+                
+                <div className="space-y-3 pt-4 border-t border-gray-50">
+                  <p className="text-sm font-bold text-gray-500 flex items-center justify-between">
+                    <span>Building:</span> <span className="text-gray-800">{room.building}</span>
+                  </p>
+                  <p className="text-sm font-bold text-gray-500 flex items-center justify-between">
+                    <span>Floor:</span> <span className="text-indigo-600">Floor {room.floor}</span>
+                  </p>
+                  <p className="text-sm font-bold text-gray-500 flex items-center justify-between">
+                    <span>Type:</span> <span className="text-gray-800">{room.room_Type}</span>
+                  </p>
+                </div>
               </div>
             </div>
           ))}

@@ -20,12 +20,8 @@ namespace campus_backend.Repositories
 
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
-                // We JOIN the Rooms table with the Users table to get the Faculty's full name
-                string sql = @"
-                    SELECT r.Room_ID, r.Room_Name, r.Room_Type, r.Capacity, r.Status, r.Assigned_Faculty_ID,
-                           u.First_Name, u.Last_Name
-                    FROM Rooms r
-                    LEFT JOIN Users u ON r.Assigned_Faculty_ID = u.User_ID";
+                // Clean, direct query for our normalized table
+                string sql = "SELECT Room_ID, Building, Floor, Room_Type, Status FROM Rooms";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
@@ -35,21 +31,13 @@ namespace campus_backend.Repositories
                     {
                         while (await reader.ReadAsync())
                         {
-                            string facultyName = "Unassigned";
-                            if (reader["First_Name"] != DBNull.Value && reader["Last_Name"] != DBNull.Value)
-                            {
-                                facultyName = $"{reader["First_Name"]} {reader["Last_Name"]}";
-                            }
-
                             rooms.Add(new Room
                             {
                                 Room_ID = reader["Room_ID"].ToString(),
-                                Room_Name = reader["Room_Name"].ToString(),
+                                Building = reader["Building"].ToString(),
+                                Floor = Convert.ToInt32(reader["Floor"]),
                                 Room_Type = reader["Room_Type"].ToString(),
-                                Capacity = Convert.ToInt32(reader["Capacity"]),
-                                Status = reader["Status"].ToString(),
-                                Assigned_Faculty_ID = reader["Assigned_Faculty_ID"]?.ToString(),
-                                Faculty_Name = facultyName
+                                Status = reader["Status"].ToString()
                             });
                         }
                     }
