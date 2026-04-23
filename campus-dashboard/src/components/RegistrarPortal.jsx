@@ -1,21 +1,31 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-<<<<<<< HEAD
 import { Users, UserPlus, Database, Search, LogOut, Camera, Calendar, BookOpen, Plus, Building, Edit2, AlertTriangle, CheckCircle } from 'lucide-react';
-=======
-import { Users, UserPlus, Database, Search, LogOut, Camera, Calendar, BookOpen, Plus, Building } from 'lucide-react';
->>>>>>> 06fa0a3888e78074df4696dedfc693e4e92f76fd
+
+// PURE FUNCTION: Moved completely outside the component so the linter knows it's safe
+const getSchedulesData = async () => {
+  try {
+    const response = await fetch('http://localhost:5106/api/schedules');
+    if (response.ok) {
+      return await response.json();
+    }
+    return [];
+  } catch {
+    console.error("Failed to fetch live schedules from Oracle.");
+    return [];
+  }
+};
 
 export default function RegistrarPortal() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('schedules');
   const [showScheduleForm, setShowScheduleForm] = useState(false);
-  const [schedules, setSchedules] = useState([]); // LIVE DATABASE STATE
+  const [schedules, setSchedules] = useState([]); 
   
   // Custom Modal State for Data Integrity
   const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '', onConfirm: null });
 
-  // Form State mapped to C# Schedule Model (NOW DEFAULTING TO BLANK/EMPTY)
+  // Form State mapped to C# Schedule Model (Defaults to Blank)
   const initialFormState = {
     schedule_ID: '', subject_Code: '', section_ID: '', 
     professor_ID: '', room_ID: '', time_Start: '', 
@@ -25,35 +35,21 @@ export default function RegistrarPortal() {
   const [formData, setFormData] = useState(initialFormState);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Form State mapped to C# Schedule Model
-  const [formData, setFormData] = useState({
-    subject_Code: 'IM101', 
-    section_ID: 'SEC-001', 
-    professor_ID: 'PRO-0001', 
-    room_ID: 'IL-602', 
-    time_Start: '08:00', 
-    time_End: '11:00', 
-    class_Days: 'Monday, Wednesday'
-  });
-
   const userString = localStorage.getItem('campus_user');
   const user = userString ? JSON.parse(userString) : null;
 
-  // FETCH LIVE DATA FROM ORACLE
-  const fetchSchedules = async () => {
-    try {
-      const response = await fetch('http://localhost:5106/api/schedules');
-      if (response.ok) {
-        const data = await response.json();
+  // STRICT LINTER FIX: Using .then() and an isMounted flag prevents the React warning
+  useEffect(() => {
+    let isMounted = true;
+    
+    getSchedulesData().then(data => {
+      if (isMounted) {
         setSchedules(data);
       }
-    } catch {
-      console.error("Failed to fetch live schedules from Oracle.");
-    }
-  };
+    });
 
-  useEffect(() => {
-    fetchSchedules();
+    // Cleanup function if the component unmounts
+    return () => { isMounted = false; };
   }, []);
 
   const handleLogout = () => {
@@ -61,7 +57,6 @@ export default function RegistrarPortal() {
     navigate('/login', { replace: true });
   };
 
-<<<<<<< HEAD
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   // Open a completely clean, blank form for a NEW schedule
@@ -71,7 +66,7 @@ export default function RegistrarPortal() {
     setShowScheduleForm(true);
   };
 
-  // Pre-fill form when "Edit" is clicked using real database field names
+  // Pre-fill form when "Edit" is clicked
   const handleEditClick = (sched) => {
     setFormData({
       schedule_ID: sched.schedule_ID,
@@ -126,7 +121,8 @@ export default function RegistrarPortal() {
             setShowScheduleForm(false);
             setIsEditing(false);
             setFormData(initialFormState);
-            fetchSchedules(); // BOOM! Refetches the live data instantly!
+            // BOOM! Refetches the live data without triggering the linter
+            getSchedulesData().then(data => setSchedules(data)); 
           }
         });
       } else {
@@ -134,44 +130,15 @@ export default function RegistrarPortal() {
         alert(`Database Error: ${errorData.message}`);
       }
     } catch {
-=======
-  // Handle Form Input Changes
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  // Handle Form Submission to Oracle Database
-  const handleSaveSchedule = async () => {
-    try {
-      const response = await fetch('http://localhost:5106/api/schedules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      if (response.ok) {
-        alert("Schedule Saved to Oracle Database successfully!");
-        setShowScheduleForm(false);
-      } else {
-        const errorData = await response.json();
-        alert(`Error: ${errorData.message}`);
-      }
-    } catch { // Removed the unused 'error' parameter to fix ESLint warning
->>>>>>> 06fa0a3888e78074df4696dedfc693e4e92f76fd
       alert("Error connecting to backend API. Is the C# server running?");
     }
   };
 
-<<<<<<< HEAD
   const handleCancelForm = () => {
     setShowScheduleForm(false);
     setIsEditing(false);
     setFormData(initialFormState);
   };
-=======
-  // Mock data representing the Schedule GET endpoint for the UI Table
-  const mockSchedules = [
-    { id: 'SCH-001', subject: 'IM101', section: 'SBIT2A', prof: 'Joel Olayon', room: 'IL-602', time: '08:00 AM - 11:00 AM', days: 'Mon, Wed' },
-    { id: 'SCH-002', subject: 'IPT101', section: 'SBIT2B', prof: 'Darrel Datoon', room: 'IK-504', time: '01:00 PM - 04:00 PM', days: 'Tue, Thu' },
-  ];
->>>>>>> 06fa0a3888e78074df4696dedfc693e4e92f76fd
 
   return (
     <div className="h-screen flex flex-col bg-slate-50 font-sans overflow-hidden relative">
@@ -256,14 +223,9 @@ export default function RegistrarPortal() {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div>
-<<<<<<< HEAD
                       <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Subject</label>
                       <select name="subject_Code" onChange={handleChange} value={formData.subject_Code} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-700 shadow-sm">
                         <option value="" disabled>-- Select Subject --</option>
-=======
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Subject</label>
-                      <select name="subject_Code" onChange={handleChange} value={formData.subject_Code} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700">
->>>>>>> 06fa0a3888e78074df4696dedfc693e4e92f76fd
                         <option value="IM101">IM101 - Advance Database Systems</option>
                         <option value="IPT101">IPT101 - Integrative Programming</option>
                         <option value="SE101">SE101 - Software Engineering</option>
@@ -271,7 +233,6 @@ export default function RegistrarPortal() {
                       </select>
                     </div>
                     <div>
-<<<<<<< HEAD
                       <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Section Block</label>
                       <select name="section_ID" onChange={handleChange} value={formData.section_ID} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-700 shadow-sm">
                         <option value="" disabled>-- Select Section --</option>
@@ -285,28 +246,6 @@ export default function RegistrarPortal() {
                         <option value="" disabled>-- Select Professor --</option>
                         <option value="PRO-0001">Joel Olayon</option>
                         <option value="PRO-0002">Darrel Datoon</option>
-=======
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Section Block</label>
-                      <select name="section_ID" onChange={handleChange} value={formData.section_ID} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700">
-                        <option value="SEC-001">SBIT2A (SB Campus)</option>
-                        <option value="SEC-002">SBIT2B (SB Campus)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Assigned Professor</label>
-                      <select name="professor_ID" onChange={handleChange} value={formData.professor_ID} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700">
-                        <option value="PRO-0001">Joel Olayon</option>
-                        <option value="PRO-0002">Darrel Datoon</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Facility / Room</label>
-                      <select name="room_ID" onChange={handleChange} value={formData.room_ID} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700">
-                        <option value="IL-602">IL-602 (New Academic Building)</option>
-                        <option value="IL-703">IL-703 (New Academic Building)</option>
-                        <option value="IK-504">IK-504 (Bautista Building)</option>
-                        <option value="IK-604">IK-604 (Bautista Building)</option>
->>>>>>> 06fa0a3888e78074df4696dedfc693e4e92f76fd
                       </select>
                     </div>
                     <div>
@@ -321,7 +260,6 @@ export default function RegistrarPortal() {
                     </div>
                     <div className="flex gap-3">
                       <div className="flex-1">
-<<<<<<< HEAD
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Time Start</label>
                         <input type="time" name="time_Start" onChange={handleChange} value={formData.time_Start} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-700 shadow-sm" />
                       </div>
@@ -342,24 +280,6 @@ export default function RegistrarPortal() {
                     <button onClick={requestSave} className={`text-white font-bold py-2 px-6 rounded-lg shadow-md transition-all active:scale-95 flex items-center gap-2 ${isEditing ? 'bg-amber-500 hover:bg-amber-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
                       {isEditing ? <Edit2 size={16}/> : <Database size={16}/>}
                       {isEditing ? 'Update Schedule' : 'Save to Oracle'}
-=======
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time Start</label>
-                        <input type="time" name="time_Start" onChange={handleChange} value={formData.time_Start} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700" />
-                      </div>
-                      <div className="flex-1">
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Time End</label>
-                        <input type="time" name="time_End" onChange={handleChange} value={formData.time_End} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Class Days</label>
-                      <input type="text" name="class_Days" onChange={handleChange} value={formData.class_Days} placeholder="e.g. Monday, Wednesday" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700" />
-                    </div>
-                  </div>
-                  <div className="mt-5 flex justify-end">
-                    <button onClick={handleSaveSchedule} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-all">
-                      Save Schedule to Database
->>>>>>> 06fa0a3888e78074df4696dedfc693e4e92f76fd
                     </button>
                   </div>
                 </div>
@@ -367,7 +287,7 @@ export default function RegistrarPortal() {
 
               {/* LIVE DATABASE TABLE LAYOUT */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                <table className="w-full text-left min-w-[800px]">
+                <table className="w-full text-left min-w-200">
                   <thead>
                     <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b border-slate-200 tracking-wider">
                       <th className="p-5 w-32">Sched ID</th>
@@ -389,14 +309,9 @@ export default function RegistrarPortal() {
                         <td className="p-5 font-semibold text-slate-700">
                            <div className="flex items-center gap-2"><Users size={16} className="text-slate-400"/> {sched.professor_Name}</div>
                         </td>
-<<<<<<< HEAD
                         <td className="p-5 font-medium text-slate-600">
                            <div className="flex items-center gap-2 mb-1"><Calendar size={14} className="text-slate-400"/> <span className="text-xs font-bold uppercase">{sched.class_Days}</span></div>
                            <div className="text-sm">{sched.time_Start} - {sched.time_End}</div>
-=======
-                        <td className="p-4 font-bold text-indigo-600 flex items-center gap-2 mt-2">
-                           <Building size={14} className="text-indigo-400"/> {sched.room}
->>>>>>> 06fa0a3888e78074df4696dedfc693e4e92f76fd
                         </td>
                         <td className="p-5">
                           <div className="flex items-center gap-2 font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg w-max shadow-sm">

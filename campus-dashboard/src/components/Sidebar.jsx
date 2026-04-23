@@ -11,7 +11,7 @@ export default function Sidebar() {
     }`;
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex shrink-0 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col md:flex shrink-0 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
       <nav className="p-4 space-y-2">
         <NavLink to="/dashboard" className={navStyle}>
           <LayoutDashboard size={20} /> Room Dashboard
