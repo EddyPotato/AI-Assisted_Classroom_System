@@ -5,6 +5,9 @@ builder.Services.AddScoped<campus_backend.Repositories.IStudentRepository, campu
 
 builder.Services.AddControllers();
 
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<campus_backend.Services.MqttListenerService>();
+
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowAll", policy => {
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
@@ -45,6 +48,7 @@ app.MapGet("/weatherforecast", () =>
 .WithName("GetWeatherForecast");
 
 app.MapControllers();
+app.MapHub<campus_backend.Hubs.CampusHub>("/campushub");
 
 app.UseCors("AllowAll");
 
