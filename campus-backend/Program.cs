@@ -6,8 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Register the Oracle Repository
 builder.Services.AddScoped<campus_backend.Repositories.IStudentRepository, campus_backend.Repositories.StudentRepository>();
 
-// Professor Repository for Authentication
-builder.Services.AddScoped<campus_backend.Repositories.IProfessorRepository, campus_backend.Repositories.ProfessorRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.IUserRepository, campus_backend.Repositories.UserRepository>();
 
 builder.Services.AddControllers();
 

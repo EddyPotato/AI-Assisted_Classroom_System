@@ -8,11 +8,11 @@ namespace campus_backend.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly IProfessorRepository _professorRepository;
+        private readonly IUserRepository _userRepository;
 
-        public AuthController(IProfessorRepository professorRepository)
+        public AuthController(IUserRepository userRepository)
         {
-            _professorRepository = professorRepository;
+            _userRepository = userRepository;
         }
 
         [HttpPost("login")]
@@ -20,32 +20,28 @@ namespace campus_backend.Controllers
         {
             if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
             {
-                return BadRequest(new { message = "Professor ID and Password are required." });
+                return BadRequest(new { message = "User ID and Password are required." });
             }
 
-            var professor = await _professorRepository.GetProfessorByIdAsync(request.Username);
-            if (professor == null) return Unauthorized(new { message = "Invalid Professor ID or Password." });
+            var user = await _userRepository.GetUserByIdAsync(request.Username);
+            if (user == null) return Unauthorized(new { message = "Invalid User ID or Password." });
 
-            // --- PASSWORD HASH UPGRADE LOGIC ---
-            // Detects if the password in the database is the exact plain text (first login ever)
-            if (professor.Password == request.Password)
+            if (user.Password == request.Password)
             {
-                // Hash it and update the DB immediately so it is never plain text again
                 var newHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
-                await _professorRepository.UpdatePasswordAsync(professor.Professor_ID!, newHash);
-                professor.Password = newHash; 
+                await _userRepository.UpdatePasswordAsync(user.User_ID!, newHash);
+                user.Password = newHash; 
             }
             else
             {
-                // Standard BCrypt mathematical verification
-                bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, professor.Password);
-                if (!isPasswordValid) return Unauthorized(new { message = "Invalid Professor ID or Password." });
+                bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.Password);
+                if (!isPasswordValid) return Unauthorized(new { message = "Invalid User ID or Password." });
             }
 
-            // Scrub the password from the object before sending it to the React UI
-            professor.Password = null;
+            user.Password = null; // Scrub password before sending to React
 
-            return Ok(new { message = "Login successful", user = professor });
+            // Notice we are now returning the Role to the frontend!
+            return Ok(new { message = "Login successful", user = user });
         }
     }
 }
