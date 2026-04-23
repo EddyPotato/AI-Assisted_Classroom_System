@@ -8,11 +8,16 @@ import Sidebar from './components/Sidebar';
 import SimulationPanel from './components/SimulationPanel';
 import Login from './components/Login';
 
-// Functional Pages
+// Functional Pages (Faculty/Admin Shared)
 import RoomDashboard from './components/RoomDashboard';
 import StudentProfiles from './components/StudentProfiles';
 import AttendanceLogs from './components/AttendanceLogs';
 import SystemSettings from './components/SystemSettings';
+
+// Role-Specific Portals
+import GuardPortal from './components/GuardPortal';
+import RegistrarPortal from './components/RegistrarPortal';
+import PrincipalPortal from './components/PrincipalPortal';
 
 // --- STRICT ROUTING GUARD ---
 function ProtectedRoute({ children }) {
@@ -21,13 +26,13 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-// --- MASTER LAYOUT & LOGIC ---
+// --- MASTER LAYOUT & LOGIC (FACULTY VIEW) ---
 function CampusLayout() {
-  // Global State (Persists across page navigation)
-  const [roomState, setRoomState] = useState('UNLOCKED (Class Ongoing)'); 
+  // Removed setRoomState to fix ESLint warning
+  const [roomState] = useState('UNLOCKED (Class Ongoing)'); 
   const [occupancy, setOccupancy] = useState(0);
   const [lastScanned, setLastScanned] = useState(null);
-  const [presentStudents, setPresentStudents] = useState([]); // Tracks real-time attendance
+  const [presentStudents, setPresentStudents] = useState([]); 
   const [eventLogs, setEventLogs] = useState([
     { time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), message: 'System Initialized. Awaiting Events.', type: 'system' }
   ]);
@@ -51,7 +56,6 @@ function CampusLayout() {
         setLastScanned(student);
         setOccupancy(prev => prev + 1);
         
-        // Dynamically add the student's ID to the 'Present' list if not already there
         setPresentStudents(prev => 
           !prev.includes(student.student_ID) ? [...prev, student.student_ID] : prev
         );
@@ -81,7 +85,6 @@ function CampusLayout() {
     };
   }, []);
 
-  // Manual Trigger Logic
   const triggerEvent = async (actionType) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     let newMessage = '';
@@ -95,7 +98,6 @@ function CampusLayout() {
           setOccupancy(prev => prev + 1);
           setLastScanned(student);
           
-          // Also track present status during manual overrides
           setPresentStudents(prev => 
             !prev.includes(student.student_ID) ? [...prev, student.student_ID] : prev
           );
@@ -103,7 +105,7 @@ function CampusLayout() {
           newMessage = `Manual Override: Access Granted for ${student.first_Name}.`;
           newType = 'success';
         }
-      } catch (error) {
+      } catch { // Removed the unused 'error' variable here to fix ESLint warning
         newMessage = 'Network Error: Cannot connect to API.';
         newType = 'error';
       }
@@ -117,32 +119,56 @@ function CampusLayout() {
       <div className="flex-1 flex overflow-hidden">
         <Sidebar />
         
-        {/* React Router Outlet: Injects the clicked page right here! */}
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<RoomDashboard roomState={roomState} occupancy={occupancy} lastScanned={lastScanned} />} />
-          
-          {/* We pass the presentStudents array down to the Student Profiles page */}
           <Route path="/profiles" element={<StudentProfiles presentStudents={presentStudents} />} />
-          
           <Route path="/logs" element={<AttendanceLogs eventLogs={eventLogs} />} />
           <Route path="/settings" element={<SystemSettings />} />
         </Routes>
 
-        {/* The Simulation Panel stays permanently docked (and animated) on the right */}
         <SimulationPanel triggerEvent={triggerEvent} eventLogs={eventLogs} />
       </div>
     </div>
   );
 }
 
-// --- APP ENTRY POINT ---
+// --- THE ROLE ROUTER ---
+function RoleDispatcher() {
+  const userString = localStorage.getItem('campus_user');
+  const user = userString ? JSON.parse(userString) : null;
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  switch (user.Role) {
+    case 'Faculty':
+      return <CampusLayout />;
+    case 'Guard':
+      return <GuardPortal />;
+    case 'Registrar':
+      return <RegistrarPortal />;
+    case 'Principal':
+    case 'Admin':
+      return <PrincipalPortal />;
+    default:
+      return <Navigate to="/login" replace />;
+  }
+}
+
+// --- MASTER ROUTER ---
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/*" element={<ProtectedRoute><CampusLayout /></ProtectedRoute>} />
+        <Route 
+          path="/*" 
+          element={
+            <ProtectedRoute>
+              <RoleDispatcher />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </BrowserRouter>
   );
