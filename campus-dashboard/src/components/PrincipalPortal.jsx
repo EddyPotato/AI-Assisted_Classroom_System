@@ -79,7 +79,7 @@ export default function PrincipalPortal() {
               <p className="text-3xl font-black text-emerald-600">SECURE</p>
               <p className="text-xs font-bold text-emerald-500 mt-1">All edge nodes active</p>
             </div>
-            <div className="bg-white p-5 rounded-2xl border border-rose-200 bg-rose-50 shadow-sm flex flex-col">
+            <div className="bg-white p-5 rounded-2xl border border-rose-200 shadow-sm flex flex-col">
               <div className="flex justify-between items-start mb-2">
                 <p className="text-xs font-black text-rose-400 uppercase tracking-wider">Active Alerts</p>
                 <AlertTriangle size={16} className="text-rose-500" />
