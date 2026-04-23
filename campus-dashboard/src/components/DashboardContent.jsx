@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { Video, User, UserCheck } from 'lucide-react';
 
 export default function DashboardContent({ roomState, occupancy, lastScanned }) {
+  // State to track if the Python camera is actually running
+  const [camOnline, setCamOnline] = useState(true);
+
   return (
     <main className="flex-1 p-6 overflow-y-auto bg-slate-50">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -33,16 +37,36 @@ export default function DashboardContent({ roomState, occupancy, lastScanned }) 
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Camera Feed Placeholder */}
+          
+          {/* DYNAMIC CAMERA FEED */}
           <div className="bg-slate-900 rounded-xl overflow-hidden shadow-md aspect-video relative flex items-center justify-center border border-slate-700">
-            <div className="absolute top-4 left-4 flex gap-2">
-              <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded animate-pulse">LIVE</span>
+            <div className="absolute top-4 left-4 flex gap-2 z-10">
+              {/* Dynamic Badge based on real connection status */}
+              {camOnline ? (
+                 <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded animate-pulse shadow-lg">LIVE</span>
+              ) : (
+                 <span className="bg-rose-500 text-white text-xs font-bold px-2 py-1 rounded shadow-lg">OFFLINE</span>
+              )}
               <span className="bg-black/50 text-white text-xs font-medium px-2 py-1 rounded backdrop-blur-sm">EDGE NODE CAM</span>
             </div>
-            <div className="text-center">
-              <Video className="mx-auto text-emerald-500 mb-3" size={48} />
-              <p className="text-slate-300 font-medium">Listening for Hardware Scanner...</p>
-            </div>
+            
+            {/* The actual video stream from Python (Port 5000) */}
+            <img 
+               src="http://localhost:5000/video_feed" 
+               alt="Live Camera Feed"
+               className={`w-full h-full object-cover ${!camOnline ? 'hidden' : ''}`}
+               onLoad={() => setCamOnline(true)}
+               onError={() => setCamOnline(false)}
+            />
+
+            {/* Fallback UI if Python is turned off */}
+            {!camOnline && (
+               <div className="text-center absolute inset-0 flex flex-col items-center justify-center bg-slate-900">
+                  <Video className="mx-auto text-slate-600 mb-3" size={48} />
+                  <p className="text-slate-400 font-medium">Edge Node Offline</p>
+                  <p className="text-slate-500 text-xs mt-1">Start python vision_node.py</p>
+               </div>
+            )}
           </div>
 
           {/* Dynamic Identity Match Panel */}
