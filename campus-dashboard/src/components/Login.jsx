@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, User } from 'lucide-react';
 
 export default function Login() {
-  const [profId, setProfId] = useState('');
+  const [userId, setUserId] = useState(''); // Updated to userId
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ export default function Login() {
       const response = await fetch('http://localhost:5106/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: profId, password: password })
+        body: JSON.stringify({ username: userId, password: password }) // Uses userId
       });
 
       if (response.ok) {
@@ -32,7 +32,7 @@ export default function Login() {
         const errData = await response.json();
         setError(errData.message || 'Login failed.');
       }
-    } catch (err) {
+    } catch {
       setError('Cannot connect to server. Check if C# API is running.');
     } finally {
       setLoading(false);
@@ -44,7 +44,7 @@ export default function Login() {
       <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-black text-slate-800">SILAYAN</h1>
-          <p className="text-sm text-slate-500 font-medium mt-1">Faculty Access Portal</p>
+          <p className="text-sm text-slate-500 font-medium mt-1">Campus Access Portal</p>
         </div>
 
         {error && (
@@ -55,14 +55,15 @@ export default function Login() {
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Professor ID</label>
+            {/* UPDATED LABEL AND PLACEHOLDER */}
+            <label className="block text-sm font-bold text-slate-700 mb-1">User ID</label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 type="text" 
-                value={profId}
-                onChange={(e) => setProfId(e.target.value)}
-                placeholder="00-0001"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                placeholder="e.g. PRO-0001 or HR-0001"
                 className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                 required
               />

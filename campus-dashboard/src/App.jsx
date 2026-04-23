@@ -140,7 +140,10 @@ function RoleDispatcher() {
 
   if (!user) return <Navigate to="/login" replace />;
 
-  switch (user.Role) {
+  // THE FIX: Check for user.role (lowercase 'r') because of C# JSON serialization
+  const userRole = user.role || user.Role; 
+
+  switch (userRole) {
     case 'Faculty':
       return <CampusLayout />;
     case 'Guard':
