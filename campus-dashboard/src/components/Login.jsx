@@ -43,7 +43,7 @@ export default function Login() {
     <div className="h-screen w-full flex items-center justify-center bg-slate-900">
       <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-black text-slate-800">AI Smart Campus</h1>
+          <h1 className="text-2xl font-black text-slate-800">SILAYAN</h1>
           <p className="text-sm text-slate-500 font-medium mt-1">Faculty Access Portal</p>
         </div>
 

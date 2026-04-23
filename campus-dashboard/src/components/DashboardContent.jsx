@@ -1,56 +1,65 @@
 import { useState } from 'react';
-import { Video, User, UserCheck } from 'lucide-react';
+import { Video, User, UserCheck, ArrowLeft, Users } from 'lucide-react';
 
-export default function DashboardContent({ roomState, occupancy, lastScanned }) {
-  // State to track if the Python camera is actually running
+export default function DashboardContent({ roomName, roomState, occupancy, lastScanned, onBack }) {
   const [camOnline, setCamOnline] = useState(true);
 
   return (
-    <main className="flex-1 p-6 overflow-y-auto bg-slate-50">
+    <main className="flex-1 p-6 overflow-y-auto bg-slate-50 relative">
       <div className="max-w-4xl mx-auto space-y-6">
         
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-800">Room 302 Overview</h2>
-          <span className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide border ${
+        {/* NEW HIERARCHICAL HEADER WITH BACK BUTTON */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={onBack}
+              className="p-2 bg-white border border-gray-200 rounded-lg text-gray-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-all shadow-sm"
+              title="Back to Campus Overview"
+            >
+              <ArrowLeft size={20} strokeWidth={2.5} />
+            </button>
+            <h2 className="text-3xl font-black text-gray-800 tracking-tight">{roomName}</h2>
+          </div>
+          
+          <span className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide border shadow-sm ${
             roomState.includes('LOCKED') 
-              ? 'bg-red-50 text-red-700 border-red-200' 
+              ? 'bg-rose-50 text-rose-700 border-rose-200' 
               : 'bg-emerald-50 text-emerald-700 border-emerald-200'
           }`}>
             {roomState}
           </span>
         </div>
 
-        {/* Stat Cards */}
+        {/* Minimalist Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-            <p className="text-sm font-semibold text-gray-500 uppercase">Current Occupancy</p>
-            <p className="text-4xl font-black text-gray-800 mt-2">{occupancy} <span className="text-lg text-gray-400 font-medium">/ 50</span></p>
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden">
+            <div className="absolute -right-4 -top-4 text-blue-50 opacity-50"><Users size={100} /></div>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-wider relative z-10">Current Occupancy</p>
+            <p className="text-4xl font-black text-blue-600 mt-2 relative z-10">{occupancy} <span className="text-lg text-gray-300 font-semibold">/ 50</span></p>
           </div>
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-            <p className="text-sm font-semibold text-orange-500 uppercase">On Break</p>
-            <p className="text-4xl font-black text-orange-600 mt-2">0</p>
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+            <p className="text-xs font-black text-gray-400 uppercase tracking-wider">On Break</p>
+            <p className="text-4xl font-black text-amber-500 mt-2">0</p>
           </div>
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-            <p className="text-sm font-semibold text-rose-500 uppercase">Active Alerts</p>
-            <p className="text-4xl font-black text-rose-600 mt-2">0</p>
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+            <p className="text-xs font-black text-gray-400 uppercase tracking-wider">Active Alerts</p>
+            <p className="text-4xl font-black text-rose-500 mt-2">0</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
-          {/* DYNAMIC CAMERA FEED */}
-          <div className="bg-slate-900 rounded-xl overflow-hidden shadow-md aspect-video relative flex items-center justify-center border border-slate-700">
+          {/* Edge Node Camera Feed */}
+          <div className="bg-slate-900 rounded-2xl overflow-hidden shadow-lg aspect-video relative flex items-center justify-center border-4 border-slate-800">
             <div className="absolute top-4 left-4 flex gap-2 z-10">
-              {/* Dynamic Badge based on real connection status */}
               {camOnline ? (
-                 <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded animate-pulse shadow-lg">LIVE</span>
+                 <span className="bg-emerald-500 text-white text-xs font-black px-2.5 py-1 rounded-md shadow-lg animate-pulse">LIVE</span>
               ) : (
-                 <span className="bg-rose-500 text-white text-xs font-bold px-2 py-1 rounded shadow-lg">OFFLINE</span>
+                 <span className="bg-rose-500 text-white text-xs font-black px-2.5 py-1 rounded-md shadow-lg">OFFLINE</span>
               )}
-              <span className="bg-black/50 text-white text-xs font-medium px-2 py-1 rounded backdrop-blur-sm">EDGE NODE CAM</span>
+              <span className="bg-black/60 text-white text-xs font-bold px-2.5 py-1 rounded-md backdrop-blur-md">EDGE NODE</span>
             </div>
             
-            {/* The actual video stream from Python (Port 5000) */}
             <img 
                src="http://localhost:5000/video_feed" 
                alt="Live Camera Feed"
@@ -59,39 +68,45 @@ export default function DashboardContent({ roomState, occupancy, lastScanned }) 
                onError={() => setCamOnline(false)}
             />
 
-            {/* Fallback UI if Python is turned off */}
             {!camOnline && (
                <div className="text-center absolute inset-0 flex flex-col items-center justify-center bg-slate-900">
                   <Video className="mx-auto text-slate-600 mb-3" size={48} />
-                  <p className="text-slate-400 font-medium">Edge Node Offline</p>
-                  <p className="text-slate-500 text-xs mt-1">Start python vision_node.py</p>
+                  <p className="text-slate-300 font-bold">Hardware Offline</p>
+                  <p className="text-slate-500 text-xs mt-1 font-medium">Connect Raspberry Pi Node</p>
                </div>
             )}
           </div>
 
-          {/* Dynamic Identity Match Panel */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col">
-            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Last Identity Match</h3>
+          {/* Clean Identity Match Panel */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col">
+            <h3 className="text-xs font-black text-gray-400 uppercase tracking-wider mb-5 border-b border-gray-100 pb-3 flex items-center gap-2">
+              <UserCheck size={16} className="text-blue-500" /> Last Identity Match
+            </h3>
             
             {lastScanned ? (
               <div className="flex items-start gap-4">
-                <div className="h-20 w-20 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 shrink-0 shadow-inner">
-                  <User size={40} />
+                <div className="h-20 w-20 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-center text-blue-600 shrink-0 shadow-sm">
+                  <User size={40} strokeWidth={1.5} />
                 </div>
-                <div>
-                  <h4 className="text-xl font-bold text-gray-800">
+                <div className="flex-1">
+                  <h4 className="text-xl font-black text-gray-800 leading-tight">
                     {lastScanned.first_Name} {lastScanned.last_Name}
                   </h4>
-                  <p className="text-gray-500 font-mono mt-1 text-sm">ID: {lastScanned.student_ID}</p>
-                  <p className="text-xs text-emerald-600 mt-2 bg-emerald-50 p-2 rounded border border-emerald-100 font-medium">
-                    ✓ Verified via Database
+                  <p className="text-gray-500 font-mono mt-1 text-sm bg-gray-50 inline-block px-2 py-0.5 rounded border border-gray-200 font-semibold">
+                    ID: {lastScanned.student_ID}
                   </p>
+                  <div className="mt-3 bg-emerald-50 text-emerald-700 px-3 py-2 rounded-xl border border-emerald-100 text-xs font-black flex items-center gap-2 shadow-sm w-fit">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Verified via Database
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-                <UserCheck size={32} className="mb-2 opacity-50" />
-                <p className="text-sm font-medium">Waiting for scan event...</p>
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                  <UserCheck size={28} className="text-gray-300" />
+                </div>
+                <p className="text-sm font-bold text-gray-400">Awaiting edge node scan...</p>
               </div>
             )}
           </div>
