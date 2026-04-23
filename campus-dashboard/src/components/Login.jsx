@@ -23,9 +23,11 @@ export default function Login() {
 
       if (response.ok) {
         const data = await response.json();
-        // Save the session securely to browser storage
+        // Save the session securely
         localStorage.setItem('campus_user', JSON.stringify(data.user));
-        navigate('/dashboard'); // Proceed to the protected dashboard
+        
+        // SECURITY UPDATE: replace: true prevents the back button from returning to the login screen
+        navigate('/dashboard', { replace: true }); 
       } else {
         const errData = await response.json();
         setError(errData.message || 'Login failed.');
