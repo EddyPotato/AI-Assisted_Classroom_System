@@ -27,6 +27,7 @@ function CampusLayout() {
   const [roomState, setRoomState] = useState('UNLOCKED (Class Ongoing)'); 
   const [occupancy, setOccupancy] = useState(0);
   const [lastScanned, setLastScanned] = useState(null);
+  const [presentStudents, setPresentStudents] = useState([]); // Tracks real-time attendance
   const [eventLogs, setEventLogs] = useState([
     { time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), message: 'System Initialized. Awaiting Events.', type: 'system' }
   ]);
@@ -45,9 +46,16 @@ function CampusLayout() {
 
     connection.on("ReceiveScanEvent", (student) => {
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      
       if (isMounted) {
         setLastScanned(student);
         setOccupancy(prev => prev + 1);
+        
+        // Dynamically add the student's ID to the 'Present' list if not already there
+        setPresentStudents(prev => 
+          !prev.includes(student.student_ID) ? [...prev, student.student_ID] : prev
+        );
+
         setEventLogs(prev => [{ 
           time: now, message: `AI CAMERA: ${student.first_Name} ${student.last_Name} verified and logged.`, type: 'success' 
         }, ...prev]);
@@ -86,6 +94,12 @@ function CampusLayout() {
           const student = await response.json();
           setOccupancy(prev => prev + 1);
           setLastScanned(student);
+          
+          // Also track present status during manual overrides
+          setPresentStudents(prev => 
+            !prev.includes(student.student_ID) ? [...prev, student.student_ID] : prev
+          );
+
           newMessage = `Manual Override: Access Granted for ${student.first_Name}.`;
           newType = 'success';
         }
@@ -107,12 +121,15 @@ function CampusLayout() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<RoomDashboard roomState={roomState} occupancy={occupancy} lastScanned={lastScanned} />} />
-          <Route path="/profiles" element={<StudentProfiles />} />
+          
+          {/* We pass the presentStudents array down to the Student Profiles page */}
+          <Route path="/profiles" element={<StudentProfiles presentStudents={presentStudents} />} />
+          
           <Route path="/logs" element={<AttendanceLogs eventLogs={eventLogs} />} />
           <Route path="/settings" element={<SystemSettings />} />
         </Routes>
 
-        {/* The Simulation Panel stays permanently docked on the right */}
+        {/* The Simulation Panel stays permanently docked (and animated) on the right */}
         <SimulationPanel triggerEvent={triggerEvent} eventLogs={eventLogs} />
       </div>
     </div>
