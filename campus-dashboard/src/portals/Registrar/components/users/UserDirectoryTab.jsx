@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UserPlus, Search, Camera, X, Edit2 } from 'lucide-react';
+import { UserPlus, Search, Camera, X, Edit2, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import StudentEnrollmentModal from '../enrollment/StudentEnrollmentModal';
-import EditStudentModal from '../enrollment/EditStudentModal'; // ADDED IMPORT
+import EditStudentModal from '../enrollment/EditStudentModal';
 
 export default function UserDirectoryTab() {
   const [students, setStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [sortConfig, setSortConfig] = useState({ key: 'student_ID', direction: 'asc' });
   
-  // Modal States
   const [showEnrollModal, setShowEnrollModal] = useState(false);
-  const [editingStudent, setEditingStudent] = useState(null); // ADDED STATE
+  const [editingStudent, setEditingStudent] = useState(null);
   const [zoomedImage, setZoomedImage] = useState(null);
 
   const fetchStudents = useCallback(() => {
@@ -27,6 +27,7 @@ export default function UserDirectoryTab() {
     return cleanup;
   }, [fetchStudents]);
 
+  // Filtering Logic
   const filteredStudents = students.filter(student => {
     const fullName = `${student.first_Name} ${student.middle_Name} ${student.last_Name}`.toLowerCase();
     const matchesSearch = student.student_ID.includes(searchQuery) || fullName.includes(searchQuery.toLowerCase());
@@ -34,41 +35,42 @@ export default function UserDirectoryTab() {
     return matchesSearch && matchesFilter;
   });
 
-  // ADDED HANDLER
-  const handleEditClick = (student) => {
-    setEditingStudent(student);
+  // Sorting Logic
+  const sortedStudents = [...filteredStudents].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    const aValue = a[sortConfig.key] || '';
+    const bValue = b[sortConfig.key] || '';
+    
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+    setSortConfig({ key, direction });
+  };
+
+  const renderSortIcon = (key) => {
+    if (sortConfig.key !== key) return <ArrowUpDown size={14} className="text-slate-300" />;
+    return sortConfig.direction === 'asc' ? <ChevronUp size={14} className="text-primary-500" /> : <ChevronDown size={14} className="text-primary-500" />;
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      
-      {/* Modals */}
-      <StudentEnrollmentModal 
-        isOpen={showEnrollModal} 
-        onClose={() => setShowEnrollModal(false)} 
-        onSuccess={fetchStudents} 
-      />
-
-      {/* ADDED EDIT MODAL */}
-      <EditStudentModal 
-        isOpen={!!editingStudent} 
-        student={editingStudent}
-        onClose={() => setEditingStudent(null)} 
-        onSuccess={fetchStudents} 
-      />
+      <StudentEnrollmentModal isOpen={showEnrollModal} onClose={() => setShowEnrollModal(false)} onSuccess={fetchStudents} />
+      <EditStudentModal isOpen={!!editingStudent} student={editingStudent} onClose={() => setEditingStudent(null)} onSuccess={fetchStudents} />
 
       {zoomedImage && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm animate-in fade-in" onClick={() => setZoomedImage(null)}>
           <div className="relative">
-             <button onClick={() => setZoomedImage(null)} className="absolute -top-4 -right-4 bg-white text-slate-800 p-2 rounded-full shadow-lg hover:bg-rose-500 hover:text-white transition-colors">
-               <X size={20} />
-             </button>
+             <button onClick={() => setZoomedImage(null)} className="absolute -top-4 -right-4 bg-white text-slate-800 p-2 rounded-full shadow-lg hover:bg-rose-500 hover:text-white transition-colors"><X size={20} /></button>
              <img src={zoomedImage} alt="Face Reference" className="rounded-2xl shadow-2xl max-w-xl max-h-[80vh] border-4 border-white object-cover" />
           </div>
         </div>
       )}
 
-      {/* Header Area */}
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Student Directory</h2>
@@ -79,7 +81,6 @@ export default function UserDirectoryTab() {
         </button>
       </div>
 
-      {/* Main Table Area */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex gap-4 bg-slate-50/50">
           <div className="relative flex-1 max-w-md">
@@ -95,30 +96,38 @@ export default function UserDirectoryTab() {
         
         <table className="w-full text-left table-fixed border-collapse">
           <thead>
-            <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200">
-              <th className="p-4 w-32">Student ID</th>
-              <th className="p-4">First Name</th>
-              <th className="p-4">Middle Name</th>
-              <th className="p-4">Last Name</th>
-              <th className="p-4 w-32 text-center">Status</th>
-              <th className="p-4 w-28 text-center">Face</th>
-              <th className="p-4 w-24 text-center">Action</th>
+            <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 cursor-pointer select-none">
+              <th className="p-4 w-32 hover:bg-slate-100 transition-colors" onClick={() => handleSort('student_ID')}>
+                <div className="flex items-center gap-1">Student ID {renderSortIcon('student_ID')}</div>
+              </th>
+              <th className="p-4 hover:bg-slate-100 transition-colors" onClick={() => handleSort('first_Name')}>
+                <div className="flex items-center gap-1">First Name {renderSortIcon('first_Name')}</div>
+              </th>
+              <th className="p-4 hover:bg-slate-100 transition-colors" onClick={() => handleSort('middle_Name')}>
+                <div className="flex items-center gap-1">Middle Name {renderSortIcon('middle_Name')}</div>
+              </th>
+              <th className="p-4 hover:bg-slate-100 transition-colors" onClick={() => handleSort('last_Name')}>
+                <div className="flex items-center gap-1">Last Name {renderSortIcon('last_Name')}</div>
+              </th>
+              <th className="p-4 w-32 text-center hover:bg-slate-100 transition-colors" onClick={() => handleSort('enrollment_Status')}>
+                 <div className="flex items-center justify-center gap-1">Status {renderSortIcon('enrollment_Status')}</div>
+              </th>
+              <th className="p-4 w-28 text-center cursor-default">Face</th>
+              <th className="p-4 w-24 text-center cursor-default">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y-2 divide-slate-100">
-            {filteredStudents.map((student) => (
+            {sortedStudents.map((student) => (
               <tr key={student.student_ID} className="hover:bg-primary-50/40 transition-colors group">
                 <td className="p-4 font-bold text-slate-600 font-mono text-sm">{student.student_ID}</td>
                 <td className="p-4 font-bold text-slate-800 truncate">{student.first_Name}</td>
                 <td className="p-4 font-medium text-slate-600 truncate">{student.middle_Name || '-'}</td>
                 <td className="p-4 font-bold text-slate-800 truncate">{student.last_Name}</td>
-                
                 <td className="p-4 text-center">
                   <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold border ${student.enrollment_Status === 'Regular' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                     {student.enrollment_Status || 'Regular'}
                   </span>
                 </td>
-
                 <td className="p-4 flex justify-center items-center">
                   {student.face_Reference_Path && !student.face_Reference_Path.includes("C:") ? (
                     <img 
@@ -133,19 +142,14 @@ export default function UserDirectoryTab() {
                     </div>
                   )}
                 </td>
-
                 <td className="p-4 text-center">
-                  <button 
-                    onClick={() => handleEditClick(student)} 
-                    className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" 
-                    title="Edit Data/Face"
-                  >
+                  <button onClick={() => setEditingStudent(student)} className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors border border-transparent hover:border-primary-200" title="Edit Data/Face">
                     <Edit2 size={18} />
                   </button>
                 </td>
               </tr>
             ))}
-            {filteredStudents.length === 0 && (
+            {sortedStudents.length === 0 && (
               <tr><td colSpan="7" className="p-8 text-center text-slate-500 font-bold bg-slate-50/50">No matching students found.</td></tr>
             )}
           </tbody>
