@@ -109,5 +109,36 @@ namespace campus_backend.Repositories
                 }
             }
         }
+
+        // --- 4. UPDATE EXISTING STUDENT ---
+        public async Task UpdateStudentAsync(Student student)
+        {
+            using (OracleConnection con = new OracleConnection(_connectionString))
+            {
+                string sql = @"
+                    UPDATE Students 
+                    SET First_Name = :fname, 
+                        Middle_Name = :mname, 
+                        Last_Name = :lname, 
+                        Face_Reference_Path = :facepath, 
+                        Enrollment_Status = :status
+                    WHERE Student_ID = :id";
+
+                using (OracleCommand cmd = new OracleCommand(sql, con))
+                {
+                    cmd.Parameters.Add(new OracleParameter("fname", student.First_Name));
+                    cmd.Parameters.Add(new OracleParameter("mname", string.IsNullOrEmpty(student.Middle_Name) ? DBNull.Value : student.Middle_Name));
+                    cmd.Parameters.Add(new OracleParameter("lname", student.Last_Name));
+                    cmd.Parameters.Add(new OracleParameter("facepath", student.Face_Reference_Path));
+                    cmd.Parameters.Add(new OracleParameter("status", string.IsNullOrEmpty(student.Enrollment_Status) ? "Regular" : student.Enrollment_Status));
+                    
+                    // The WHERE clause ID must be the last parameter added to match the SQL order
+                    cmd.Parameters.Add(new OracleParameter("id", student.Student_ID));
+
+                    await con.OpenAsync();
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+        }
     }
 }

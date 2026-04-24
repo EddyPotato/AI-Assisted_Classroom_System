@@ -5,7 +5,10 @@ namespace campus_backend.Repositories
     public interface IStudentRepository
     {
         Task<Student?> GetStudentByIdAsync(string studentId);
-        Task<IEnumerable<Student>> GetAllStudentsAsync(); // NEW
-        Task CreateStudentAsync(Student student);         // NEW
+        Task<IEnumerable<Student>> GetAllStudentsAsync();
+        Task CreateStudentAsync(Student student);
+        
+        // ADD THIS NEW METHOD:
+        Task UpdateStudentAsync(Student student);
     }
 }

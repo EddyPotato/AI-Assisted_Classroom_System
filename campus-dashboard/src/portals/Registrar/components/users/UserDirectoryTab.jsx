@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { UserPlus, Search, Camera, X, Edit2 } from 'lucide-react';
 import StudentEnrollmentModal from '../enrollment/StudentEnrollmentModal';
+import EditStudentModal from '../enrollment/EditStudentModal'; // ADDED IMPORT
 
 export default function UserDirectoryTab() {
   const [students, setStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
+  
+  // Modal States
   const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null); // ADDED STATE
   const [zoomedImage, setZoomedImage] = useState(null);
 
   const fetchStudents = useCallback(() => {
@@ -30,17 +34,26 @@ export default function UserDirectoryTab() {
     return matchesSearch && matchesFilter;
   });
 
+  // ADDED HANDLER
   const handleEditClick = (student) => {
-    // We will hook this up to the new Edit Modal in the next step!
-    alert(`Ready to edit face data for ${student.first_Name}. We will build this modal next!`);
+    setEditingStudent(student);
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
+      {/* Modals */}
       <StudentEnrollmentModal 
         isOpen={showEnrollModal} 
         onClose={() => setShowEnrollModal(false)} 
+        onSuccess={fetchStudents} 
+      />
+
+      {/* ADDED EDIT MODAL */}
+      <EditStudentModal 
+        isOpen={!!editingStudent} 
+        student={editingStudent}
+        onClose={() => setEditingStudent(null)} 
         onSuccess={fetchStudents} 
       />
 
@@ -61,7 +74,6 @@ export default function UserDirectoryTab() {
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Student Directory</h2>
           <p className="text-slate-500 mt-1 font-medium">Manage student enrollments and face data references.</p>
         </div>
-        {/* Updated Button Color */}
         <button onClick={() => setShowEnrollModal(true)} className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center gap-2 active:scale-95">
           <UserPlus size={18} /> Enroll New Student
         </button>
@@ -81,7 +93,6 @@ export default function UserDirectoryTab() {
           </select>
         </div>
         
-        {/* table-fixed ensures columns NEVER shift when empty */}
         <table className="w-full text-left table-fixed border-collapse">
           <thead>
             <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200">
@@ -94,7 +105,6 @@ export default function UserDirectoryTab() {
               <th className="p-4 w-24 text-center">Action</th>
             </tr>
           </thead>
-          {/* Thicker row dividers for visibility */}
           <tbody className="divide-y-2 divide-slate-100">
             {filteredStudents.map((student) => (
               <tr key={student.student_ID} className="hover:bg-primary-50/40 transition-colors group">
@@ -127,7 +137,7 @@ export default function UserDirectoryTab() {
                 <td className="p-4 text-center">
                   <button 
                     onClick={() => handleEditClick(student)} 
-                    className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors border border-transparent hover:border-primary-200" 
+                    className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" 
                     title="Edit Data/Face"
                   >
                     <Edit2 size={18} />
