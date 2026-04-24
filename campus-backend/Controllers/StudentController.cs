@@ -4,13 +4,13 @@ using campus_backend.Repositories;
 
 namespace campus_backend.Controllers
 {
-    // DTO to handle incoming Multipart Form Data (Text + File)
     public class StudentRegistrationDto
     {
         public string Student_ID { get; set; } = string.Empty;
         public string First_Name { get; set; } = string.Empty;
         public string Middle_Name { get; set; } = string.Empty;
         public string Last_Name { get; set; } = string.Empty;
+        public string Enrollment_Status { get; set; } = "Regular"; // NEW
         public IFormFile? Photo { get; set; }
     }
 
@@ -33,7 +33,6 @@ namespace campus_backend.Controllers
             return Ok(student);
         }
 
-        // --- NEW: GET ALL STUDENTS ---
         [HttpGet]
         public async Task<IActionResult> GetAllStudents()
         {
@@ -48,7 +47,6 @@ namespace campus_backend.Controllers
             }
         }
 
-        // --- NEW: REGISTER STUDENT & SAVE FACE DATA ---
         [HttpPost]
         public async Task<IActionResult> RegisterStudent([FromForm] StudentRegistrationDto dto)
         {
@@ -59,32 +57,26 @@ namespace campus_backend.Controllers
                     return BadRequest(new { message = "Face reference photo is required." });
                 }
 
-                // 1. Setup the Local Directory
-                string directoryPath = @"C:\CampusSystem\ReferenceFaces";
-                if (!Directory.Exists(directoryPath))
-                {
-                    Directory.CreateDirectory(directoryPath);
-                }
-
-                // 2. Format the Filename: e.g., rodriguez_24-1507_face.jpg
+                // Use the portable directory
+                string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ReferenceFaces");
                 string cleanLastName = dto.Last_Name.Replace(" ", "").ToLower();
                 string fileName = $"{cleanLastName}_{dto.Student_ID}_face.jpg";
                 string fullPath = Path.Combine(directoryPath, fileName);
 
-                // 3. Save the actual file to the C: Drive
                 using (var stream = new FileStream(fullPath, FileMode.Create))
                 {
                     await dto.Photo.CopyToAsync(stream);
                 }
 
-                // 4. Save the string path to Oracle Database
+                // Save ONLY the filename to the database (e.g., "rodriguez_24-1507_face.jpg")
                 var newStudent = new Student
                 {
                     Student_ID = dto.Student_ID,
                     First_Name = dto.First_Name,
                     Middle_Name = dto.Middle_Name,
                     Last_Name = dto.Last_Name,
-                    Face_Reference_Path = fullPath
+                    Enrollment_Status = dto.Enrollment_Status,
+                    Face_Reference_Path = fileName // Store just the name!
                 };
 
                 await _studentRepository.CreateStudentAsync(newStudent);

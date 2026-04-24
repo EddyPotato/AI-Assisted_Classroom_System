@@ -14,13 +14,13 @@ namespace campus_backend.Repositories
                 ?? throw new InvalidOperationException("Oracle connection string is missing.");
         }
 
-        // --- 1. GET STUDENT BY ID (Your original method) ---
+        // --- 1. GET STUDENT BY ID ---
         public async Task<Student?> GetStudentByIdAsync(string studentId)
         {
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
                 string sql = @"
-                    SELECT Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path 
+                    SELECT Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path, Enrollment_Status 
                     FROM Students 
                     WHERE Student_ID = :studentId";
 
@@ -40,7 +40,9 @@ namespace campus_backend.Repositories
                                 First_Name = reader["First_Name"].ToString(),
                                 Middle_Name = reader["Middle_Name"].ToString(),
                                 Last_Name = reader["Last_Name"].ToString(),
-                                Face_Reference_Path = reader["Face_Reference_Path"].ToString()
+                                Face_Reference_Path = reader["Face_Reference_Path"].ToString(),
+                                // Ensure we handle potentially null DB values gracefully
+                                Enrollment_Status = reader["Enrollment_Status"] != DBNull.Value ? reader["Enrollment_Status"].ToString() : "Regular"
                             };
                         }
                         
@@ -50,15 +52,14 @@ namespace campus_backend.Repositories
             }
         }
 
-        // --- 2. GET ALL STUDENTS (For the Directory Table) ---
+        // --- 2. GET ALL STUDENTS ---
         public async Task<IEnumerable<Student>> GetAllStudentsAsync()
         {
             var students = new List<Student>();
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
-                // Note: Getting all students to populate the Registrar's user directory table
                 string sql = @"
-                    SELECT Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path 
+                    SELECT Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path, Enrollment_Status 
                     FROM Students";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
@@ -74,7 +75,8 @@ namespace campus_backend.Repositories
                                 First_Name = reader["First_Name"].ToString(),
                                 Middle_Name = reader["Middle_Name"].ToString(),
                                 Last_Name = reader["Last_Name"].ToString(),
-                                Face_Reference_Path = reader["Face_Reference_Path"].ToString()
+                                Face_Reference_Path = reader["Face_Reference_Path"].ToString(),
+                                Enrollment_Status = reader["Enrollment_Status"] != DBNull.Value ? reader["Enrollment_Status"].ToString() : "Regular"
                             });
                         }
                     }
@@ -83,18 +85,17 @@ namespace campus_backend.Repositories
             return students;
         }
 
-        // --- 3. CREATE NEW STUDENT (From Web Camera Form) ---
+        // --- 3. CREATE NEW STUDENT ---
         public async Task CreateStudentAsync(Student student)
         {
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
                 string sql = @"
-                    INSERT INTO Students (Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path) 
-                    VALUES (:id, :fname, :mname, :lname, :facepath)";
+                    INSERT INTO Students (Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path, Enrollment_Status) 
+                    VALUES (:id, :fname, :mname, :lname, :facepath, :status)";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
-                    // Binding parameters to prevent SQL injection
                     cmd.Parameters.Add(new OracleParameter("id", student.Student_ID));
                     cmd.Parameters.Add(new OracleParameter("fname", student.First_Name));
                     
@@ -103,6 +104,9 @@ namespace campus_backend.Repositories
                     
                     cmd.Parameters.Add(new OracleParameter("lname", student.Last_Name));
                     cmd.Parameters.Add(new OracleParameter("facepath", student.Face_Reference_Path));
+                    
+                    // Add the new status parameter (default to Regular if somehow null)
+                    cmd.Parameters.Add(new OracleParameter("status", string.IsNullOrEmpty(student.Enrollment_Status) ? "Regular" : student.Enrollment_Status));
 
                     await con.OpenAsync();
                     await cmd.ExecuteNonQueryAsync();
