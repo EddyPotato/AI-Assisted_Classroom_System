@@ -1,6 +1,27 @@
 @import "tailwindcss";
 
+/* NOTE: If VS Code shows "Unknown at rule @theme", ignore it! 
+  It is a known VS Code limitation with Tailwind v4. 
+  To hide the warning, you can create a .vscode/settings.json file 
+  and add: { "css.lint.unknownAtRules": "ignore" }
+*/
+@theme {
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+}
+
+html {
+  /* Replaced scrollbar-gutter with this for 100% cross-browser support */
+  overflow-y: scroll;
+}
+
 body {
-  background-color: #f8fafc;
   margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

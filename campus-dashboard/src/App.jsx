@@ -6,7 +6,7 @@ import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import Header from './components/ui/Header';
 import Sidebar from './components/ui/Sidebar';
 import SimulationPanel from './components/ui/SimulationPanel';
-import Login from './components/Login';
+import Login from './components/auth/Login';
 
 // Functional Pages (Faculty/Admin Shared)
 import RoomDashboard from './portals/Faculty/views/RoomDashboard';
