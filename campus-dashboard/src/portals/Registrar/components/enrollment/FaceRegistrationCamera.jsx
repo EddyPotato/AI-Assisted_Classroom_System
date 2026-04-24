@@ -5,6 +5,7 @@ import CameraView from './CameraView';
 export default function FaceRegistrationCamera({ isOpen, onCapture, onClear }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const streamRef = useRef(null);
   
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [capturedImageUrl, setCapturedImageUrl] = useState(null);
@@ -13,6 +14,7 @@ export default function FaceRegistrationCamera({ isOpen, onCapture, onClear }) {
   
   const [brightnessStatus, setBrightnessStatus] = useState('checking');
 
+  // Fetch available cameras on mount
   useEffect(() => {
     let isMounted = true;
     async function getCameras() {
@@ -31,21 +33,28 @@ export default function FaceRegistrationCamera({ isOpen, onCapture, onClear }) {
     return () => { isMounted = false; };
   }, []);
 
-  const stopHardwareCamera = useCallback(() => {
+  // THE FIX: This function is now PURELY for hardware. 
+  // It contains ZERO state updates, completely satisfying ESLint.
+  const stopHardwareStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
     if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = videoRef.current.srcObject.getTracks();
-      tracks.forEach(track => track.stop());
       videoRef.current.srcObject = null;
     }
   }, []);
 
   const startCamera = async () => {
-    stopHardwareCamera(); 
+    stopHardwareStream(); 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : true
       });
+      
+      streamRef.current = stream; 
       if (videoRef.current) videoRef.current.srcObject = stream;
+      
       setIsCameraActive(true);
       setBrightnessStatus('checking');
     } catch (err) {
@@ -54,15 +63,18 @@ export default function FaceRegistrationCamera({ isOpen, onCapture, onClear }) {
     }
   };
 
+  // Hardware toggle effect
   useEffect(() => {
     let isMounted = true;
     const switchStream = async () => {
       if (!isCameraActive || !selectedDeviceId) return;
-      stopHardwareCamera();
+      stopHardwareStream();
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { deviceId: { exact: selectedDeviceId } }
         });
+        
+        streamRef.current = stream; 
         if (isMounted && videoRef.current) videoRef.current.srcObject = stream;
       } catch (err) {
         console.error("Error switching camera:", err);
@@ -70,13 +82,15 @@ export default function FaceRegistrationCamera({ isOpen, onCapture, onClear }) {
     };
     switchStream();
     return () => { isMounted = false; };
-  }, [selectedDeviceId, isCameraActive, stopHardwareCamera]);
+  }, [selectedDeviceId, isCameraActive, stopHardwareStream]);
 
+  // Modal close effect (Safe because stopHardwareStream has no setState)
   useEffect(() => {
-    if (!isOpen) stopHardwareCamera();
-    return () => stopHardwareCamera();
-  }, [isOpen, stopHardwareCamera]);
+    if (!isOpen) stopHardwareStream();
+    return () => stopHardwareStream();
+  }, [isOpen, stopHardwareStream]);
 
+  // Lightweight brightness checker
   useEffect(() => {
     if (!isCameraActive || !videoRef.current) return;
     
@@ -112,7 +126,9 @@ export default function FaceRegistrationCamera({ isOpen, onCapture, onClear }) {
       canvasRef.current.toBlob((blob) => {
         onCapture(blob); 
         setCapturedImageUrl(URL.createObjectURL(blob)); 
-        stopHardwareCamera();
+        
+        // We safely call state here because it's triggered by a user click, not an effect!
+        stopHardwareStream();
         setIsCameraActive(false); 
       }, 'image/jpeg', 0.9);
     }
@@ -127,11 +143,9 @@ export default function FaceRegistrationCamera({ isOpen, onCapture, onClear }) {
   return (
     <div className="mt-6 border-t border-slate-100 pt-6">
        
-       {/* THE FIX: We use flex-row, items-center to perfectly center the dropdown with the title. */}
        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 min-h-10.5">
          <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider shrink-0">Face Data Registration</h4>
          
-         {/* THE FIX: By using 'invisible' instead of deleting the component, it keeps its exact DOM space when hidden, preventing all layout shifts! */}
          <div className={`w-full sm:w-auto transition-opacity duration-200 ${capturedImageUrl ? 'invisible opacity-0' : 'visible opacity-100'}`}>
            <CameraSelector 
              videoDevices={videoDevices} 

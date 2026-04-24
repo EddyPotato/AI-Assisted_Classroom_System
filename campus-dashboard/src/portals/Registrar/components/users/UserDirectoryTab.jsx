@@ -27,7 +27,6 @@ export default function UserDirectoryTab() {
     return cleanup;
   }, [fetchStudents]);
 
-  // Filtering Logic
   const filteredStudents = students.filter(student => {
     const fullName = `${student.first_Name} ${student.middle_Name} ${student.last_Name}`.toLowerCase();
     const matchesSearch = student.student_ID.includes(searchQuery) || fullName.includes(searchQuery.toLowerCase());
@@ -35,7 +34,6 @@ export default function UserDirectoryTab() {
     return matchesSearch && matchesFilter;
   });
 
-  // Sorting Logic
   const sortedStudents = [...filteredStudents].sort((a, b) => {
     if (!sortConfig.key) return 0;
     const aValue = a[sortConfig.key] || '';
@@ -96,24 +94,25 @@ export default function UserDirectoryTab() {
         
         <table className="w-full text-left table-fixed border-collapse">
           <thead>
+            {/* THE FIX: Added outline-none to all clickable th tags to remove the black line */}
             <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 cursor-pointer select-none">
-              <th className="p-4 w-32 hover:bg-slate-100 transition-colors" onClick={() => handleSort('student_ID')}>
+              <th className="p-4 w-32 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('student_ID')}>
                 <div className="flex items-center gap-1">Student ID {renderSortIcon('student_ID')}</div>
               </th>
-              <th className="p-4 hover:bg-slate-100 transition-colors" onClick={() => handleSort('first_Name')}>
+              <th className="p-4 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('first_Name')}>
                 <div className="flex items-center gap-1">First Name {renderSortIcon('first_Name')}</div>
               </th>
-              <th className="p-4 hover:bg-slate-100 transition-colors" onClick={() => handleSort('middle_Name')}>
+              <th className="p-4 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('middle_Name')}>
                 <div className="flex items-center gap-1">Middle Name {renderSortIcon('middle_Name')}</div>
               </th>
-              <th className="p-4 hover:bg-slate-100 transition-colors" onClick={() => handleSort('last_Name')}>
+              <th className="p-4 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('last_Name')}>
                 <div className="flex items-center gap-1">Last Name {renderSortIcon('last_Name')}</div>
               </th>
-              <th className="p-4 w-32 text-center hover:bg-slate-100 transition-colors" onClick={() => handleSort('enrollment_Status')}>
+              <th className="p-4 w-32 text-center hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('enrollment_Status')}>
                  <div className="flex items-center justify-center gap-1">Status {renderSortIcon('enrollment_Status')}</div>
               </th>
-              <th className="p-4 w-28 text-center cursor-default">Face</th>
-              <th className="p-4 w-24 text-center cursor-default">Action</th>
+              <th className="p-4 w-28 text-center cursor-default outline-none">Face</th>
+              <th className="p-4 w-24 text-center cursor-default outline-none">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y-2 divide-slate-100">
