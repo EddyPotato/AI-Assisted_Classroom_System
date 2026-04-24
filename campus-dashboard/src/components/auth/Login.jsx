@@ -33,8 +33,11 @@ export default function Login() {
       });
 
       if (response.ok) {
-        const userData = await response.json();
-        localStorage.setItem('campus_user', JSON.stringify(userData));
+        const responseData = await response.json();
+        
+        // THE FIX: We specifically target responseData.user to save to localStorage
+        localStorage.setItem('campus_user', JSON.stringify(responseData.user));
+        
         navigate('/dashboard', { replace: true });
       } else {
         const errData = await response.json();

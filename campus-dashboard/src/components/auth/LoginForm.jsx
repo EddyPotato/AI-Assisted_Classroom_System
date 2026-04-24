@@ -25,7 +25,7 @@ export default function LoginForm({ credentials, error, isLoading, handleChange,
               name="username"
               value={credentials.username}
               onChange={handleChange}
-              placeholder="e.g. 24-1507 or admin"
+              placeholder="Enter Credential"
               disabled={isLoading}
               className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 font-medium text-slate-800 transition-all disabled:opacity-50"
             />
