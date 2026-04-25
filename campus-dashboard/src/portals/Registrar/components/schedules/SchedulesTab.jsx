@@ -115,9 +115,12 @@ export default function SchedulesTab() {
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Master Schedule</h2>
-          <p className="text-slate-500 mt-1 font-medium text-sm">Create and manage class sections, room assignments, and schedules.</p>
+          {/* THE FIX: Removed 'text-sm' from the paragraph class list below */}
+          <p className="text-slate-500 mt-1 font-medium">Create and manage class sections, room assignments, and schedules.</p>
         </div>
-        <button onClick={() => showScheduleForm ? handleCancelForm() : handleCreateClick()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center gap-2">
+        
+        {/* THE FIX: Changed bg-blue-600 to bg-primary-600 to match global design system */}
+        <button onClick={() => showScheduleForm ? handleCancelForm() : handleCreateClick()} className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center gap-2">
           {showScheduleForm ? 'Cancel Form' : <><Plus size={18} /> Create Schedule</>}
         </button>
       </div>
