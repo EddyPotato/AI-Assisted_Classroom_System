@@ -71,3 +71,5 @@ ReferenceFaces/
 .idea/
 .DS_Store
 Thumbs.db
+
+#.\venv\Scripts\activate
