@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Register Repositories
 builder.Services.AddScoped<campus_backend.Repositories.IStudentRepository, campus_backend.Repositories.StudentRepository>();
 
-builder.Services.AddScoped<campus_backend.Repositories.IProfessorRepository, campus_backend.Repositories.ProfessorRepository>(); // ADD THIS LINE
+builder.Services.AddScoped<campus_backend.Repositories.IStaffRepository, campus_backend.Repositories.StaffRepository>(); // ADD THIS LINE
 
 builder.Services.AddScoped<campus_backend.Repositories.IUserRepository, campus_backend.Repositories.UserRepository>();
 builder.Services.AddScoped<campus_backend.Repositories.IRoomRepository, campus_backend.Repositories.RoomRepository>();

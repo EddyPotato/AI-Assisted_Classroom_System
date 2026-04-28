@@ -4,7 +4,7 @@ import { Users, Database, LogOut, Calendar, GraduationCap } from 'lucide-react';
 
 import SchedulesTab from './components/schedules/SchedulesTab';
 import UserDirectoryTab from './components/users/UserDirectoryTab';
-import FacultyDirectoryTab from './components/faculty/FacultyDirectoryTab';
+import StaffDirectoryTab from './components/faculty/StaffDirectoryTab';
 
 export default function RegistrarPortal() {
   const navigate = useNavigate();
@@ -79,7 +79,7 @@ export default function RegistrarPortal() {
           {/* TAB CONTENT RENDERING */}
           {activeTab === 'schedules' && <SchedulesTab />}
           {activeTab === 'users' && <UserDirectoryTab />}
-          {activeTab === 'faculty' && <FacultyDirectoryTab />}
+          {activeTab === 'faculty' && <StaffDirectoryTab />}
 
         </div>
       </main>

@@ -4,7 +4,7 @@ export default function MasterScheduleTable({ schedules, handleEditClick }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
       {/* ADDED: table-fixed and matching width constraints to mirror Student Directory */}
-      <table className="w-full text-left table-fixed border-collapse min-w-[800px]">
+      <table className="w-full text-left table-fixed border-collapse min-w-200">
         <thead>
           <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 tracking-wider">
             {/* ADDED: p-4 padding exactly matching Student Directory */}
@@ -34,8 +34,10 @@ export default function MasterScheduleTable({ schedules, handleEditClick }) {
                  <div className="text-sm font-bold text-slate-700">{sched.time_Start} - {sched.time_End}</div>
               </td>
               <td className="p-4">
-                <div className="flex items-center gap-2 font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg w-max shadow-sm text-sm">
-                   <Building size={16} className="text-indigo-400 shrink-0"/> {sched.room_ID} <span className="text-indigo-400/80">({sched.building})</span>
+                {/* FIX: Removed w-max, added w-full, flex-wrap, and break-words */}
+                <div className="flex flex-wrap items-center gap-1.5 font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg w-full shadow-sm text-sm wrap-break-word">
+                  <Building size={16} className="text-indigo-400 shrink-0"/> 
+                  <span>{sched.room_ID} <span className="text-indigo-400/80 font-medium">({sched.building})</span></span>
                 </div>
               </td>
               <td className="p-4 text-center">
