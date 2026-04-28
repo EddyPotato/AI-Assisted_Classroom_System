@@ -1,19 +1,14 @@
-This is a very common challenge when transitioning from a solo project to a team project! Putting your `node_modules` and compiled files in `.gitignore` was the exact right move. 
+Haha, let me clear this up fast so you can go to work!
 
-To answer your biggest question first regarding the **Oracle Database**: Collaborating on a local database (like Oracle 21c XE on your desktop) is notoriously difficult for student teams because everyone has to install a heavy database engine and keep their tables perfectly synced. 
+To answer your two questions:
 
-**Here are your two best options for database collaboration:**
+The Oracle Database: YES! You just export your tables as a .sql file, put it in a folder named database inside your project, and push it to GitHub. Your groupmates will download it and run it in their own local Oracle SQL Developer.
 
-* **Option 1: The "Init Script" Approach (Immediate & Free but requires manual syncing):** You export all your table creations (`CREATE TABLE...`) and initial data (`INSERT INTO...`) from your Oracle SQL Developer into a single file named `schema.sql`. You put this file inside a new folder in your repo called `database/`. Your groupmates install Oracle 21c XE on their laptops, run your `schema.sql` file once, and their local database will perfectly match yours.
-* **Option 2: The Cloud Approach (Highly Recommended for Teams):** Since you are already writing Oracle C# code, you can sign up for the **Oracle Cloud "Always Free" Tier**. They give you a free, hosted Autonomous Database. You run your tables there, update your `appsettings.json` connection string to point to the cloud URL, and suddenly your whole team shares the exact same live database automatically. Nobody has to install Oracle locally! *(Note: Since you also have experience with Supabase, you could migrate your C# backend to PostgreSQL/Supabase, but staying with Oracle Cloud requires zero code changes right now).*
+The .env file: Do NOT delete it, but you should add .env to your .gitignore file! The .env file holds your personal laptop's IP address. Your groupmates will create their own .env file on their own laptops. I have updated the README below to tell them exactly how to do that!
 
-For now, I have structured the `README.md` using the **Init Script (Option 1)** approach, assuming your team will use local databases for the moment. You can create a `database/schema.sql` file and push it to GitHub alongside this README.
+Here is the complete, final README.md for your GitHub repository. Copy and paste everything inside the box below!
 
-Here is the complete, professional `README.md` you can copy and paste into your repository. It includes exact setup commands for your specific Vite, C#, and Python architecture.
-
-***
-
-```markdown
+Markdown
 # AI-Assisted Smart Campus & Classroom System
 
 An integrated IoT and web-based platform for university attendance, behavior monitoring, and registrar/HR management. This system utilizes a React/Vite frontend, a C# ASP.NET Core backend, an Oracle Database, and a Python-based edge node (Raspberry Pi) for facial recognition and barcode scanning.
@@ -37,17 +32,19 @@ Before starting, ensure you have the following installed on your machine:
 ```bash
 git clone [https://github.com/YOUR-USERNAME/YOUR-REPO-NAME.git](https://github.com/YOUR-USERNAME/YOUR-REPO-NAME.git)
 cd YOUR-REPO-NAME
-```
-
-### Step 2: Database Setup (Oracle)
+Step 2: Database Setup (Oracle)
 Since we are using local databases, you need to create the tables on your machine so your backend doesn't crash.
-1. Open Oracle SQL Developer and connect to your local XE database (usually `localhost:1521/XEPDB1`).
-2. Open the `database/schema.sql` file located in this repository.
-3. Run the entire script to generate the `USERS`, `STUDENTS`, `SCHEDULES`, and `ROOMS` tables and insert the default administrative data.
 
-### Step 3: Backend Setup (C# ASP.NET Core)
+Open Oracle SQL Developer and connect to your local XE database (usually localhost:1521/XEPDB1).
+
+Open the database/schema.sql file located in this repository.
+
+Run the entire script to generate the USERS, STUDENTS, SCHEDULES, and ROOMS tables and insert the default administrative data.
+
+Step 3: Backend Setup (C# ASP.NET Core)
 The backend handles our API endpoints and Oracle database connections.
-```bash
+
+Bash
 # Navigate to the backend directory
 cd campus-backend
 
@@ -56,12 +53,12 @@ dotnet restore
 
 # Run the server (Defaults to http://localhost:5106)
 dotnet run
-```
-*Note: If your local Oracle database has a different password than the default, update the `OracleConnection` string inside `campus-backend/appsettings.json` before running the server.*
+Note: If your local Oracle database has a different password than the default admin123, update the OracleConnection string inside campus-backend/appsettings.json before running the server.
 
-### Step 4: Frontend Setup (React + Vite + Tailwind CSS)
-The dashboard uses a modern React 19+ and Tailwind CSS setup. Open a **new terminal window** and run:
-```bash
+Step 4: Frontend Setup (React + Vite + Tailwind CSS)
+The dashboard uses a modern React 19+ and Tailwind CSS setup. Open a new terminal window and run:
+
+Bash
 # Navigate to the frontend directory
 cd campus-dashboard
 
@@ -70,12 +67,12 @@ npm install
 
 # Start the Vite development server
 npm run dev
-```
-The dashboard will be available at `http://localhost:5173`.
+The dashboard will be available at http://localhost:5173.
 
-### Step 5: Edge Node Setup (Python IoT)
-The Python node handles the camera hardware and MQTT communications. Open a **third terminal window**:
-```bash
+Step 5: Edge Node Setup (Python IoT)
+The Python node handles the camera hardware and MQTT communications. Open a third terminal window:
+
+Bash
 # Navigate to the edge node directory
 cd campus-edge
 
@@ -88,32 +85,38 @@ venv\Scripts\activate
 # On Mac/Linux:
 source venv/bin/activate
 
-# Install required Python packages (OpenCV, Paho-MQTT, etc.)
+# Install required Python packages
 pip install -r requirements.txt
+⚠️ Important Python Environment Step:
+You must create a .env file inside the campus-edge folder. This tells the Python script where your C# server is located. Create the file and add this code, changing the IP address to match your laptop's IPv4 address:
 
-# Run the vision node
+Ini, TOML
+BACKEND_API_URL=http://YOUR_LAPTOP_IP:5106/api
+MQTT_BROKER_IP=YOUR_LAPTOP_IP
+MQTT_PORT=1883
+ROOM_ID=RM-101
+Once the .env is created, you can run the camera script:
+
+Bash
 python vision_node.py
-```
+📁 Project Structure
+/campus-dashboard/ - The React/Vite frontend UI (Registrar, HR, Principal, Guard portals).
 
----
+/campus-backend/ - The C# ASP.NET Core REST API.
 
-## 📁 Project Structure
+/campus-edge/ - Python scripts for the Raspberry Pi 5 camera hardware.
 
-* `/campus-dashboard/` - The React/Vite frontend UI (Registrar, HR, Principal, Guard portals).
-* `/campus-backend/` - The C# ASP.NET Core REST API.
-* `/campus-edge/` - Python scripts for the Raspberry Pi 5 camera hardware.
-* `/database/` - SQL scripts to initialize and sync the Oracle database across team members.
+/database/ - SQL scripts to initialize and sync the Oracle database across team members.
 
-## 🛠️ Typical Git Workflow for the Team
+🛠️ Typical Git Workflow for the Team
 To prevent overriding each other's code, please follow this workflow:
-1. Before starting work, always pull the latest changes: `git pull origin main`
-2. Create a new branch for your feature: `git checkout -b feature-your-feature-name`
-3. Commit your changes: `git commit -m "Added new scheduling feature"`
-4. Push to your branch: `git push origin feature-your-feature-name`
-5. Create a Pull Request (PR) on GitHub to merge into `main`.
-```
 
-***
+Before starting work, always pull the latest changes: git pull origin main
 
-### Your Next Action:
-To make this work flawlessly for your group, you should open your Oracle SQL Developer, right-click on your tables, select **Export**, choose to export the DDL (the CREATE statements) and the Data (the INSERT statements), save it as `schema.sql`, and push it into a `database` folder in your GitHub repo!
+Create a new branch for your feature: git checkout -b feature-your-feature-name
+
+Commit your changes: git commit -m "Added new scheduling feature"
+
+Push to your branch: git push origin feature-your-feature-name
+
+Create a Pull Request (PR) on GitHub to merge into main.
