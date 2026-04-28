@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { UserPlus, Search, Camera, ArrowUpDown, ChevronUp, ChevronDown, Edit2, Trash2 } from 'lucide-react';
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
 
-// IMPORT THE NEW MODALS
 import RegisterStaffModal from './RegisterStaffModal';
 import EditStaffModal from './EditStaffModal';
 
@@ -12,7 +11,6 @@ export default function StaffDirectoryTab() {
   const [filterRole, setFilterRole] = useState('All');
   const [sortConfig, setSortConfig] = useState({ key: 'user_ID', direction: 'asc' });
 
-  // NEW: State for modals
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '', onConfirm: null });
@@ -85,7 +83,6 @@ export default function StaffDirectoryTab() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
-      {/* RENDER ALL 3 MODALS HERE */}
       <ConfirmModal isOpen={modal.isOpen} type={modal.type} title={modal.title} message={modal.message} onConfirm={modal.onConfirm} onCancel={() => setModal({ ...modal, isOpen: false })} />
       <RegisterStaffModal isOpen={showRegisterModal} onClose={() => setShowRegisterModal(false)} onSuccess={fetchStaff} />
       <EditStaffModal isOpen={!!editingStaff} staff={editingStaff} onClose={() => setEditingStaff(null)} onSuccess={fetchStaff} />
@@ -93,10 +90,10 @@ export default function StaffDirectoryTab() {
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Staff Directory</h2>
-          <p className="text-slate-500 mt-1 font-medium text-sm">Manage campus employees, roles, and system access.</p>
+          {/* THE FIX: Removed 'text-sm' so the height perfectly matches the other two tabs! */}
+          <p className="text-slate-500 mt-1 font-medium">Manage campus employees, roles, and system access.</p>
         </div>
         
-        {/* THE FIX: Button now opens the Register Modal */}
         <button onClick={() => setShowRegisterModal(true)} className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center gap-2 active:scale-95">
           <UserPlus size={18} /> Register Staff
         </button>
@@ -160,7 +157,6 @@ export default function StaffDirectoryTab() {
                 </td>
                 <td className="p-4 text-center">
                   <div className="flex items-center justify-center gap-2">
-                    {/* THE FIX: Button now triggers setEditingStaff */}
                     <button onClick={() => setEditingStaff(emp)} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" title="Edit Employee">
                       <Edit2 size={18} />
                     </button>
