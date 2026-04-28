@@ -72,7 +72,7 @@ export default function RegistrarPortal() {
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'
               }`}
             >
-              <GraduationCap size={18} /> Faculty Directory
+              <GraduationCap size={18} /> Staff Directory
             </button>
           </div>
 
