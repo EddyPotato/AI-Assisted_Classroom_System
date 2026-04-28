@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Database, LogOut, Calendar } from 'lucide-react';
+import { Users, Database, LogOut, Calendar, GraduationCap } from 'lucide-react';
 
 import SchedulesTab from './components/schedules/SchedulesTab';
 import UserDirectoryTab from './components/users/UserDirectoryTab';
+import FacultyDirectoryTab from './components/faculty/FacultyDirectoryTab';
 
 export default function RegistrarPortal() {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ export default function RegistrarPortal() {
       <main className="flex-1 p-8 overflow-y-scroll">
         <div className="max-w-7xl mx-auto space-y-6">
           
-          {/* THE FIX: Modern Pill / Segmented Tab Navigation */}
+          {/* TAB NAVIGATION */}
           <div className="flex p-1.5 space-x-2 bg-slate-200/50 rounded-xl w-max border border-slate-200/80">
             <button 
               onClick={() => setActiveTab('schedules')} 
@@ -62,11 +63,23 @@ export default function RegistrarPortal() {
             >
               <Users size={18} /> Student Directory
             </button>
+            {/* NEW FACULTY TAB */}
+            <button 
+              onClick={() => setActiveTab('faculty')} 
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${
+                activeTab === 'faculty' 
+                  ? 'bg-white text-primary-600 shadow-sm border border-slate-200/50' 
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'
+              }`}
+            >
+              <GraduationCap size={18} /> Faculty Directory
+            </button>
           </div>
 
           {/* TAB CONTENT RENDERING */}
           {activeTab === 'schedules' && <SchedulesTab />}
           {activeTab === 'users' && <UserDirectoryTab />}
+          {activeTab === 'faculty' && <FacultyDirectoryTab />}
 
         </div>
       </main>
