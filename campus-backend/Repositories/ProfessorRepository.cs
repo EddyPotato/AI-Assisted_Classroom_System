@@ -11,7 +11,8 @@ namespace campus_backend.Repositories
 
         public ProfessorRepository(IConfiguration configuration)
         {
-            _connectionString = configuration.GetConnectionString("OracleDbConnection") 
+            // THE FIX: Changed "OracleDbConnection" to "OracleConnection" to match appsettings.json
+            _connectionString = configuration.GetConnectionString("OracleConnection") 
                                 ?? throw new Exception("Database connection string missing.");
         }
 
