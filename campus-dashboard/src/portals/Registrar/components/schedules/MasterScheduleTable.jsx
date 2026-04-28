@@ -1,28 +1,26 @@
-import { Users, Calendar, Building, Edit2 } from 'lucide-react';
+import { Users, Calendar, Building, Edit2, Trash2 } from 'lucide-react';
 
-export default function MasterScheduleTable({ schedules, handleEditClick }) {
+export default function MasterScheduleTable({ schedules, handleEditClick, handleDeleteClick }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-      {/* ADDED: table-fixed and matching width constraints to mirror Student Directory */}
       <table className="w-full text-left table-fixed border-collapse min-w-200">
         <thead>
           <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 tracking-wider">
-            {/* ADDED: p-4 padding exactly matching Student Directory */}
             <th className="p-4 w-32">Sched ID</th>
             <th className="p-4">Course Details</th>
             <th className="p-4 w-56">Professor</th>
             <th className="p-4 w-48">Time & Days</th>
             <th className="p-4 w-48">Location</th>
-            <th className="p-4 w-24 text-center">Action</th>
+            
+            {/* WIDENED TO w-32 */}
+            <th className="p-4 w-32 text-center">Action</th>
           </tr>
         </thead>
-        {/* ADDED: divide-y-2 for thicker, visible rows */}
         <tbody className="divide-y-2 divide-slate-100">
           {schedules.map((sched) => (
             <tr key={sched.schedule_ID} className="hover:bg-primary-50/40 transition-colors group">
               <td className="p-4 font-bold text-slate-600 font-mono text-sm">{sched.schedule_ID}</td>
               <td className="p-4">
-                {/* Fixed typography sizing to match directory style */}
                 <p className="font-black text-slate-800 text-sm truncate">{sched.subject_Code} - {sched.subject_Title}</p>
                 <p className="text-xs font-bold text-primary-600 bg-primary-50 inline-block px-2 py-0.5 rounded border border-primary-100 mt-1 shadow-sm">{sched.section_Name}</p>
               </td>
@@ -34,16 +32,23 @@ export default function MasterScheduleTable({ schedules, handleEditClick }) {
                  <div className="text-sm font-bold text-slate-700">{sched.time_Start} - {sched.time_End}</div>
               </td>
               <td className="p-4">
-                {/* FIX: Removed w-max, added w-full, flex-wrap, and break-words */}
+                
+                {/* THE FIX: Changed w-max to w-full, added flex-wrap and break-words so long locations break to a new line cleanly! */}
                 <div className="flex flex-wrap items-center gap-1.5 font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg w-full shadow-sm text-sm wrap-break-word">
-                  <Building size={16} className="text-indigo-400 shrink-0"/> 
-                  <span>{sched.room_ID} <span className="text-indigo-400/80 font-medium">({sched.building})</span></span>
+                   <Building size={16} className="text-indigo-400 shrink-0"/> 
+                   <span>{sched.room_ID} <span className="text-indigo-400/80 font-medium">({sched.building})</span></span>
                 </div>
+
               </td>
               <td className="p-4 text-center">
-                <button onClick={() => handleEditClick(sched)} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" title="Edit Schedule">
-                  <Edit2 size={18} />
-                </button>
+                <div className="flex items-center justify-center gap-2">
+                  <button onClick={() => handleEditClick(sched)} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" title="Edit Schedule">
+                    <Edit2 size={18} />
+                  </button>
+                  <button onClick={() => handleDeleteClick(sched)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200" title="Delete Schedule">
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

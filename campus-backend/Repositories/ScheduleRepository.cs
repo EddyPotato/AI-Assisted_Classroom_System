@@ -117,5 +117,20 @@ namespace campus_backend.Repositories
                 }
             }
         }
+
+        // --- DELETE SCHEDULE ---
+        public async Task DeleteScheduleAsync(string id)
+        {
+            using (OracleConnection con = new OracleConnection(_connectionString))
+            {
+                string sql = "DELETE FROM Schedules WHERE Schedule_ID = :id";
+                using (OracleCommand cmd = new OracleCommand(sql, con))
+                {
+                    cmd.Parameters.Add(new OracleParameter("id", id));
+                    await con.OpenAsync();
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+        }
     }
 }

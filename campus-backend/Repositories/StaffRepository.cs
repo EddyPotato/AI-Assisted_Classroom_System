@@ -105,5 +105,20 @@ namespace campus_backend.Repositories
                 }
             }
         }
+
+        // --- DELETE STAFF MEMBER ---
+        public async Task DeleteStaffAsync(string id)
+        {
+            using (OracleConnection con = new OracleConnection(_connectionString))
+            {
+                string sql = "DELETE FROM USERS WHERE USER_ID = :id AND ROLE != 'Principal'";
+                using (OracleCommand cmd = new OracleCommand(sql, con))
+                {
+                    cmd.Parameters.Add(new OracleParameter("id", id));
+                    await con.OpenAsync();
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+        }
     }
 }

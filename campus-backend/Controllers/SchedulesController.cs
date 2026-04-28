@@ -62,5 +62,13 @@ namespace campus_backend.Controllers
                 return StatusCode(500, new { message = "Failed to update: " + ex.Message });
             }
         }
+
+        // DELETE: api/schedules/{id}
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteSchedule(string id)
+        {
+            await _scheduleRepository.DeleteScheduleAsync(id);
+            return Ok(new { message = "Schedule deleted successfully!" });
+        }
     }
 }

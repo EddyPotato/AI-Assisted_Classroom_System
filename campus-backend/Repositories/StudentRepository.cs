@@ -140,5 +140,20 @@ namespace campus_backend.Repositories
                 }
             }
         }
+
+        // --- 5. DELETE STUDENT BY ID ---
+        public async Task DeleteStudentAsync(string studentId)
+        {
+            using (OracleConnection con = new OracleConnection(_connectionString))
+            {
+                string sql = "DELETE FROM Students WHERE Student_ID = :id";
+                using (OracleCommand cmd = new OracleCommand(sql, con))
+                {
+                    cmd.Parameters.Add(new OracleParameter("id", studentId));
+                    await con.OpenAsync();
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+        }
     }
 }

@@ -7,5 +7,6 @@ namespace campus_backend.Repositories
         Task<Staff?> GetStaffByIdAsync(string id);
         Task CreateStaffAsync(Staff staff);
         Task UpdateStaffAsync(Staff staff);
+        Task DeleteStaffAsync(string id);
     }
 }

@@ -10,5 +10,7 @@ namespace campus_backend.Repositories
         
         // ADD THIS NEW METHOD:
         Task UpdateStudentAsync(Student student);
+
+        Task DeleteStudentAsync(string id);
     }
 }

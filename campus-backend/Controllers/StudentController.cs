@@ -139,5 +139,13 @@ namespace campus_backend.Controllers
                 return StatusCode(500, new { message = "Failed to update: " + ex.Message });
             }
         }
+
+        // --- NEW: DELETE STUDENT ENDPOINT ---
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteStudent(string id)
+        {
+            await _studentRepository.DeleteStudentAsync(id);
+            return Ok(new { message = "Student deleted successfully!" });
+        }
     }
 }

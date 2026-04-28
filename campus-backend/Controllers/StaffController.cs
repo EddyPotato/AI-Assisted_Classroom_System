@@ -36,5 +36,13 @@ namespace campus_backend.Controllers
             await _staffRepo.UpdateStaffAsync(dto);
             return Ok(new { message = "Staff updated successfully!" });
         }
+
+        // --- DELETE STAFF MEMBER ---
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteStaff(string id)
+        {
+            await _staffRepo.DeleteStaffAsync(id);
+            return Ok(new { message = "Staff deleted successfully!" });
+        }
     }
 }

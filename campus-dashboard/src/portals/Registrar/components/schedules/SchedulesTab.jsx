@@ -77,7 +77,7 @@ export default function SchedulesTab() {
   };
 
   const executeSave = async () => {
-    setModal({ isOpen: false }); 
+    setModal({ ...modal, isOpen: false }); 
     try {
       const url = isEditing ? `http://localhost:5106/api/schedules/${formData.schedule_ID}` : 'http://localhost:5106/api/schedules';
       const method = isEditing ? 'PUT' : 'POST';
@@ -92,7 +92,7 @@ export default function SchedulesTab() {
           isOpen: true, type: 'success', title: 'Success!',
           message: isEditing ? 'Schedule updated.' : 'New schedule saved.',
           onConfirm: () => {
-            setModal({ isOpen: false });
+            setModal({ ...modal, isOpen: false });
             setShowScheduleForm(false);
             setIsEditing(false);
             setFormData(initialFormState);
@@ -108,6 +108,31 @@ export default function SchedulesTab() {
     }
   };
 
+  // NEW: Delete Handlers for Schedules
+  const requestDelete = (sched) => {
+    setModal({
+      isOpen: true,
+      type: 'danger',
+      title: 'Delete Master Schedule',
+      message: `Are you sure you want to delete Schedule ${sched.schedule_ID} for ${sched.subject_Code}? This will remove it from all faculty and student dashboards.`,
+      onConfirm: () => executeDelete(sched.schedule_ID)
+    });
+  };
+
+  const executeDelete = async (id) => {
+    setModal({ ...modal, isOpen: false }); 
+    try {
+      const response = await fetch(`http://localhost:5106/api/schedules/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchSchedules();
+      } else {
+        alert("Database Error: Failed to delete.");
+      }
+    } catch {
+      alert("Error connecting to backend API.");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <ConfirmModal isOpen={modal.isOpen} type={modal.type} title={modal.title} message={modal.message} onConfirm={modal.onConfirm} onCancel={() => setModal({ ...modal, isOpen: false })} />
@@ -115,11 +140,9 @@ export default function SchedulesTab() {
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Master Schedule</h2>
-          {/* THE FIX: Removed 'text-sm' from the paragraph class list below */}
           <p className="text-slate-500 mt-1 font-medium">Create and manage class sections, room assignments, and schedules.</p>
         </div>
         
-        {/* THE FIX: Changed bg-blue-600 to bg-primary-600 to match global design system */}
         <button onClick={() => showScheduleForm ? handleCancelForm() : handleCreateClick()} className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center gap-2">
           {showScheduleForm ? 'Cancel Form' : <><Plus size={18} /> Create Schedule</>}
         </button>
@@ -129,7 +152,12 @@ export default function SchedulesTab() {
         <ScheduleForm formData={formData} isEditing={isEditing} handleChange={handleChange} handleCancelForm={handleCancelForm} requestSave={requestSave} />
       )}
 
-      <MasterScheduleTable schedules={schedules} handleEditClick={handleEditClick} />
+      {/* NEW: Passed handleDeleteClick down to the table */}
+      <MasterScheduleTable 
+        schedules={schedules} 
+        handleEditClick={handleEditClick} 
+        handleDeleteClick={requestDelete} 
+      />
     </div>
   );
 }

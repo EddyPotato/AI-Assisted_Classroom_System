@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UserPlus, Search, Camera, ArrowUpDown, ChevronUp, ChevronDown, Edit2 } from 'lucide-react';
+import { UserPlus, Search, Camera, ArrowUpDown, ChevronUp, ChevronDown, Edit2, Trash2 } from 'lucide-react';
+import ConfirmModal from '../../../../components/ui/ConfirmModal';
 
 export default function StaffDirectoryTab() {
   const [staff, setStaff] = useState([]);
@@ -7,9 +8,12 @@ export default function StaffDirectoryTab() {
   const [filterRole, setFilterRole] = useState('All');
   const [sortConfig, setSortConfig] = useState({ key: 'user_ID', direction: 'asc' });
 
+  // Delete Modal State
+  const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '', onConfirm: null });
+
   const fetchStaff = useCallback(() => {
     let isMounted = true;
-    fetch('http://localhost:5106/api/staff') // UPDATED ENDPOINT
+    fetch('http://localhost:5106/api/staff') 
       .then(res => res.json())
       .then(data => { if (isMounted && Array.isArray(data)) setStaff(data); })
       .catch(err => console.error("Failed to fetch staff", err));
@@ -48,9 +52,36 @@ export default function StaffDirectoryTab() {
     return sortConfig.direction === 'asc' ? <ChevronUp size={14} className="text-primary-500" /> : <ChevronDown size={14} className="text-primary-500" />;
   };
 
+  // DELETE HANDLERS
+  const handleDeleteClick = (emp) => {
+    setModal({
+      isOpen: true,
+      type: 'danger',
+      title: 'Remove Staff Member',
+      message: `Are you sure you want to remove ${emp.first_Name} ${emp.last_Name} (${emp.user_ID})? Their system access will be revoked permanently.`,
+      onConfirm: () => executeDelete(emp.user_ID)
+    });
+  };
+
+  const executeDelete = async (id) => {
+    setModal({ ...modal, isOpen: false });
+    try {
+      const res = await fetch(`http://localhost:5106/api/staff/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchStaff(); 
+      } else {
+        alert("Failed to delete staff member.");
+      }
+    } catch {
+      alert("Network error.");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
+      <ConfirmModal isOpen={modal.isOpen} type={modal.type} title={modal.title} message={modal.message} onConfirm={modal.onConfirm} onCancel={() => setModal({ ...modal, isOpen: false })} />
+
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Staff Directory</h2>
@@ -75,7 +106,6 @@ export default function StaffDirectoryTab() {
           </select>
         </div>
         
-        {/* MATCHED COLUMNS TO USER DIRECTORY TO STOP SHIFTING */}
         <table className="w-full text-left table-fixed border-collapse">
           <thead>
             <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 cursor-pointer select-none">
@@ -95,7 +125,8 @@ export default function StaffDirectoryTab() {
                  <div className="flex items-center justify-center gap-1">Role {renderSortIcon('role')}</div>
               </th>
               <th className="p-4 w-28 text-center cursor-default outline-none">Face</th>
-              <th className="p-4 w-24 text-center cursor-default outline-none">Action</th>
+              
+              <th className="p-4 w-32 text-center cursor-default outline-none">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y-2 divide-slate-100">
@@ -119,9 +150,14 @@ export default function StaffDirectoryTab() {
                   </div>
                 </td>
                 <td className="p-4 text-center">
-                  <button className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors" title="Edit Employee">
-                    <Edit2 size={18} />
-                  </button>
+                  <div className="flex items-center justify-center gap-2">
+                    <button className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" title="Edit Employee">
+                      <Edit2 size={18} />
+                    </button>
+                    <button onClick={() => handleDeleteClick(emp)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200" title="Remove Employee">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

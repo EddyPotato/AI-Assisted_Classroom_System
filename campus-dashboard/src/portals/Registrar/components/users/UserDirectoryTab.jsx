@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UserPlus, Search, Camera, X, Edit2, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { UserPlus, Search, Camera, X, Edit2, Trash2, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import StudentEnrollmentModal from '../enrollment/StudentEnrollmentModal';
 import EditStudentModal from '../enrollment/EditStudentModal';
+import ConfirmModal from '../../../../components/ui/ConfirmModal';
 
 export default function UserDirectoryTab() {
   const [students, setStudents] = useState([]);
@@ -12,6 +13,9 @@ export default function UserDirectoryTab() {
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [zoomedImage, setZoomedImage] = useState(null);
+  
+  // NEW: State for the Delete Confirmation Modal
+  const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '', onConfirm: null });
 
   const fetchStudents = useCallback(() => {
     let isMounted = true;
@@ -55,8 +59,44 @@ export default function UserDirectoryTab() {
     return sortConfig.direction === 'asc' ? <ChevronUp size={14} className="text-primary-500" /> : <ChevronDown size={14} className="text-primary-500" />;
   };
 
+  // NEW: Delete Handlers
+  const handleDeleteClick = (student) => {
+    setModal({
+      isOpen: true,
+      type: 'danger',
+      title: 'Delete Student Record',
+      message: `Are you sure you want to permanently delete ${student.first_Name} ${student.last_Name} (${student.student_ID})? This action cannot be undone.`,
+      onConfirm: () => executeDelete(student.student_ID)
+    });
+  };
+
+  const executeDelete = async (id) => {
+    setModal({ ...modal, isOpen: false });
+    try {
+      const res = await fetch(`http://localhost:5106/api/student/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchStudents(); 
+      } else {
+        alert("Failed to delete student.");
+      }
+    } catch {
+      alert("Network error.");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
+      
+      {/* NEW: Render the ConfirmModal */}
+      <ConfirmModal 
+        isOpen={modal.isOpen} 
+        type={modal.type} 
+        title={modal.title} 
+        message={modal.message} 
+        onConfirm={modal.onConfirm} 
+        onCancel={() => setModal({ ...modal, isOpen: false })} 
+      />
+
       <StudentEnrollmentModal isOpen={showEnrollModal} onClose={() => setShowEnrollModal(false)} onSuccess={fetchStudents} />
       <EditStudentModal isOpen={!!editingStudent} student={editingStudent} onClose={() => setEditingStudent(null)} onSuccess={fetchStudents} />
 
@@ -94,7 +134,6 @@ export default function UserDirectoryTab() {
         
         <table className="w-full text-left table-fixed border-collapse">
           <thead>
-            {/* THE FIX: Added outline-none to all clickable th tags to remove the black line */}
             <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 cursor-pointer select-none">
               <th className="p-4 w-32 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('student_ID')}>
                 <div className="flex items-center gap-1">Student ID {renderSortIcon('student_ID')}</div>
@@ -112,7 +151,9 @@ export default function UserDirectoryTab() {
                  <div className="flex items-center justify-center gap-1">Status {renderSortIcon('enrollment_Status')}</div>
               </th>
               <th className="p-4 w-28 text-center cursor-default outline-none">Face</th>
-              <th className="p-4 w-24 text-center cursor-default outline-none">Action</th>
+              
+              {/* WIDENED TO w-32 to fit two buttons */}
+              <th className="p-4 w-32 text-center cursor-default outline-none">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y-2 divide-slate-100">
@@ -141,10 +182,17 @@ export default function UserDirectoryTab() {
                     </div>
                   )}
                 </td>
+                
+                {/* NEW: Action cell now has both Edit and Delete buttons */}
                 <td className="p-4 text-center">
-                  <button onClick={() => setEditingStudent(student)} className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors border border-transparent hover:border-primary-200" title="Edit Data/Face">
-                    <Edit2 size={18} />
-                  </button>
+                  <div className="flex items-center justify-center gap-2">
+                    <button onClick={() => setEditingStudent(student)} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" title="Edit Data/Face">
+                      <Edit2 size={18} />
+                    </button>
+                    <button onClick={() => handleDeleteClick(student)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200" title="Delete Student">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

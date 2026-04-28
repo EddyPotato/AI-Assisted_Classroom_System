@@ -7,5 +7,6 @@ namespace campus_backend.Repositories
         Task<IEnumerable<Schedule>> GetAllSchedulesAsync();
         Task CreateScheduleAsync(Schedule schedule);
         Task UpdateScheduleAsync(Schedule schedule);
+        Task DeleteScheduleAsync(string id);
     }
 }
