@@ -4,6 +4,9 @@ import StudentEnrollmentModal from '../enrollment/StudentEnrollmentModal';
 import EditStudentModal from '../enrollment/EditStudentModal';
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
 
+import AssignClassesModal from '../enrollment/AssignClassesModal';
+import { BookOpen } from 'lucide-react'; // Add BookOpen to your lucide-react imports
+
 export default function UserDirectoryTab() {
   const [students, setStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,6 +19,8 @@ export default function UserDirectoryTab() {
   
   // NEW: State for the Delete Confirmation Modal
   const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '', onConfirm: null });
+
+  const [assigningStudent, setAssigningStudent] = useState(null);
 
   const fetchStudents = useCallback(() => {
     let isMounted = true;
@@ -98,7 +103,18 @@ export default function UserDirectoryTab() {
       />
 
       <StudentEnrollmentModal isOpen={showEnrollModal} onClose={() => setShowEnrollModal(false)} onSuccess={fetchStudents} />
-      <EditStudentModal isOpen={!!editingStudent} student={editingStudent} onClose={() => setEditingStudent(null)} onSuccess={fetchStudents} />
+
+      <EditStudentModal 
+        isOpen={!!editingStudent} 
+        student={editingStudent} 
+        onClose={() => setEditingStudent(null)} onSuccess={fetchStudents} 
+      />
+
+      <AssignClassesModal 
+        isOpen={!!assigningStudent} 
+        student={assigningStudent} 
+        onClose={() => setAssigningStudent(null)} 
+      />
 
       {zoomedImage && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm animate-in fade-in" onClick={() => setZoomedImage(null)}>
@@ -152,8 +168,8 @@ export default function UserDirectoryTab() {
               </th>
               <th className="p-4 w-28 text-center cursor-default outline-none">Face</th>
               
-              {/* WIDENED TO w-32 to fit two buttons */}
-              <th className="p-4 w-32 text-center cursor-default outline-none">Action</th>
+              {/* WIDENED TO w-40 to fit two buttons */}
+              <th className="p-4 w-40 text-center cursor-default outline-none">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y-2 divide-slate-100">
@@ -186,6 +202,14 @@ export default function UserDirectoryTab() {
                 {/* NEW: Action cell now has both Edit and Delete buttons */}
                 <td className="p-4 text-center">
                   <div className="flex items-center justify-center gap-2">
+                    <button 
+                      onClick={() => setAssigningStudent(student)} 
+                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200" 
+                      title="Assign Classes"
+                    >
+                      <BookOpen size={18} />
+                    </button>
+                    
                     <button onClick={() => setEditingStudent(student)} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" title="Edit Data/Face">
                       <Edit2 size={18} />
                     </button>
