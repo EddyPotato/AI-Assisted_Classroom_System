@@ -6,11 +6,12 @@ namespace campus_backend.Repositories
     {
         Task<Student?> GetStudentByIdAsync(string studentId);
         Task<IEnumerable<Student>> GetAllStudentsAsync();
-        Task CreateStudentAsync(Student student);
         
-        // ADD THIS NEW METHOD:
+        // NEW: Method to find the highest ID for a given year
+        Task<string?> GetLatestStudentIdAsync(string yearPrefix);
+        
+        Task CreateStudentAsync(Student student);
         Task UpdateStudentAsync(Student student);
-
         Task DeleteStudentAsync(string id);
     }
 }

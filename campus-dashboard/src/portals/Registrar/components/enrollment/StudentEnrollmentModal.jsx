@@ -36,6 +36,8 @@ export default function StudentEnrollmentModal({ isOpen, onClose, onSuccess }) {
       });
       
       if (response.ok) {
+        const data = await response.json();
+        alert(`${data.message}\nAssigned Student ID: ${data.assignedId}`);
         setFormData(initialFormState);
         setCapturedImageBlob(null);
         onSuccess(); // Refresh the table

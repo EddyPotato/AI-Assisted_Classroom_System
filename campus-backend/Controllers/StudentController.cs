@@ -6,7 +6,7 @@ namespace campus_backend.Controllers
 {
     public class StudentRegistrationDto
     {
-        public string Student_ID { get; set; } = string.Empty;
+        public string? Student_ID { get; set; } // Made nullable to allow auto-generation
         public string First_Name { get; set; } = string.Empty;
         public string Middle_Name { get; set; } = string.Empty;
         public string Last_Name { get; set; } = string.Empty;
@@ -14,7 +14,6 @@ namespace campus_backend.Controllers
         public IFormFile? Photo { get; set; }
     }
 
-    // NEW: DTO for updating (ID is in the URL, not the body)
     public class StudentUpdateDto
     {
         public string First_Name { get; set; } = string.Empty;
@@ -65,9 +64,36 @@ namespace campus_backend.Controllers
                 if (dto.Photo == null || dto.Photo.Length == 0)
                     return BadRequest(new { message = "Face reference photo is required for new enrollments." });
 
+                // --- HYBRID ID GENERATOR LOGIC ---
+                string finalStudentId = dto.Student_ID ?? string.Empty;
+                
+                if (string.IsNullOrWhiteSpace(finalStudentId))
+                {
+                    string currentYearPrefix = DateTime.Now.ToString("yy"); // e.g. "26"
+                    string? latestId = await _studentRepository.GetLatestStudentIdAsync(currentYearPrefix);
+
+                    if (string.IsNullOrEmpty(latestId))
+                    {
+                        finalStudentId = $"{currentYearPrefix}-0001";
+                    }
+                    else
+                    {
+                        string[] parts = latestId.Split('-');
+                        if (parts.Length == 2 && int.TryParse(parts[1], out int currentNumber))
+                        {
+                            finalStudentId = $"{currentYearPrefix}-{(currentNumber + 1).ToString("D4")}";
+                        }
+                        else
+                        {
+                            finalStudentId = $"{currentYearPrefix}-0001"; // Fallback
+                        }
+                    }
+                }
+
+                // File saving logic
                 string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ReferenceFaces");
                 string cleanLastName = dto.Last_Name.Replace(" ", "").ToLower();
-                string fileName = $"{cleanLastName}_{dto.Student_ID}_face.jpg";
+                string fileName = $"{cleanLastName}_{finalStudentId}_face.jpg";
                 string fullPath = Path.Combine(directoryPath, fileName);
 
                 using (var stream = new FileStream(fullPath, FileMode.Create))
@@ -77,7 +103,7 @@ namespace campus_backend.Controllers
 
                 var newStudent = new Student
                 {
-                    Student_ID = dto.Student_ID,
+                    Student_ID = finalStudentId,
                     First_Name = dto.First_Name,
                     Middle_Name = dto.Middle_Name,
                     Last_Name = dto.Last_Name,
@@ -86,7 +112,11 @@ namespace campus_backend.Controllers
                 };
 
                 await _studentRepository.CreateStudentAsync(newStudent);
-                return Ok(new { message = "Student registered and face data saved successfully!" });
+                // Inside RegisterStudent, change the return statement to this:
+                return Ok(new { 
+                    message = "Student registered and face data saved successfully!",
+                    assignedId = finalStudentId // Sending the ID back to React!
+                });
             }
             catch (Exception ex)
             {
@@ -94,7 +124,6 @@ namespace campus_backend.Controllers
             }
         }
 
-        // --- NEW: EDIT STUDENT ENDPOINT ---
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateStudent(string id, [FromForm] StudentUpdateDto dto)
         {
@@ -103,10 +132,8 @@ namespace campus_backend.Controllers
                 var existingStudent = await _studentRepository.GetStudentByIdAsync(id);
                 if (existingStudent == null) return NotFound(new { message = "Student not found." });
 
-                // Keep existing photo by default
                 string newFacePath = existingStudent.Face_Reference_Path; 
 
-                // If user took a NEW photo, overwrite it in the C: drive
                 if (dto.Photo != null && dto.Photo.Length > 0)
                 {
                     string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ReferenceFaces");
@@ -118,7 +145,7 @@ namespace campus_backend.Controllers
                     {
                         await dto.Photo.CopyToAsync(stream);
                     }
-                    newFacePath = fileName; // Update path
+                    newFacePath = fileName;
                 }
 
                 var updatedStudent = new Student
@@ -140,12 +167,11 @@ namespace campus_backend.Controllers
             }
         }
 
-        // --- NEW: DELETE STUDENT ENDPOINT ---
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStudent(string id)
         {
             await _studentRepository.DeleteStudentAsync(id);
-            return Ok(new { message = "Student deleted successfully!" });
+            return Ok(new { message = "Student marked as dropped successfully!" });
         }
     }
 }
