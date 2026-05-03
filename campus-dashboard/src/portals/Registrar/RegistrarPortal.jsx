@@ -54,7 +54,7 @@ export default function RegistrarPortal() {
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'
               }`}
             >
-              <Calendar size={18} /> Master Directory
+              <Calendar size={18} /> Schedule Directory
             </button>
 
             <button 

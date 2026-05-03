@@ -1,8 +1,6 @@
 import { Camera, BookOpen, Edit2, Trash2, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 
-export default function StudentTable({ 
-  students, sortConfig, onSort, onZoom, onAssign, onEdit, onDelete 
-}) {
+export default function StudentTable({ students, sortConfig, onSort, onZoom, onAssign, onEdit, onDelete }) {
   const renderSortIcon = (key) => {
     if (sortConfig.key !== key) return <ArrowUpDown size={14} className="text-slate-300" />;
     return sortConfig.direction === 'asc' ? <ChevronUp size={14} className="text-primary-500" /> : <ChevronDown size={14} className="text-primary-500" />;
@@ -45,11 +43,12 @@ export default function StudentTable({
             </td>
             <td className="p-4 flex justify-center items-center">
               {student.face_Reference_Path && !student.face_Reference_Path.includes("C:") ? (
+                // THE FIX: Applying object-cover and aspect-square to ensure consistent square render
                 <img 
                    src={`http://localhost:5106/faces/${student.face_Reference_Path}`} 
                    alt="Face" 
                    onClick={() => onZoom(`http://localhost:5106/faces/${student.face_Reference_Path}`)}
-                   className="w-12 h-12 object-cover rounded-lg border-2 border-slate-200 shadow-sm cursor-zoom-in hover:opacity-80 transition-opacity"
+                   className="w-12 h-12 object-cover aspect-square rounded-lg border-2 border-slate-200 shadow-sm cursor-zoom-in hover:opacity-80 transition-opacity"
                 />
               ) : (
                 <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 border-2 border-slate-200">
@@ -59,25 +58,13 @@ export default function StudentTable({
             </td>
             <td className="p-4 text-center">
               <div className="flex items-center justify-center gap-2">
-                <button 
-                  onClick={() => onAssign(student)} 
-                  className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200" 
-                  title="Assign Classes"
-                >
+                <button onClick={() => onAssign(student)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200" title="Assign Classes">
                   <BookOpen size={18} />
                 </button>
-                <button 
-                  onClick={() => onEdit(student)} 
-                  className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" 
-                  title="Edit Data/Face"
-                >
+                <button onClick={() => onEdit(student)} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" title="Edit Data/Face">
                   <Edit2 size={18} />
                 </button>
-                <button 
-                  onClick={() => onDelete(student)} 
-                  className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200" 
-                  title="Delete Student"
-                >
+                <button onClick={() => onDelete(student)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200" title="Delete Student">
                   <Trash2 size={18} />
                 </button>
               </div>

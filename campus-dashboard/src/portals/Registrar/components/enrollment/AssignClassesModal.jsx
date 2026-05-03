@@ -117,7 +117,7 @@ export default function AssignClassesModal({ isOpen, onClose, student }) {
             {/* IRREGULAR STUDENT UI: Multi-Select List */}
             {!isRegular && (
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Available Master Directorys</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Available Schedule Directorys</label>
                 <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-64 overflow-y-auto bg-slate-50 shadow-inner">
                   {schedules.map(sched => {
                     const isSelected = selectedSchedules.includes(sched.schedule_ID);
