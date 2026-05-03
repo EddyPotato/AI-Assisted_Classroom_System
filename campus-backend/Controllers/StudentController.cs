@@ -6,21 +6,31 @@ namespace campus_backend.Controllers
 {
     public class StudentRegistrationDto
     {
-        public string? Student_ID { get; set; } // Made nullable to allow auto-generation
+        public string? Student_ID { get; set; } 
         public string First_Name { get; set; } = string.Empty;
-        public string Middle_Name { get; set; } = string.Empty;
+        public string? Middle_Name { get; set; } // MADE NULLABLE
         public string Last_Name { get; set; } = string.Empty;
         public string Enrollment_Status { get; set; } = "Regular";
         public IFormFile? Photo { get; set; }
+        
+        // NEW FIELDS MADE NULLABLE
+        public string? Contact_Number { get; set; }
+        public string? Birthday { get; set; }
+        public string? Address { get; set; }
     }
 
     public class StudentUpdateDto
     {
         public string First_Name { get; set; } = string.Empty;
-        public string Middle_Name { get; set; } = string.Empty;
+        public string? Middle_Name { get; set; } // MADE NULLABLE
         public string Last_Name { get; set; } = string.Empty;
         public string Enrollment_Status { get; set; } = "Regular";
         public IFormFile? Photo { get; set; }
+
+        // NEW FIELDS MADE NULLABLE
+        public string? Contact_Number { get; set; }
+        public string? Birthday { get; set; }
+        public string? Address { get; set; }
     }
 
     [Route("api/[controller]")]
@@ -108,7 +118,12 @@ namespace campus_backend.Controllers
                     Middle_Name = dto.Middle_Name,
                     Last_Name = dto.Last_Name,
                     Enrollment_Status = dto.Enrollment_Status,
-                    Face_Reference_Path = fileName 
+                    Face_Reference_Path = fileName,
+                    
+                    // THE FIX: Pass the new data from the DTO to the Model!
+                    Contact_Number = dto.Contact_Number,
+                    Birthday = dto.Birthday,
+                    Address = dto.Address 
                 };
 
                 await _studentRepository.CreateStudentAsync(newStudent);
@@ -155,7 +170,12 @@ namespace campus_backend.Controllers
                     Middle_Name = dto.Middle_Name,
                     Last_Name = dto.Last_Name,
                     Enrollment_Status = dto.Enrollment_Status,
-                    Face_Reference_Path = newFacePath
+                    Face_Reference_Path = newFacePath,
+                    
+                    // THE FIX: Pass the new data from the DTO to the Model!
+                    Contact_Number = dto.Contact_Number,
+                    Birthday = dto.Birthday,
+                    Address = dto.Address
                 };
 
                 await _studentRepository.UpdateStudentAsync(updatedStudent);

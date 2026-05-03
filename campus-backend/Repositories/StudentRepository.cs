@@ -18,10 +18,13 @@ namespace campus_backend.Repositories
         {
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
+                // THE FIX: Added the 3 new columns to the SELECT query
                 string sql = @"
-                    SELECT Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path, Enrollment_Status 
+                    SELECT Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path, Enrollment_Status,
+                           Contact_Number, Birthday, Address
                     FROM Students 
                     WHERE Student_ID = :studentId";
+                
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     cmd.Parameters.Add(new OracleParameter("studentId", studentId));
@@ -37,7 +40,11 @@ namespace campus_backend.Repositories
                                 Middle_Name = reader["Middle_Name"]?.ToString() ?? string.Empty,
                                 Last_Name = reader["Last_Name"]?.ToString() ?? string.Empty,
                                 Face_Reference_Path = reader["Face_Reference_Path"]?.ToString() ?? string.Empty,
-                                Enrollment_Status = reader["Enrollment_Status"] != DBNull.Value ? reader["Enrollment_Status"]?.ToString() ?? "Regular" : "Regular"
+                                Enrollment_Status = reader["Enrollment_Status"] != DBNull.Value ? reader["Enrollment_Status"]?.ToString() ?? "Regular" : "Regular",
+                                // THE FIX: Map the database columns to the C# Model
+                                Contact_Number = reader["Contact_Number"]?.ToString(),
+                                Birthday = reader["Birthday"]?.ToString(),
+                                Address = reader["Address"]?.ToString()
                             };
                         }
                         return null; 
@@ -51,10 +58,13 @@ namespace campus_backend.Repositories
             var students = new List<Student>();
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
+                // THE FIX: Added the 3 new columns to the SELECT query
                 string sql = @"
-                    SELECT Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path, Enrollment_Status 
+                    SELECT Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path, Enrollment_Status,
+                           Contact_Number, Birthday, Address
                     FROM Students
                     ORDER BY Last_Name ASC";
+                    
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     await con.OpenAsync();
@@ -69,7 +79,11 @@ namespace campus_backend.Repositories
                                 Middle_Name = reader["Middle_Name"]?.ToString() ?? string.Empty,
                                 Last_Name = reader["Last_Name"]?.ToString() ?? string.Empty,
                                 Face_Reference_Path = reader["Face_Reference_Path"]?.ToString() ?? string.Empty,
-                                Enrollment_Status = reader["Enrollment_Status"] != DBNull.Value ? reader["Enrollment_Status"]?.ToString() ?? "Regular" : "Regular"
+                                Enrollment_Status = reader["Enrollment_Status"] != DBNull.Value ? reader["Enrollment_Status"]?.ToString() ?? "Regular" : "Regular",
+                                // THE FIX: Map the database columns to the C# Model
+                                Contact_Number = reader["Contact_Number"]?.ToString(),
+                                Birthday = reader["Birthday"]?.ToString(),
+                                Address = reader["Address"]?.ToString()
                             });
                         }
                     }
@@ -78,7 +92,6 @@ namespace campus_backend.Repositories
             return students;
         }
 
-        // --- NEW: FETCH THE LATEST ID FOR AUTO-INCREMENT ---
         public async Task<string?> GetLatestStudentIdAsync(string yearPrefix)
         {
             using (OracleConnection con = new OracleConnection(_connectionString))
@@ -98,9 +111,11 @@ namespace campus_backend.Repositories
         {
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
+                // THE FIX: Added the 3 new columns to the INSERT statement
                 string sql = @"
-                    INSERT INTO Students (Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path, Enrollment_Status) 
-                    VALUES (:id, :fname, :mname, :lname, :facepath, :status)";
+                    INSERT INTO Students (Student_ID, First_Name, Middle_Name, Last_Name, Face_Reference_Path, Enrollment_Status, Contact_Number, Birthday, Address) 
+                    VALUES (:id, :fname, :mname, :lname, :facepath, :status, :contact, :bday, :address)";
+                    
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     cmd.Parameters.Add(new OracleParameter("id", student.Student_ID));
@@ -109,6 +124,12 @@ namespace campus_backend.Repositories
                     cmd.Parameters.Add(new OracleParameter("lname", student.Last_Name));
                     cmd.Parameters.Add(new OracleParameter("facepath", student.Face_Reference_Path));
                     cmd.Parameters.Add(new OracleParameter("status", string.IsNullOrEmpty(student.Enrollment_Status) ? "Regular" : student.Enrollment_Status));
+                    
+                    // THE FIX: Add the new parameters, handling nulls gracefully for Oracle
+                    cmd.Parameters.Add(new OracleParameter("contact", string.IsNullOrEmpty(student.Contact_Number) ? DBNull.Value : student.Contact_Number));
+                    cmd.Parameters.Add(new OracleParameter("bday", string.IsNullOrEmpty(student.Birthday) ? DBNull.Value : student.Birthday));
+                    cmd.Parameters.Add(new OracleParameter("address", string.IsNullOrEmpty(student.Address) ? DBNull.Value : student.Address));
+
                     await con.OpenAsync();
                     await cmd.ExecuteNonQueryAsync();
                 }
@@ -119,14 +140,19 @@ namespace campus_backend.Repositories
         {
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
+                // THE FIX: Added the 3 new columns to the UPDATE statement
                 string sql = @"
                     UPDATE Students 
                     SET First_Name = :fname, 
                         Middle_Name = :mname, 
                         Last_Name = :lname, 
                         Face_Reference_Path = :facepath, 
-                        Enrollment_Status = :status
+                        Enrollment_Status = :status,
+                        Contact_Number = :contact,
+                        Birthday = :bday,
+                        Address = :address
                     WHERE Student_ID = :id";
+                    
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     cmd.Parameters.Add(new OracleParameter("fname", student.First_Name));
@@ -134,19 +160,25 @@ namespace campus_backend.Repositories
                     cmd.Parameters.Add(new OracleParameter("lname", student.Last_Name));
                     cmd.Parameters.Add(new OracleParameter("facepath", student.Face_Reference_Path));
                     cmd.Parameters.Add(new OracleParameter("status", string.IsNullOrEmpty(student.Enrollment_Status) ? "Regular" : student.Enrollment_Status));
+                    
+                    // THE FIX: Add the new parameters
+                    cmd.Parameters.Add(new OracleParameter("contact", string.IsNullOrEmpty(student.Contact_Number) ? DBNull.Value : student.Contact_Number));
+                    cmd.Parameters.Add(new OracleParameter("bday", string.IsNullOrEmpty(student.Birthday) ? DBNull.Value : student.Birthday));
+                    cmd.Parameters.Add(new OracleParameter("address", string.IsNullOrEmpty(student.Address) ? DBNull.Value : student.Address));
+                    
+                    // The WHERE clause parameter MUST be last
                     cmd.Parameters.Add(new OracleParameter("id", student.Student_ID));
+
                     await con.OpenAsync();
                     await cmd.ExecuteNonQueryAsync();
                 }
             }
         }
 
-        // --- THE FIX: SOFT DELETE ---
         public async Task DeleteStudentAsync(string studentId)
         {
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
-                // We do NOT DELETE. We simply change the status to 'Dropped' so records remain intact.
                 string sql = "UPDATE Students SET Enrollment_Status = 'Dropped' WHERE Student_ID = :id";
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {

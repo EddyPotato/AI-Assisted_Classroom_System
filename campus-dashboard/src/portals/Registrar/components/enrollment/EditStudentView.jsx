@@ -63,7 +63,12 @@ export default function EditStudentView({ student, onBack, onSuccess, onShowToas
         onBack(); 
       } else {
         const errData = await response.json();
-        alert(`Error: ${errData.message}`);
+        
+        let errorMessage = errData.message;
+        if (!errorMessage && errData.errors) {
+            errorMessage = Object.values(errData.errors).flat().join('\n');
+        }
+        alert(`Error:\n${errorMessage || "400 Bad Request"}`);
       }
     } catch {
       alert("Network error connecting to API.");

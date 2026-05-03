@@ -45,7 +45,14 @@ export default function StudentEnrollmentView({ onBack, onSuccess }) {
         onSuccess(); 
       } else {
         const errData = await response.json();
-        alert(`Error: ${errData.message}`);
+        
+        // THE FIX: Smart error parser for ASP.NET Core
+        let errorMessage = errData.message;
+        if (!errorMessage && errData.errors) {
+            // Flatten the ASP.NET validation array into a readable string
+            errorMessage = Object.values(errData.errors).flat().join('\n');
+        }
+        alert(`Error:\n${errorMessage || "400 Bad Request"}`);
       }
     } catch {
       alert("Network error connecting to API.");
