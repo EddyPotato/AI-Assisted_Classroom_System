@@ -10,7 +10,10 @@
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.7" />
-    <PackageReference Include="MQTTnet" Version="5.1.0.1559" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.0.0" /> 
+    
+    <!-- THE FIX: Dropped to the v4 LTS to bypass the .NET 10 Preview AOT bug -->
+    <PackageReference Include="MQTTnet" Version="4.3.7.1207" />
     <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.26.200" />
   </ItemGroup>
 

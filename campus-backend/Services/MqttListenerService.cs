@@ -2,6 +2,9 @@ using MQTTnet;
 using MQTTnet.Client;
 using System.Text;
 using Oracle.ManagedDataAccess.Client;
+using Microsoft.Extensions.Hosting; 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace campus_backend.Services
 {
@@ -29,8 +32,8 @@ namespace campus_backend.Services
             {
                 var topic = e.ApplicationMessage.Topic;
                 
-                // THE FIX: Safely extract the payload regardless of MQTTnet version
-                var scannedId = Encoding.UTF8.GetString(e.ApplicationMessage.Payload ?? Array.Empty<byte>());
+                // v4 Syntax: Safely extract the byte segment to a string
+                var scannedId = Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment.ToArray());
                 
                 _logger.LogInformation($"📥 Camera Scan Received on [{topic}]: {scannedId}");
                 
@@ -46,8 +49,13 @@ namespace campus_backend.Services
                     if (!_mqttClient.IsConnected)
                     {
                         await _mqttClient.ConnectAsync(options, stoppingToken);
-                        // Subscribe to the EXACT topic from your vision_node.py
-                        await _mqttClient.SubscribeAsync("campus/door/scan", cancellationToken: stoppingToken);
+                        
+                        // v4 Syntax for Subscription options
+                        var subscribeOptions = new MqttFactory().CreateSubscribeOptionsBuilder()
+                            .WithTopicFilter(f => f.WithTopic("campus/door/scan"))
+                            .Build();
+
+                        await _mqttClient.SubscribeAsync(subscribeOptions, stoppingToken);
                         _logger.LogInformation("✅ MQTT Listener Service Started & Subscribed to campus/door/scan!");
                     }
                 }
@@ -92,7 +100,8 @@ namespace campus_backend.Services
 
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
-            await _mqttClient.DisconnectAsync(new MqttClientDisconnectOptions(), cancellationToken);
+            // v4 Syntax: Disconnect options builder
+            await _mqttClient.DisconnectAsync(new MqttClientDisconnectOptionsBuilder().Build(), cancellationToken);
             await base.StopAsync(cancellationToken);
         }
     }
