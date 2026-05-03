@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UserPlus } from 'lucide-react';
-import StudentEnrollmentView from '../enrollment/StudentEnrollmentView'; // Updated import
-import EditStudentView from '../enrollment/EditStudentView';             // Updated import
+import { UserPlus, CheckCircle2 } from 'lucide-react';
+import StudentEnrollmentView from '../enrollment/StudentEnrollmentView';
+import EditStudentView from '../enrollment/EditStudentView';
 import AssignClassesModal from '../enrollment/AssignClassesModal';
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
 
@@ -15,13 +15,15 @@ export default function UserDirectoryTab() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [sortConfig, setSortConfig] = useState({ key: 'student_ID', direction: 'asc' });
   
-  // NEW: Drill-Down View State ('directory', 'enroll', 'edit')
   const [currentView, setCurrentView] = useState('directory');
   
   const [editingStudent, setEditingStudent] = useState(null);
   const [assigningStudent, setAssigningStudent] = useState(null);
   const [zoomedImage, setZoomedImage] = useState(null);
   const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '', onConfirm: null });
+
+  // THE FIX: Add Toast State
+  const [toastMessage, setToastMessage] = useState('');
 
   const fetchStudents = useCallback(() => {
     let isMounted = true;
@@ -34,7 +36,6 @@ export default function UserDirectoryTab() {
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
 
-  // View Navigation Handlers
   const handleOpenEnroll = () => setCurrentView('enroll');
   const handleOpenEdit = (student) => {
     setEditingStudent(student);
@@ -43,6 +44,12 @@ export default function UserDirectoryTab() {
   const handleBackToDirectory = () => {
     setEditingStudent(null);
     setCurrentView('directory');
+  };
+
+  // THE FIX: Function to trigger the toast
+  const triggerToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3500); // Disappear after 3.5 seconds
   };
 
   const filteredStudents = students.filter(student => {
@@ -79,25 +86,35 @@ export default function UserDirectoryTab() {
     setModal({ ...modal, isOpen: false });
     try {
       const res = await fetch(`http://localhost:5106/api/student/${id}`, { method: 'DELETE' });
-      if (res.ok) fetchStudents(); 
-      else alert("Failed to delete student.");
+      if (res.ok) {
+        fetchStudents();
+        triggerToast("Student marked as dropped.");
+      } else alert("Failed to delete student.");
     } catch {
       alert("Network error.");
     }
   };
 
-  // --- RENDER DRILL-DOWN VIEWS ---
   if (currentView === 'enroll') {
     return <StudentEnrollmentView onBack={handleBackToDirectory} onSuccess={fetchStudents} />;
   }
 
   if (currentView === 'edit' && editingStudent) {
-    return <EditStudentView student={editingStudent} onBack={handleBackToDirectory} onSuccess={fetchStudents} />;
+    // Pass the Toast trigger function to the Edit view
+    return <EditStudentView student={editingStudent} onBack={handleBackToDirectory} onSuccess={fetchStudents} onShowToast={triggerToast} />;
   }
 
-  // --- RENDER MAIN DIRECTORY ---
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300 relative">
+      
+      {/* THE FIX: The Floating Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-100 bg-slate-800 text-white px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 fade-in duration-300">
+          <CheckCircle2 className="text-emerald-400" size={20} />
+          <span className="font-bold text-sm">{toastMessage}</span>
+        </div>
+      )}
+
       <ConfirmModal isOpen={modal.isOpen} type={modal.type} title={modal.title} message={modal.message} onConfirm={modal.onConfirm} onCancel={() => setModal({ ...modal, isOpen: false })} />
       <AssignClassesModal isOpen={!!assigningStudent} student={assigningStudent} onClose={() => setAssigningStudent(null)} />
       <FaceZoomModal zoomedImage={zoomedImage} onClose={() => setZoomedImage(null)} />

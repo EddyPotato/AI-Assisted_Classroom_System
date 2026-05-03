@@ -1,7 +1,7 @@
-import { Camera, RotateCcw, Lightbulb, Sun, Moon, CheckCircle2 } from 'lucide-react';
+import { Camera, RotateCcw, Sun, Moon, CheckCircle2, X } from 'lucide-react';
 
 export default function CameraView({ 
-  isCameraActive, capturedImageUrl, videoRef, canvasRef, brightnessStatus, onStart, onCapture, onRetake 
+  isCameraActive, capturedImageUrl, existingImageUrl, videoRef, canvasRef, brightnessStatus, onStart, onCapture, onRetake, onCancel 
 }) {
   const getBrightnessIndicator = () => {
     if (!isCameraActive) return null;
@@ -20,15 +20,20 @@ export default function CameraView({
         {getBrightnessIndicator()}
       </div>
 
-      {/* THE FIX: Perfectly square aspect ratio container */}
       <div className="relative w-full max-w-sm mx-auto aspect-square bg-slate-900 rounded-3xl overflow-hidden shadow-sm flex items-center justify-center">
         <canvas ref={canvasRef} className="hidden"></canvas>
         
-        {!isCameraActive && !capturedImageUrl && (
+        {/* If camera is off, no new capture exists, and no old image exists */}
+        {!isCameraActive && !capturedImageUrl && !existingImageUrl && (
           <div className="text-center text-slate-600 flex flex-col items-center gap-3">
             <Camera size={48} className="opacity-30" />
             <p className="font-bold text-sm">Camera is offline</p>
           </div>
+        )}
+
+        {/* If camera is off, no new capture exists, BUT we have their old picture! */}
+        {!isCameraActive && !capturedImageUrl && existingImageUrl && (
+          <img src={existingImageUrl} alt="Existing face" className="absolute inset-0 w-full h-full object-cover aspect-square opacity-80" />
         )}
 
         {isCameraActive && (
@@ -48,29 +53,34 @@ export default function CameraView({
       <div className="mt-2 max-w-sm mx-auto w-full">
         {!isCameraActive && !capturedImageUrl && (
           <button type="button" onClick={onStart} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95">
-            <Camera size={18}/> Start Camera
+            <Camera size={18}/> {existingImageUrl ? "Replace Photo" : "Start Camera"}
           </button>
         )}
         
         {isCameraActive && (
-          <button
-            type="button"
-            onClick={onCapture}
-            disabled={isCaptureDisabled}
-            className={`w-full font-bold py-3.5 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 ${
-              isCaptureDisabled
-                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                : 'bg-blue-600 hover:bg-blue-700 text-white active:scale-95'
-            }`}
-          >
-            <Camera size={18}/> Capture Snapshot
-          </button>
+          <div className="flex gap-2">
+            <button type="button" onClick={onCapture} disabled={isCaptureDisabled} className={`flex-1 font-bold py-3.5 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 ${isCaptureDisabled ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-blue-600 hover:bg-blue-700 text-white active:scale-95'}`}>
+              <Camera size={18}/> Capture
+            </button>
+            {existingImageUrl && (
+              <button type="button" onClick={onCancel} className="px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center">
+                <X size={20}/>
+              </button>
+            )}
+          </div>
         )}
 
         {capturedImageUrl && (
-          <button type="button" onClick={onRetake} className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2">
-            <RotateCcw size={18}/> Retake Photo
-          </button>
+          <div className="flex gap-2">
+            <button type="button" onClick={onRetake} className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2">
+              <RotateCcw size={18}/> Retake
+            </button>
+            {existingImageUrl && (
+              <button type="button" onClick={onCancel} className="px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center" title="Cancel and keep old photo">
+                <X size={20}/>
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

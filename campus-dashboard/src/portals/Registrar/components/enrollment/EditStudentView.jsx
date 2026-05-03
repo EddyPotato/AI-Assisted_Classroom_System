@@ -3,7 +3,7 @@ import { Edit2, ArrowLeft, Save, Lightbulb } from 'lucide-react';
 import StudentFormFields from './StudentFormFields';
 import FaceRegistrationCamera from './FaceRegistrationCamera';
 
-export default function EditStudentView({ student, onBack, onSuccess }) {
+export default function EditStudentView({ student, onBack, onSuccess, onShowToast }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [capturedImageBlob, setCapturedImageBlob] = useState(null);
   const [formData, setFormData] = useState({
@@ -32,6 +32,9 @@ export default function EditStudentView({ student, onBack, onSuccess }) {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  // Compute the existing image URL to show in the camera box
+  const existingImageUrl = student?.face_Reference_Path ? `http://localhost:5106/faces/${student.face_Reference_Path}` : null;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -56,6 +59,7 @@ export default function EditStudentView({ student, onBack, onSuccess }) {
         
       if (response.ok) {
         onSuccess(); 
+        onShowToast(`Student ${formData.first_Name} ${formData.last_Name} updated successfully!`);
         onBack(); 
       } else {
         const errData = await response.json();
@@ -70,31 +74,30 @@ export default function EditStudentView({ student, onBack, onSuccess }) {
 
   return (
     <div className="animate-in slide-in-from-right-8 duration-300 pb-10">
-      <div className="flex items-center gap-4 mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-        <button onClick={onBack} className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-all shadow-sm">
-          <ArrowLeft size={20} strokeWidth={2.5} />
-        </button>
-        <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-            <Edit2 className="text-amber-500" /> Edit Student Record
-          </h2>
-          <p className="text-sm font-bold text-slate-500">Update biographical data or recapture biometric face reference.</p>
+      <div className="flex items-center justify-between mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-4">
+            <button onClick={onBack} className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition-all shadow-sm">
+            <ArrowLeft size={20} strokeWidth={2.5} />
+            </button>
+            <div>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <Edit2 className="text-amber-500" /> Edit Student Record
+            </h2>
+            <p className="text-sm font-bold text-slate-500">Update biographical data or recapture biometric face reference.</p>
+            </div>
         </div>
+        <span className="bg-amber-100 text-amber-800 px-4 py-1.5 rounded-xl font-black text-xs tracking-widest border border-amber-200">EDIT MODE</span>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 lg:p-8">
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 font-medium flex items-center justify-between">
-          <span><strong>Note:</strong> The Student ID ({formData.student_ID}) cannot be changed. Leave the camera off to keep the existing photo.</span>
-          <span className="bg-amber-200 text-amber-900 px-3 py-1 rounded-lg font-bold text-xs">EDIT MODE</span>
-        </div>
-
         <form id="editForm" onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 lg:gap-12">
             
             <div className="xl:col-span-5 flex flex-col gap-6">
               <div>
                 <h3 className="text-lg font-black text-slate-800 border-b border-slate-100 pb-2 mb-4">Student Information</h3>
-                <StudentFormFields formData={formData} handleChange={handleChange} />
+                {/* Pass isEditing=true to lock the Student ID field */}
+                <StudentFormFields formData={formData} handleChange={handleChange} isEditing={true} />
               </div>
 
               <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-5 mt-auto">
@@ -112,7 +115,12 @@ export default function EditStudentView({ student, onBack, onSuccess }) {
 
             <div className="xl:col-span-7 xl:border-l xl:border-slate-100 xl:pl-10">
               <h3 className="text-lg font-black text-slate-800 border-b border-slate-100 pb-2">Update Biometrics (Optional)</h3>
-              <FaceRegistrationCamera isOpen={true} onCapture={(blob) => setCapturedImageBlob(blob)} onClear={() => setCapturedImageBlob(null)} />
+              <FaceRegistrationCamera 
+                isOpen={true} 
+                onCapture={(blob) => setCapturedImageBlob(blob)} 
+                onClear={() => setCapturedImageBlob(null)} 
+                existingImageUrl={existingImageUrl} 
+              />
             </div>
           </div>
 
