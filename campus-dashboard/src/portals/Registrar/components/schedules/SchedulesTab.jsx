@@ -113,7 +113,7 @@ export default function SchedulesTab() {
     setModal({
       isOpen: true,
       type: 'danger',
-      title: 'Delete Master Schedule',
+      title: 'Delete Master Directory',
       message: `Are you sure you want to delete Schedule ${sched.schedule_ID} for ${sched.subject_Code}? This will remove it from all faculty and student dashboards.`,
       onConfirm: () => executeDelete(sched.schedule_ID)
     });
@@ -139,7 +139,7 @@ export default function SchedulesTab() {
       
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-black text-slate-800 tracking-tight">Master Schedule</h2>
+          <h2 className="text-3xl font-black text-slate-800 tracking-tight">Master Directory</h2>
           <p className="text-slate-500 mt-1 font-medium">Create and manage class sections, room assignments, and schedules.</p>
         </div>
         

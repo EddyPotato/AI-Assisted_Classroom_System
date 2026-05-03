@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Database, LogOut, Calendar, GraduationCap } from 'lucide-react';
+import { Users, Database, LogOut, Calendar, GraduationCap, Layers } from 'lucide-react';
 
+import SectionsTab from './components/sections/SectionsTab'; // Import the new tab
 import SchedulesTab from './components/schedules/SchedulesTab';
 import UserDirectoryTab from './components/users/UserDirectoryTab';
 import StaffDirectoryTab from './components/faculty/StaffDirectoryTab';
+
+
 
 export default function RegistrarPortal() {
   const navigate = useNavigate();
@@ -51,8 +54,20 @@ export default function RegistrarPortal() {
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'
               }`}
             >
-              <Calendar size={18} /> Master Schedule
+              <Calendar size={18} /> Master Directory
             </button>
+
+            <button 
+              onClick={() => setActiveTab('sections')} 
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${
+                activeTab === 'sections' 
+                  ? 'bg-white text-primary-600 shadow-sm border border-slate-200/50' 
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'
+              }`}
+            >
+              <Layers size={18} /> Section Directory
+            </button>
+
             <button 
               onClick={() => setActiveTab('users')} 
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${
@@ -78,6 +93,7 @@ export default function RegistrarPortal() {
 
           {/* TAB CONTENT RENDERING */}
           {activeTab === 'schedules' && <SchedulesTab />}
+          {activeTab === 'sections' && <SectionsTab />}
           {activeTab === 'users' && <UserDirectoryTab />}
           {activeTab === 'faculty' && <StaffDirectoryTab />}
 
