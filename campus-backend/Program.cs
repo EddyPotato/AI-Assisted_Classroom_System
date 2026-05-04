@@ -50,7 +50,7 @@ if (!Directory.Exists(facesDirectory))
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(facesDirectory),
-    RequestPath = "/faces" // Now images are accessible at http://localhost:5106/faces/filename.jpg
+    RequestPath = "/ReferenceFaces" // Make this match exactly!
 });
 // --------------------------------------------------
 

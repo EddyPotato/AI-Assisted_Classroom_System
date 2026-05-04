@@ -32,8 +32,11 @@ export default function EditStudentView({ student, onBack, onSuccess, onShowToas
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  // Lazy initialize timestamp so it only fires once per edit session
+  const [cacheBuster] = useState(() => Date.now());
+
   // Compute the existing image URL to show in the camera box
-  const existingImageUrl = student?.face_Reference_Path ? `http://localhost:5106/faces/${student.face_Reference_Path}` : null;
+  const existingImageUrl = student?.face_Reference_Path ? `http://localhost:5106/ReferenceFaces/${student.face_Reference_Path}?t=${cacheBuster}` : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,7 +66,6 @@ export default function EditStudentView({ student, onBack, onSuccess, onShowToas
         onBack(); 
       } else {
         const errData = await response.json();
-        
         let errorMessage = errData.message;
         if (!errorMessage && errData.errors) {
             errorMessage = Object.values(errData.errors).flat().join('\n');
@@ -101,7 +103,6 @@ export default function EditStudentView({ student, onBack, onSuccess, onShowToas
             <div className="xl:col-span-5 flex flex-col gap-6">
               <div>
                 <h3 className="text-lg font-black text-slate-800 border-b border-slate-100 pb-2 mb-4">Student Information</h3>
-                {/* Pass isEditing=true to lock the Student ID field */}
                 <StudentFormFields formData={formData} handleChange={handleChange} isEditing={true} />
               </div>
 

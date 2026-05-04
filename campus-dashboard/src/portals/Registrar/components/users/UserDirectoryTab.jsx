@@ -22,14 +22,23 @@ export default function UserDirectoryTab() {
   const [zoomedImage, setZoomedImage] = useState(null);
   const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '', onConfirm: null });
 
-  // THE FIX: Add Toast State
   const [toastMessage, setToastMessage] = useState('');
 
   const fetchStudents = useCallback(() => {
     let isMounted = true;
+    const currentFetchTime = Date.now(); 
+
     fetch('http://localhost:5106/api/student')
       .then(res => res.json())
-      .then(data => { if (isMounted && Array.isArray(data)) setStudents(data); })
+      .then(data => { 
+        if (isMounted && Array.isArray(data)) {
+          const dataWithCacheBuster = data.map(student => ({
+            ...student,
+            _cacheBuster: currentFetchTime 
+          }));
+          setStudents(dataWithCacheBuster); 
+        }
+      })
       .catch(err => console.error("Failed to fetch students", err));
     return () => { isMounted = false; };
   }, []);
@@ -46,10 +55,9 @@ export default function UserDirectoryTab() {
     setCurrentView('directory');
   };
 
-  // THE FIX: Function to trigger the toast
   const triggerToast = (msg) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3500); // Disappear after 3.5 seconds
+    setTimeout(() => setToastMessage(''), 3500); 
   };
 
   const filteredStudents = students.filter(student => {
@@ -100,16 +108,14 @@ export default function UserDirectoryTab() {
   }
 
   if (currentView === 'edit' && editingStudent) {
-    // Pass the Toast trigger function to the Edit view
     return <EditStudentView student={editingStudent} onBack={handleBackToDirectory} onSuccess={fetchStudents} onShowToast={triggerToast} />;
   }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 relative">
       
-      {/* THE FIX: The Floating Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-100 bg-slate-800 text-white px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 fade-in duration-300">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 fade-in duration-300">
           <CheckCircle2 className="text-emerald-400" size={20} />
           <span className="font-bold text-sm">{toastMessage}</span>
         </div>

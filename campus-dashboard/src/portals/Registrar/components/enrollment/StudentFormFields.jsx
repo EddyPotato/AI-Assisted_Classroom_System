@@ -1,9 +1,11 @@
 export default function StudentFormFields({ formData, handleChange, isEditing }) {
   
-  // THE FIX: Intercept the phone input to force the 4-3-4 spacing format
+  // Calculate today's date to prevent future birthdays
+  const today = new Date().toISOString().split('T')[0];
+
   const handlePhoneChange = (e) => {
-    let val = e.target.value.replace(/\D/g, ''); // Strip all non-numbers
-    if (val.length > 11) val = val.substring(0, 11); // Max 11 digits
+    let val = e.target.value.replace(/\D/g, ''); 
+    if (val.length > 11) val = val.substring(0, 11); 
 
     let formatted = val;
     if (val.length > 4 && val.length <= 7) {
@@ -12,7 +14,6 @@ export default function StudentFormFields({ formData, handleChange, isEditing })
       formatted = `${val.slice(0, 4)} ${val.slice(4, 7)} ${val.slice(7)}`;
     }
 
-    // Pass the formatted value back to the parent's handleChange
     handleChange({
       target: { name: 'contact_Number', value: formatted }
     });
@@ -20,7 +21,6 @@ export default function StudentFormFields({ formData, handleChange, isEditing })
 
   return (
     <div className="grid grid-cols-2 gap-4">
-      {/* Optional: Auto-generated */}
       <div>
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Student ID</label>
         <input 
@@ -38,7 +38,6 @@ export default function StudentFormFields({ formData, handleChange, isEditing })
         />
       </div>
 
-      {/* Always requires a selection, defaults to Regular */}
       <div>
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
           Status <span className="text-rose-500 ml-0.5">*</span>
@@ -52,7 +51,6 @@ export default function StudentFormFields({ formData, handleChange, isEditing })
         </select>
       </div>
 
-      {/* Required */}
       <div>
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
           First Name <span className="text-rose-500 ml-0.5">*</span>
@@ -60,13 +58,11 @@ export default function StudentFormFields({ formData, handleChange, isEditing })
         <input required type="text" name="first_Name" value={formData.first_Name} onChange={handleChange} placeholder="e.g. Juan" className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" />
       </div>
 
-      {/* Optional: Some people don't have middle names */}
       <div>
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Middle Name</label>
         <input type="text" name="middle_Name" value={formData.middle_Name} onChange={handleChange} placeholder="e.g. Reyes" className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" />
       </div>
       
-      {/* Required */}
       <div className="col-span-2">
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
           Last Name <span className="text-rose-500 ml-0.5">*</span>
@@ -74,7 +70,6 @@ export default function StudentFormFields({ formData, handleChange, isEditing })
         <input required type="text" name="last_Name" value={formData.last_Name} onChange={handleChange} placeholder="e.g. Dela Cruz" className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" />
       </div>
 
-      {/* Required: Custom Phone Formatter applied here */}
       <div className="col-span-2">
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
           Contact Number <span className="text-rose-500 ml-0.5">*</span>
@@ -86,20 +81,18 @@ export default function StudentFormFields({ formData, handleChange, isEditing })
           value={formData.contact_Number || ''} 
           onChange={handlePhoneChange} 
           placeholder="09XX XXX XXXX" 
-          maxLength={13} // 11 digits + 2 spaces
+          maxLength={13} 
           className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 font-mono tracking-wide" 
         />
       </div>
 
-      {/* Required */}
       <div className="col-span-2">
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
           Birthday <span className="text-rose-500 ml-0.5">*</span>
         </label>
-        <input required type="date" name="birthday" value={formData.birthday || ''} onChange={handleChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" />
+        <input required type="date" name="birthday" max={today} value={formData.birthday || ''} onChange={handleChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" />
       </div>
 
-      {/* Required */}
       <div className="col-span-2">
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
           Address <span className="text-rose-500 ml-0.5">*</span>

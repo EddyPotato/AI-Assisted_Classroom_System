@@ -43,11 +43,10 @@ export default function StudentTable({ students, sortConfig, onSort, onZoom, onA
             </td>
             <td className="p-4 flex justify-center items-center">
               {student.face_Reference_Path && !student.face_Reference_Path.includes("C:") ? (
-                // THE FIX: Applying object-cover and aspect-square to ensure consistent square render
                 <img 
-                   src={`http://localhost:5106/faces/${student.face_Reference_Path}`} 
+                   src={`http://localhost:5106/ReferenceFaces/${student.face_Reference_Path}?t=${student._cacheBuster}`} 
                    alt="Face" 
-                   onClick={() => onZoom(`http://localhost:5106/faces/${student.face_Reference_Path}`)}
+                   onClick={() => onZoom(`http://localhost:5106/ReferenceFaces/${student.face_Reference_Path}?t=${student._cacheBuster}`)}
                    className="w-12 h-12 object-cover aspect-square rounded-lg border-2 border-slate-200 shadow-sm cursor-zoom-in hover:opacity-80 transition-opacity"
                 />
               ) : (
