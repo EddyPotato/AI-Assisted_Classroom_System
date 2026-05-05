@@ -7,7 +7,6 @@ export default function SectionsTab() {
   const [selectedSection, setSelectedSection] = useState(null);
   const [sections, setSections] = useState([]);
 
-  // FETCH REAL SECTIONS FROM DB
   useEffect(() => {
     fetch('http://localhost:5106/api/sections')
       .then(res => res.json())
@@ -83,14 +82,15 @@ export default function SectionsTab() {
                 <p className="font-bold text-slate-700 leading-tight">{getFullProgramName(section.course)}</p>
                 <p className="text-sm font-bold text-blue-600 mt-0.5">Year {section.year_Level}</p>
               </div>
-
-              <div className="pt-4 border-t border-slate-100 mt-auto">
-                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Assigned Adviser</p>
-                 <p className="font-black text-slate-800">{section.primary_Adviser || 'Unassigned'}</p>
-              </div>
             </div>
           </div>
         ))}
+
+        {filteredSections.length === 0 && (
+          <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
+            <p className="text-slate-500 font-bold">No sections found matching your search.</p>
+          </div>
+        )}
       </div>
     </div>
   );

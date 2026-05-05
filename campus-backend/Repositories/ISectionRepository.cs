@@ -6,6 +6,7 @@ namespace campus_backend.Repositories
     {
         Task<IEnumerable<SectionDTO>> GetAllSectionsAsync();
         Task<IEnumerable<Student>> GetStudentsInSectionAsync(string sectionId);
+        Task<IEnumerable<SectionScheduleDTO>> GetSectionScheduleAsync(string sectionId);
         Task AddStudentsToSectionAsync(string sectionId, List<string> studentIds);
         Task RemoveStudentFromSectionAsync(string sectionId, string studentId);
     }

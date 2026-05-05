@@ -1,163 +1,109 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus } from 'lucide-react';
-
-import ConfirmModal from '../../../../components/ui/ConfirmModal';
-import ScheduleForm from './ScheduleForm';
+import { Search, CalendarPlus } from 'lucide-react';
 import MasterScheduleTable from './MasterScheduleTable';
-
-// Safe pure function
-const getSchedulesData = async () => {
-  try {
-    const response = await fetch('http://localhost:5106/api/schedules');
-    return response.ok ? await response.json() : [];
-  } catch {
-    return [];
-  }
-};
+import ScheduleForm from './ScheduleForm';
+import ConfirmModal from '../../../../components/ui/ConfirmModal';
 
 export default function SchedulesTab() {
-  const [schedules, setSchedules] = useState([]); 
-  const [showScheduleForm, setShowScheduleForm] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '', onConfirm: null });
+  const [currentView, setCurrentView] = useState('list'); // 'list' or 'form'
+  const [selectedSchedule, setSelectedSchedule] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [schedules, setSchedules] = useState([]);
+  
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, scheduleId: null });
 
-  const initialFormState = { 
-    schedule_ID: '', subject_Code: '', section_ID: '', 
-    professor_ID: '', room_ID: '', time_Start: '', 
-    time_End: '', class_Days: '' 
-  };
-  const [formData, setFormData] = useState(initialFormState);
-
-  // FETCH LOGIC
   const fetchSchedules = useCallback(() => {
-    let isMounted = true;
-    getSchedulesData().then(data => { if (isMounted) setSchedules(data); });
-    return () => { isMounted = false; };
+    fetch('http://localhost:5106/api/schedules')
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setSchedules(data); })
+      .catch(err => console.error("Failed to fetch schedules:", err));
   }, []);
 
-  useEffect(() => {
-    const cleanup = fetchSchedules();
-    return cleanup;
-  }, [fetchSchedules]);
+  useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
 
-  // HANDLERS
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  const handleCreateClick = () => {
-    setFormData(initialFormState);
-    setIsEditing(false);
-    setShowScheduleForm(true);
+  // View Navigation Handlers
+  const handleOpenCreate = () => {
+    setSelectedSchedule(null);
+    setCurrentView('form');
   };
 
-  const handleEditClick = (sched) => {
-    setFormData({
-      schedule_ID: sched.schedule_ID, subject_Code: sched.subject_Code || '',
-      section_ID: sched.section_ID || '', professor_ID: sched.professor_ID || '',
-      room_ID: sched.room_ID || '', time_Start: sched.time_Start || '',
-      time_End: sched.time_End || '', class_Days: sched.class_Days || ''
-    });
-    setIsEditing(true);
-    setShowScheduleForm(true);
+  const handleOpenEdit = (schedule) => {
+    setSelectedSchedule(schedule);
+    setCurrentView('form');
   };
 
-  const handleCancelForm = () => {
-    setShowScheduleForm(false);
-    setIsEditing(false);
-    setFormData(initialFormState);
+  const handleBackToList = () => {
+    setSelectedSchedule(null);
+    setCurrentView('list');
+    fetchSchedules(); // Refresh table when returning
   };
 
-  const requestSave = () => {
-    setModal({
-      isOpen: true,
-      type: 'warning',
-      title: isEditing ? 'Confirm Schedule Update' : 'Confirm New Schedule',
-      message: isEditing ? 'Are you sure you want to modify this active schedule?' : 'Are you sure you want to create this new schedule?',
-      onConfirm: executeSave
-    });
+  // Delete Handlers
+  const handleDeleteClick = (id) => {
+    setConfirmModal({ isOpen: true, scheduleId: id });
   };
 
-  const executeSave = async () => {
-    setModal({ ...modal, isOpen: false }); 
+  const executeDelete = async () => {
     try {
-      const url = isEditing ? `http://localhost:5106/api/schedules/${formData.schedule_ID}` : 'http://localhost:5106/api/schedules';
-      const method = isEditing ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method: method, headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        setModal({
-          isOpen: true, type: 'success', title: 'Success!',
-          message: isEditing ? 'Schedule updated.' : 'New schedule saved.',
-          onConfirm: () => {
-            setModal({ ...modal, isOpen: false });
-            setShowScheduleForm(false);
-            setIsEditing(false);
-            setFormData(initialFormState);
-            fetchSchedules(); 
-          }
-        });
-      } else {
-        const errorData = await response.json();
-        alert(`Database Error: ${errorData.message}`);
-      }
-    } catch {
-      alert("Error connecting to backend API.");
-    }
+      await fetch(`http://localhost:5106/api/schedules/${confirmModal.scheduleId}`, { method: 'DELETE' });
+      fetchSchedules();
+    } catch (err) { console.error(err); }
+    setConfirmModal({ isOpen: false, scheduleId: null });
   };
 
-  // NEW: Delete Handlers for Schedules
-  const requestDelete = (sched) => {
-    setModal({
-      isOpen: true,
-      type: 'danger',
-      title: 'Delete Schedule Directory',
-      message: `Are you sure you want to delete Schedule ${sched.schedule_ID} for ${sched.subject_Code}? This will remove it from all faculty and student dashboards.`,
-      onConfirm: () => executeDelete(sched.schedule_ID)
-    });
-  };
+  const filteredSchedules = schedules.filter(s => 
+    (s.subject_Code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.section_ID || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.professor_ID || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const executeDelete = async (id) => {
-    setModal({ ...modal, isOpen: false }); 
-    try {
-      const response = await fetch(`http://localhost:5106/api/schedules/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        fetchSchedules();
-      } else {
-        alert("Database Error: Failed to delete.");
-      }
-    } catch {
-      alert("Error connecting to backend API.");
-    }
-  };
+  // --- DRILL-DOWN FORM VIEW ---
+  if (currentView === 'form') {
+    return <ScheduleForm schedule={selectedSchedule} onBack={handleBackToList} onSuccess={handleBackToList} />;
+  }
 
+  // --- MAIN DIRECTORY VIEW ---
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <ConfirmModal isOpen={modal.isOpen} type={modal.type} title={modal.title} message={modal.message} onConfirm={modal.onConfirm} onCancel={() => setModal({ ...modal, isOpen: false })} />
       
-      <div className="flex justify-between items-end">
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen} 
+        type="danger" 
+        title="Delete Schedule" 
+        message="Are you sure you want to delete this schedule block? This will remove it from the section's timetable."
+        onConfirm={executeDelete} 
+        onCancel={() => setConfirmModal({ isOpen: false, scheduleId: null })} 
+      />
+
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
         <div>
-          <h2 className="text-3xl font-black text-slate-800 tracking-tight">Schedule Directory</h2>
-          <p className="text-slate-500 mt-1 font-medium">Create and manage class sections, room assignments, and schedules.</p>
+          <h2 className="text-3xl font-black text-slate-800 tracking-tight">Master Schedule</h2>
+          <p className="text-slate-500 mt-1 font-medium">Manage block timetables, room assignments, and faculty schedules.</p>
         </div>
-        
-        <button onClick={() => showScheduleForm ? handleCancelForm() : handleCreateClick()} className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center gap-2">
-          {showScheduleForm ? 'Cancel Form' : <><Plus size={18} /> Create Schedule</>}
+      </div>
+
+      <div className="p-5 border border-slate-200 bg-white rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div className="relative w-full sm:w-96">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input
+            type="text"
+            placeholder="Search by Subject, Section, or Professor..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+          />
+        </div>
+        <button 
+          onClick={handleOpenCreate}
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95"
+        >
+          <CalendarPlus size={18} /> Add Schedule
         </button>
       </div>
 
-      {showScheduleForm && (
-        <ScheduleForm formData={formData} isEditing={isEditing} handleChange={handleChange} handleCancelForm={handleCancelForm} requestSave={requestSave} />
-      )}
-
-      {/* NEW: Passed handleDeleteClick down to the table */}
-      <MasterScheduleTable 
-        schedules={schedules} 
-        handleEditClick={handleEditClick} 
-        handleDeleteClick={requestDelete} 
-      />
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <MasterScheduleTable schedules={filteredSchedules} onEdit={handleOpenEdit} onDelete={handleDeleteClick} />
+      </div>
     </div>
   );
 }

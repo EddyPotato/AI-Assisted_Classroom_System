@@ -121,5 +121,55 @@ namespace campus_backend.Repositories
                 }
             }
         }
+
+        public async Task<IEnumerable<SectionScheduleDTO>> GetSectionScheduleAsync(string sectionId)
+        {
+            var schedule = new List<SectionScheduleDTO>();
+            using (OracleConnection con = new OracleConnection(_connectionString))
+            {
+                // We use LEFT JOIN on USERS in case a subject is scheduled but no professor is assigned yet
+                string sql = @"
+                    SELECT 
+                        sch.SCHEDULE_ID, sub.SUBJECT_CODE, sub.TITLE, sub.UNITS,
+                        u.FIRST_NAME, u.LAST_NAME,
+                        sch.CLASS_DAYS, sch.TIME_START, sch.TIME_END, sch.ROOM_ID
+                    FROM SCHEDULES sch
+                    JOIN SUBJECTS sub ON sch.SUBJECT_CODE = sub.SUBJECT_CODE
+                    LEFT JOIN USERS u ON sch.PROFESSOR_ID = u.USER_ID
+                    WHERE sch.SECTION_ID = :secid
+                    ORDER BY sub.SUBJECT_CODE";
+
+                using (OracleCommand cmd = new OracleCommand(sql, con))
+                {
+                    cmd.Parameters.Add(new OracleParameter("secid", sectionId));
+                    await con.OpenAsync();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            string profName = "Unassigned";
+                            if (reader["FIRST_NAME"] != DBNull.Value && reader["LAST_NAME"] != DBNull.Value)
+                            {
+                                profName = $"{reader["FIRST_NAME"]} {reader["LAST_NAME"]}";
+                            }
+
+                            schedule.Add(new SectionScheduleDTO
+                            {
+                                Schedule_ID = reader["SCHEDULE_ID"]?.ToString() ?? "",
+                                Subject_Code = reader["SUBJECT_CODE"]?.ToString() ?? "",
+                                Subject_Title = reader["TITLE"]?.ToString() ?? "",
+                                Units = reader["UNITS"] != DBNull.Value ? Convert.ToInt32(reader["UNITS"]) : 0,
+                                Professor_Name = profName,
+                                Class_Days = reader["CLASS_DAYS"]?.ToString() ?? "TBA",
+                                Time_Start = reader["TIME_START"]?.ToString() ?? "TBA",
+                                Time_End = reader["TIME_END"]?.ToString() ?? "TBA",
+                                Room_ID = reader["ROOM_ID"]?.ToString() ?? "TBA"
+                            });
+                        }
+                    }
+                }
+            }
+            return schedule;
+        }
     }
 }

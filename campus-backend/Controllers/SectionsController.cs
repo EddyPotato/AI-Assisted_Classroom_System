@@ -42,5 +42,12 @@ namespace campus_backend.Controllers
             await _sectionRepository.RemoveStudentFromSectionAsync(sectionId, studentId);
             return Ok(new { message = "Student removed successfully" });
         }
+
+        [HttpGet("{id}/schedule")]
+        public async Task<IActionResult> GetSectionSchedule(string id)
+        {
+            var schedule = await _sectionRepository.GetSectionScheduleAsync(id);
+            return Ok(schedule);
+        }
     }
 }
