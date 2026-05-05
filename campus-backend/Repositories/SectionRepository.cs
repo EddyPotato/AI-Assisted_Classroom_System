@@ -127,11 +127,10 @@ namespace campus_backend.Repositories
             var schedule = new List<SectionScheduleDTO>();
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
-                // We use LEFT JOIN on USERS in case a subject is scheduled but no professor is assigned yet
                 string sql = @"
                     SELECT 
                         sch.SCHEDULE_ID, sub.SUBJECT_CODE, sub.TITLE, sub.UNITS,
-                        u.FIRST_NAME, u.LAST_NAME,
+                        u.FIRST_NAME, u.MIDDLE_NAME, u.LAST_NAME,
                         sch.CLASS_DAYS, sch.TIME_START, sch.TIME_END, sch.ROOM_ID
                     FROM SCHEDULES sch
                     JOIN SUBJECTS sub ON sch.SUBJECT_CODE = sub.SUBJECT_CODE
@@ -150,7 +149,10 @@ namespace campus_backend.Repositories
                             string profName = "Unassigned";
                             if (reader["FIRST_NAME"] != DBNull.Value && reader["LAST_NAME"] != DBNull.Value)
                             {
-                                profName = $"{reader["FIRST_NAME"]} {reader["LAST_NAME"]}";
+                                string first = reader["FIRST_NAME"].ToString()!;
+                                string middle = reader["MIDDLE_NAME"] != DBNull.Value ? $" {reader["MIDDLE_NAME"].ToString()![0]}." : "";
+                                string last = reader["LAST_NAME"].ToString()!;
+                                profName = $"{first}{middle} {last}"; // e.g., Joel M. Olayon
                             }
 
                             schedule.Add(new SectionScheduleDTO
