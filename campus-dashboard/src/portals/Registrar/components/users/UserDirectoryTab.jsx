@@ -1,159 +1,55 @@
-import { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, Archive, Users } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle2, Archive, Users, Loader2 } from 'lucide-react';
 import StudentEnrollmentView from '../enrollment/StudentEnrollmentView';
 import EditStudentView from '../enrollment/EditStudentView';
 import StudentProfileView from './StudentProfileView';
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
-
 import StudentToolbar from './StudentToolbar';
 import StudentTable from './StudentTable';
 import FaceZoomModal from './FaceZoomModal';
+import { useStudentDirectoryLogic } from './hooks/useStudentDirectoryLogic';
 
 export default function UserDirectoryTab() {
-  const [students, setStudents] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('All');
-  const [sortConfig, setSortConfig] = useState({ key: 'student_ID', direction: 'asc' });
-  
   const [currentView, setCurrentView] = useState('directory'); 
-  const [viewMode, setViewMode] = useState('active'); // 'active' or 'archived'
-  
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [zoomedImage, setZoomedImage] = useState(null);
-  const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '', onConfirm: null });
-  const [toastMessage, setToastMessage] = useState('');
 
-  const fetchStudents = useCallback(() => {
-    let isMounted = true;
-    const currentFetchTime = Date.now(); 
+  // Bring in all the logic from the custom hook!
+  const {
+    isLoading, sortedStudents, 
+    searchQuery, setSearchQuery, 
+    filterStatus, setFilterStatus,
+    sortConfig, handleSort, 
+    viewMode, setViewMode, 
+    modal, setModal, 
+    toastMessage, triggerToast,
+    handleArchiveClick, fetchStudents
+  } = useStudentDirectoryLogic();
 
-    fetch('http://localhost:5106/api/student')
-      .then(res => res.json())
-      .then(data => { 
-        if (isMounted && Array.isArray(data)) {
-          const dataWithCacheBuster = data.map(student => ({
-            ...student,
-            _cacheBuster: currentFetchTime 
-          }));
-          setStudents(dataWithCacheBuster); 
-        }
-      })
-      .catch(err => console.error("Failed to fetch students", err));
-    return () => { isMounted = false; };
-  }, []);
-
-  useEffect(() => { fetchStudents(); }, [fetchStudents]);
-
+  // Navigation Logic
   const handleOpenEnroll = () => setCurrentView('enroll');
-  
   const handleOpenEdit = (student) => {
     setSelectedStudent(student);
     setCurrentView('edit');
   };
-
   const handleOpenProfile = (student) => {
     setSelectedStudent(student);
     setCurrentView('profile');
   };
-
   const handleBackToDirectory = () => {
     setSelectedStudent(null);
     setCurrentView('directory');
   };
 
-  const triggerToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3500); 
-  };
-
-  const filteredStudents = students.filter(student => {
-    const isDropped = student.enrollment_Status === 'Dropped';
-    const matchesViewMode = viewMode === 'active' ? !isDropped : isDropped;
-    
-    const fullName = `${student.first_Name} ${student.middle_Name} ${student.last_Name}`.toLowerCase();
-    const matchesSearch = student.student_ID.includes(searchQuery) || fullName.includes(searchQuery.toLowerCase());
-    const matchesFilter = filterStatus === 'All' || student.enrollment_Status === filterStatus;
-    
-    return matchesViewMode && matchesSearch && matchesFilter;
-  });
-
-  const sortedStudents = [...filteredStudents].sort((a, b) => {
-    if (!sortConfig.key) return 0;
-    const aValue = a[sortConfig.key] || '';
-    const bValue = b[sortConfig.key] || '';
-    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
-    setSortConfig({ key, direction });
-  };
-
-  const handleArchiveClick = (student, actionType) => {
-    const fullName = [student.first_Name, student.middle_Name, student.last_Name].filter(Boolean).join(' ');
-
-    if (actionType === 'drop') {
-      setModal({
-        isOpen: true, type: 'danger', title: 'Drop Student Record',
-        message: `Mark ${fullName} as Dropped? They will be moved to the archive.`,
-        onConfirm: () => executeStatusChange(student, 'Dropped', "Student moved to archive.")
-      });
-    } else if (actionType === 'restore') {
-      setModal({
-        isOpen: true, type: 'info', title: 'Restore Student Record',
-        message: `Restore ${fullName} to Regular status?`,
-        onConfirm: () => executeStatusChange(student, 'Regular', "Student restored successfully.")
-      });
-    } else if (actionType === 'hard_delete') {
-      setModal({
-        isOpen: true, type: 'danger', title: 'PERMANENT DELETION',
-        message: `Are you sure you want to completely erase ${fullName} from the database? This CANNOT be undone.`,
-        onConfirm: () => executeHardDelete(student.student_ID)
-      });
-    }
-  };
-
-  const executeHardDelete = async (id) => {
-    setModal({ ...modal, isOpen: false });
-    try {
-      const res = await fetch(`http://localhost:5106/api/student/${id}`, { method: 'DELETE' });
-      if (res.ok) { fetchStudents(); triggerToast("Student permanently deleted."); } 
-      else alert("Failed to delete.");
-    } catch { alert("Network error."); }
-  };
-
-  const executeStatusChange = async (student, newStatus, successMsg) => {
-    setModal({ ...modal, isOpen: false });
-    
-    const submitData = new FormData();
-    submitData.append('First_Name', student.first_Name);
-    submitData.append('Last_Name', student.last_Name);
-    submitData.append('Enrollment_Status', newStatus); 
-    submitData.append('Middle_Name', student.middle_Name || '');
-    submitData.append('Contact_Number', student.contact_Number || '');
-    submitData.append('Birthday', student.birthday || '');
-    submitData.append('Address', student.address || '');
-
-    try {
-      const res = await fetch(`http://localhost:5106/api/student/${student.student_ID}`, { 
-          method: 'PUT', body: submitData 
-      });
-      if (res.ok) {
-        fetchStudents();
-        triggerToast(successMsg);
-      } else alert("Failed to update student status.");
-    } catch { alert("Network error."); }
-  };
-
-  if (currentView === 'enroll') return <StudentEnrollmentView onBack={handleBackToDirectory} onSuccess={fetchStudents} />;
-  if (currentView === 'edit' && selectedStudent) return <EditStudentView student={selectedStudent} onBack={handleBackToDirectory} onSuccess={fetchStudents} onShowToast={triggerToast} />;
+  // Sub-view rendering
+  if (currentView === 'enroll') return <StudentEnrollmentView onBack={handleBackToDirectory} onSuccess={() => fetchStudents(true)} />;
+  if (currentView === 'edit' && selectedStudent) return <EditStudentView student={selectedStudent} onBack={handleBackToDirectory} onSuccess={() => fetchStudents(true)} onShowToast={triggerToast} />;
   if (currentView === 'profile' && selectedStudent) return <StudentProfileView student={selectedStudent} onBack={handleBackToDirectory} onEdit={handleOpenEdit} />;
 
+  // Main Directory rendering
   return (
     <div className="space-y-6 animate-in fade-in duration-300 relative">
+      
       {toastMessage && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-100 bg-slate-800 text-white px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 fade-in duration-300">
           <CheckCircle2 className="text-emerald-400" size={20} />
@@ -182,8 +78,7 @@ export default function UserDirectoryTab() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* THE FIX: Passed onEnroll and viewMode down to the toolbar! */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
         <StudentToolbar 
             searchQuery={searchQuery} 
             setSearchQuery={setSearchQuery} 
@@ -192,12 +87,20 @@ export default function UserDirectoryTab() {
             onEnroll={handleOpenEnroll}
             viewMode={viewMode}
         />
-        <StudentTable 
-            students={sortedStudents} sortConfig={sortConfig} onSort={handleSort} 
-            onZoom={setZoomedImage} onViewProfile={handleOpenProfile} 
-            onEdit={handleOpenEdit} onDelete={handleArchiveClick} 
-            viewMode={viewMode}
-        />
+        
+        {isLoading ? (
+          <div className="p-16 text-center flex flex-col items-center justify-center text-blue-600 font-bold animate-pulse">
+             <Loader2 size={32} className="mb-4 opacity-50 animate-spin" />
+             Loading student directory...
+          </div>
+        ) : (
+          <StudentTable 
+              students={sortedStudents} sortConfig={sortConfig} onSort={handleSort} 
+              onZoom={setZoomedImage} onViewProfile={handleOpenProfile} 
+              onEdit={handleOpenEdit} onDelete={handleArchiveClick} 
+              viewMode={viewMode}
+          />
+        )}
       </div>
     </div>
   );

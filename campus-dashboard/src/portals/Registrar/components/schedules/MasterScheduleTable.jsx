@@ -14,8 +14,9 @@ export default function MasterScheduleTable({ schedules, onZoom, sortConfig, onS
       <table className="w-full text-left border-collapse min-w-250">
         <thead>
           <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 cursor-pointer select-none">
-            <th className="p-4 w-32 hover:bg-slate-100 transition-colors outline-none" onClick={() => onSort('section_ID')}>
-              <div className="flex items-center gap-1">Section {renderSortIcon('section_ID')}</div>
+            {/* THE FIX: Sort by section_Name instead of section_ID */}
+            <th className="p-4 w-40 hover:bg-slate-100 transition-colors outline-none" onClick={() => onSort('section_Name')}>
+              <div className="flex items-center gap-1">Section {renderSortIcon('section_Name')}</div>
             </th>
             <th className="p-4 w-auto hover:bg-slate-100 transition-colors outline-none" onClick={() => onSort('subject_Title')}>
               <div className="flex items-center gap-1">Subject {renderSortIcon('subject_Title')}</div>
@@ -36,8 +37,9 @@ export default function MasterScheduleTable({ schedules, onZoom, sortConfig, onS
             <tr key={sched.schedule_ID} className="hover:bg-slate-50 transition-colors group">
               
               <td className="p-4">
-                <span className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-black text-sm tracking-tight border border-blue-200">
-                  {sched.section_ID}
+                {/* THE FIX: Changed to render Section Name */}
+                <span className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-black text-sm tracking-tight border border-blue-200 truncate block max-w-40" title={sched.section_Name || sched.section_ID}>
+                  {sched.section_Name || sched.section_ID}
                 </span>
               </td>
 
@@ -94,7 +96,7 @@ export default function MasterScheduleTable({ schedules, onZoom, sortConfig, onS
           {schedules.length === 0 && (
             <tr>
               <td colSpan="5" className="p-12 text-center text-slate-500 font-bold bg-slate-50/50 border-t border-slate-100">
-                No schedules match your current global filters.
+                No schedules match your current timeframe or filters.
               </td>
             </tr>
           )}

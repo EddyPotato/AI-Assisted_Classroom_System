@@ -1,30 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, Users, Archive } from 'lucide-react';
+import { CheckCircle2, Users, Archive, Loader2 } from 'lucide-react';
 import StaffEnrollmentView from './StaffEnrollmentView';
 import EditStaffView from './EditStaffView';
 import StaffProfileView from './StaffProfileView';
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
-
 import StaffToolbar from './StaffToolbar';
 import StaffTable from './StaffTable';
-import FaceZoomModal from '../users/FaceZoomModal'; // Reusing the shared zoom modal
+import FaceZoomModal from '../users/FaceZoomModal'; 
 
 export default function StaffDirectoryTab() {
   const [staffList, setStaffList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true); 
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('All');
   const [sortConfig, setSortConfig] = useState({ key: 'user_ID', direction: 'asc' });
-  
   const [currentView, setCurrentView] = useState('directory'); 
-  const [viewMode, setViewMode] = useState('active'); // 'active' or 'inactive'
-  
+  const [viewMode, setViewMode] = useState('active'); 
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [zoomedImage, setZoomedImage] = useState(null);
-  
   const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '', onConfirm: null });
   const [toastMessage, setToastMessage] = useState('');
 
-  const fetchStaff = useCallback(() => {
+  // 1. ISOLATED MOUNT EFFECT (Fixes the ESLint Warning)
+  useEffect(() => {
     let isMounted = true;
     const currentFetchTime = Date.now(); 
 
@@ -45,11 +44,37 @@ export default function StaffDirectoryTab() {
       .catch(err => {
         console.error("Failed to fetch staff:", err);
         if (isMounted) setStaffList([]);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
       });
+
     return () => { isMounted = false; };
   }, []);
 
-  useEffect(() => { fetchStaff(); }, [fetchStaff]);
+  // 2. IMPERATIVE REFRESH FUNCTION (For manual re-fetching)
+  const fetchStaff = useCallback(async () => {
+    setIsLoading(true);
+    const currentFetchTime = Date.now(); 
+
+    try {
+      const res = await fetch('http://localhost:5106/api/user');
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        const dataWithCacheBuster = data.map(staff => ({
+          ...staff,
+          _cacheBuster: currentFetchTime 
+        }));
+        setStaffList(dataWithCacheBuster); 
+      }
+    } catch (err) {
+      console.error("Failed to fetch staff:", err);
+      setStaffList([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const handleOpenEnroll = () => setCurrentView('enroll');
   const handleOpenEdit = (staff) => { setSelectedStaff(staff); setCurrentView('edit'); };
@@ -64,7 +89,6 @@ export default function StaffDirectoryTab() {
   const filteredStaff = staffList.filter(staff => {
     const isInactive = staff.status === 'Inactive';
     const matchesViewMode = viewMode === 'active' ? !isInactive : isInactive;
-
     const fullName = `${staff.first_Name} ${staff.middle_Name || ''} ${staff.last_Name}`.toLowerCase();
     const matchesSearch = staff.user_ID.toLowerCase().includes(searchQuery.toLowerCase()) || fullName.includes(searchQuery.toLowerCase());
     const matchesRole = filterRole === 'All' || staff.role === filterRole;
@@ -87,10 +111,8 @@ export default function StaffDirectoryTab() {
     setSortConfig({ key, direction });
   };
 
-  // Handles Soft Delete, Restore, and Hard Delete
   const handleActionClick = (staff, actionType) => {
     const fullName = [staff.first_Name, staff.middle_Name, staff.last_Name].filter(Boolean).join(' ');
-
     if (actionType === 'deactivate') {
       setModal({
         isOpen: true, type: 'danger', title: 'Deactivate Staff Account',
@@ -115,7 +137,6 @@ export default function StaffDirectoryTab() {
   const executeStatusChange = async (staff, newStatus, successMsg) => {
     setModal({ ...modal, isOpen: false });
     
-    // We must send all fields back so the C# builder doesn't nullify anything
     const submitData = new FormData();
     submitData.append('First_Name', staff.first_Name);
     submitData.append('Middle_Name', staff.middle_Name || '');
@@ -124,12 +145,12 @@ export default function StaffDirectoryTab() {
     submitData.append('Email', staff.email || '');
     submitData.append('Contact_Number', staff.contact_Number || '');
     submitData.append('Address', staff.address || '');
-    submitData.append('Status', newStatus); // The soft delete/restore toggle
+    submitData.append('Status', newStatus); 
 
     try {
       const res = await fetch(`http://localhost:5106/api/user/${staff.user_ID}`, { 
           method: 'PUT', body: submitData 
-      });
+       });
       if (res.ok) {
         fetchStaff();
         triggerToast(successMsg);
@@ -169,10 +190,9 @@ export default function StaffDirectoryTab() {
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Staff Directory</h2>
           <p className="text-slate-500 mt-1 font-medium">Manage faculty and administrative system accounts.</p>
         </div>
-
         <div className="flex items-center gap-4">
             <div className="flex bg-slate-200/50 p-1 rounded-xl border border-slate-200">
-                <button onClick={() => setViewMode('active')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'active' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                <button onClick={() => setViewMode('active')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                     <Users size={16} /> Active
                 </button>
                 <button onClick={() => setViewMode('inactive')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'inactive' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
@@ -182,21 +202,30 @@ export default function StaffDirectoryTab() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
         <StaffToolbar 
             searchQuery={searchQuery} 
             setSearchQuery={setSearchQuery} 
             filterRole={filterRole} 
             setFilterRole={setFilterRole}
             onEnroll={handleOpenEnroll}
-            viewMode={viewMode} // Pass down to hide filters/add buttons if needed
+            viewMode={viewMode} 
         />
-        <StaffTable 
-            staffList={sortedStaff} sortConfig={sortConfig} onSort={handleSort} 
-            onZoom={setZoomedImage} onViewProfile={handleOpenProfile} 
-            onEdit={handleOpenEdit} onDelete={handleActionClick} 
-            viewMode={viewMode}
-        />
+        
+        {isLoading ? (
+          <div className="p-16 text-center flex flex-col items-center justify-center text-indigo-600 font-bold animate-pulse">
+             <Loader2 size={32} className="mb-4 opacity-50 animate-spin" />
+             Loading staff directory...
+          </div>
+        ) : (
+          <StaffTable 
+              staffList={sortedStaff} sortConfig={sortConfig} onSort={handleSort} 
+              onZoom={setZoomedImage} onViewProfile={handleOpenProfile} 
+              onEdit={handleOpenEdit} onDelete={handleActionClick} 
+              viewMode={viewMode}
+          />
+        )}
+
       </div>
     </div>
   );
