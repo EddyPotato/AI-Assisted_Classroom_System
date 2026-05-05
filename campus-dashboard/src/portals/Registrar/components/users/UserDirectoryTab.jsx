@@ -92,26 +92,37 @@ export default function UserDirectoryTab() {
     setSortConfig({ key, direction });
   };
 
-  const handleArchiveClick = (student) => {
+  const handleArchiveClick = (student, actionType) => {
     const fullName = [student.first_Name, student.middle_Name, student.last_Name].filter(Boolean).join(' ');
 
-    if (viewMode === 'active') {
+    if (actionType === 'drop') {
       setModal({
-        isOpen: true, 
-        type: 'danger', 
-        title: 'Drop Student Record',
-        message: `Are you sure you want to mark ${fullName} as Dropped? They will be moved to the archive.`,
+        isOpen: true, type: 'danger', title: 'Drop Student Record',
+        message: `Mark ${fullName} as Dropped? They will be moved to the archive.`,
         onConfirm: () => executeStatusChange(student, 'Dropped', "Student moved to archive.")
       });
-    } else {
+    } else if (actionType === 'restore') {
       setModal({
-        isOpen: true, 
-        type: 'info', 
-        title: 'Restore Student Record',
+        isOpen: true, type: 'info', title: 'Restore Student Record',
         message: `Restore ${fullName} to Regular status?`,
         onConfirm: () => executeStatusChange(student, 'Regular', "Student restored successfully.")
       });
+    } else if (actionType === 'hard_delete') {
+      setModal({
+        isOpen: true, type: 'danger', title: 'PERMANENT DELETION',
+        message: `Are you sure you want to completely erase ${fullName} from the database? This CANNOT be undone.`,
+        onConfirm: () => executeHardDelete(student.student_ID)
+      });
     }
+  };
+
+  const executeHardDelete = async (id) => {
+    setModal({ ...modal, isOpen: false });
+    try {
+      const res = await fetch(`http://localhost:5106/api/student/${id}`, { method: 'DELETE' });
+      if (res.ok) { fetchStudents(); triggerToast("Student permanently deleted."); } 
+      else alert("Failed to delete.");
+    } catch { alert("Network error."); }
   };
 
   const executeStatusChange = async (student, newStatus, successMsg) => {

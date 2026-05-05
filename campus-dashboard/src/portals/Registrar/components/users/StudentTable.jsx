@@ -74,14 +74,21 @@ export default function StudentTable({ students, sortConfig, onSort, onZoom, onV
                   <Edit2 size={18} />
                 </button>
 
+                {/* Dynamic Actions based on View Mode */}
                 {viewMode === 'archived' ? (
-                   <button onClick={() => onDelete(student)} className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-200" title="Restore Student">
-                     <RotateCcw size={18} />
-                   </button>
+                  <>
+                    <button onClick={() => onDelete(student, 'restore')} className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-200" title="Restore Student">
+                      <RotateCcw size={18} />
+                    </button>
+                    {/* NEW: Hard Delete Button */}
+                    <button onClick={() => onDelete(student, 'hard_delete')} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-lg transition-colors border border-transparent hover:border-rose-300" title="Permanently Delete">
+                      <Trash2 size={18} />
+                    </button>
+                  </>
                 ) : (
-                   <button onClick={() => onDelete(student)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200" title="Drop Student">
-                     <Trash2 size={18} />
-                   </button>
+                  <button onClick={() => onDelete(student, 'drop')} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200" title="Drop Student">
+                    <Trash2 size={18} />
+                  </button>
                 )}
               </div>
             </td>

@@ -1,16 +1,17 @@
-import { useState } from 'react'; // THE FIX: Removed useEffect
-import { Edit2, ArrowLeft, Save, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
+import { Edit2, ArrowLeft, Save, Lightbulb } from 'lucide-react';
 import StaffFormFields from './StaffFormFields';
+import FaceRegistrationCamera from "../enrollment/FaceRegistrationCamera";
 
 export default function EditStaffView({ staff, onBack, onSuccess, onShowToast }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [capturedImageBlob, setCapturedImageBlob] = useState(null);
+  
   const [formData, setFormData] = useState({
-    user_ID: '', first_Name: '', middle_Name: '', last_Name: '', role: 'Faculty', password: ''
+    user_ID: '', first_Name: '', middle_Name: '', last_Name: '', role: 'Faculty', password: '',
+    email: '', contact_Number: '', address: '', status: 'Active'
   });
 
-  // THE FIX: Derived State Pattern. 
-  // This safely syncs the incoming 'staff' prop to the local 'formData' state
-  // without triggering a cascading double-render!
   const [prevStaff, setPrevStaff] = useState(null);
   
   if (staff !== prevStaff) {
@@ -22,22 +23,43 @@ export default function EditStaffView({ staff, onBack, onSuccess, onShowToast })
         middle_Name: staff.middle_Name || '',
         last_Name: staff.last_Name || '',
         role: staff.role || 'Faculty',
-        password: '' // Deliberately blank so we don't send hashes back
+        password: '', 
+        email: staff.email || '',
+        contact_Number: staff.contact_Number || '',
+        address: staff.address || '',
+        status: staff.status || 'Active'
       });
+      setCapturedImageBlob(null);
     }
   }
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  const [cacheBuster] = useState(() => Date.now());
+  const existingImageUrl = staff?.face_Reference_Path 
+    ? `http://localhost:5106/ReferenceFaces/${staff.face_Reference_Path}?t=${cacheBuster}` 
+    : null;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
+    const submitData = new FormData();
+    submitData.append('First_Name', formData.first_Name);
+    submitData.append('Middle_Name', formData.middle_Name);
+    submitData.append('Last_Name', formData.last_Name);
+    submitData.append('Role', formData.role);
+    submitData.append('Email', formData.email);
+    submitData.append('Contact_Number', formData.contact_Number);
+    submitData.append('Address', formData.address);
+    submitData.append('Status', formData.status);
+    
+    if (formData.password) submitData.append('Password', formData.password);
+    if (capturedImageBlob) submitData.append('Photo', capturedImageBlob, 'staff_face.jpg');
+
     try {
       const response = await fetch(`http://localhost:5106/api/user/${formData.user_ID}`, { 
-        method: 'PUT', 
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        method: 'PUT', body: submitData
       });
         
       if (response.ok) {
@@ -67,7 +89,7 @@ export default function EditStaffView({ staff, onBack, onSuccess, onShowToast })
             <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
               <Edit2 className="text-amber-500" /> Edit Staff Record
             </h2>
-            <p className="text-sm font-bold text-slate-500">Update account details or reset password.</p>
+            <p className="text-sm font-bold text-slate-500">Update account details or reset biometric data.</p>
           </div>
         </div>
         <span className="bg-amber-100 text-amber-800 px-4 py-1.5 rounded-xl font-black text-xs tracking-widest border border-amber-200">EDIT MODE</span>
@@ -77,26 +99,27 @@ export default function EditStaffView({ staff, onBack, onSuccess, onShowToast })
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 lg:gap-12">
             
-            <div className="xl:col-span-6 flex flex-col gap-6">
-              <h3 className="text-lg font-black text-slate-800 border-b border-slate-100 pb-2">Account Details</h3>
-              <StaffFormFields formData={formData} handleChange={handleChange} isEditing={true} />
+            <div className="xl:col-span-5 flex flex-col gap-6">
+              <div>
+                <h3 className="text-lg font-black text-slate-800 border-b border-slate-100 pb-2 mb-4">Account Details</h3>
+                <StaffFormFields formData={formData} handleChange={handleChange} isEditing={true} />
+              </div>
+              
+              <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-5 mt-auto">
+                <p className="text-sm text-amber-800 font-medium">
+                  <strong>Security Note:</strong> Leave the System Password field blank unless you wish to overwrite their current password.
+                </p>
+              </div>
             </div>
 
-            <div className="xl:col-span-6 xl:border-l xl:border-slate-100 xl:pl-10">
-               <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-6 h-full flex flex-col justify-center">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 bg-amber-100 text-amber-600 rounded-xl"><ShieldCheck size={24} /></div>
-                  <h3 className="text-xl font-black text-amber-900">Security Notice</h3>
-                </div>
-                
-                <div className="space-y-4 text-sm text-amber-800 font-medium">
-                  <p>You are editing an active system account.</p>
-                  <ul className="list-disc pl-5 space-y-2">
-                    <li>Changing the <strong>Role</strong> will immediately alter the menus and data this user can access upon their next login.</li>
-                    <li>If you leave the <strong>System Password</strong> field blank, their existing password will remain unchanged.</li>
-                  </ul>
-                </div>
-              </div>
+            <div className="xl:col-span-7 xl:border-l xl:border-slate-100 xl:pl-10">
+               <h3 className="text-lg font-black text-slate-800 border-b border-slate-100 pb-2">Update Biometrics (Optional)</h3>
+               <FaceRegistrationCamera 
+                 isOpen={true} 
+                 onCapture={(blob) => setCapturedImageBlob(blob)} 
+                 onClear={() => setCapturedImageBlob(null)} 
+                 existingImageUrl={existingImageUrl} 
+               />
             </div>
           </div>
 

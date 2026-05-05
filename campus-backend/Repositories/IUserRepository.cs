@@ -9,5 +9,6 @@ namespace campus_backend.Repositories
         Task CreateUserAsync(User user);
         Task UpdateUserAsync(User user);
         Task DeleteUserAsync(string id);
+        Task UpdatePasswordAsync(string id, string newPassword);
     }
 }

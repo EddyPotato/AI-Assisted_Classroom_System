@@ -31,13 +31,29 @@ namespace campus_backend.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateUser([FromBody] User user)
+        // THE FIX: Changed from [FromBody] to [FromForm] to support Image Uploads
+        public async Task<IActionResult> CreateUser([FromForm] User user, IFormFile? Photo)
         {
             if (string.IsNullOrEmpty(user.User_ID))
             {
-                // Simple auto-generation logic (e.g., USR-1234)
                 Random rnd = new Random();
                 user.User_ID = "USR-" + rnd.Next(1000, 9999).ToString(); 
+            }
+
+            // Image Save Logic
+            if (Photo != null && Photo.Length > 0)
+            {
+                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "ReferenceFaces");
+                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                string uniqueFileName = $"{user.Last_Name.ToLower()}_{user.User_ID}_staff_face.jpg";
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await Photo.CopyToAsync(fileStream);
+                }
+                user.Face_Reference_Path = uniqueFileName;
             }
             
             await _userRepository.CreateUserAsync(user);
@@ -45,12 +61,30 @@ namespace campus_backend.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateUser(string id, [FromBody] User user)
+        // THE FIX: Changed from [FromBody] to [FromForm] to support Image Updating and Soft Deletes
+        public async Task<IActionResult> UpdateUser(string id, [FromForm] User user, IFormFile? Photo)
         {
-            if (id != user.User_ID) return BadRequest("ID mismatch");
-            
+            // Sync the ID from the URL to the model just to be safe
+            user.User_ID = id;
+
             var existingUser = await _userRepository.GetUserByIdAsync(id);
-            if (existingUser == null) return NotFound();
+            if (existingUser == null) return NotFound("User not found.");
+
+            // Image Update Logic
+            if (Photo != null && Photo.Length > 0)
+            {
+                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "ReferenceFaces");
+                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                string uniqueFileName = $"{user.Last_Name.ToLower()}_{user.User_ID}_staff_face.jpg";
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await Photo.CopyToAsync(fileStream);
+                }
+                user.Face_Reference_Path = uniqueFileName;
+            }
 
             await _userRepository.UpdateUserAsync(user);
             return Ok(new { message = "User updated successfully" });
@@ -62,6 +96,7 @@ namespace campus_backend.Controllers
             var existingUser = await _userRepository.GetUserByIdAsync(id);
             if (existingUser == null) return NotFound();
 
+            // Note: This triggers the HARD DELETE in the repository
             await _userRepository.DeleteUserAsync(id);
             return Ok(new { message = "User deleted successfully" });
         }
