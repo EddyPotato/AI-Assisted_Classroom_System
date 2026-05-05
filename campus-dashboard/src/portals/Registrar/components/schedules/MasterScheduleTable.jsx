@@ -1,46 +1,72 @@
-import { Edit2, Trash2 } from 'lucide-react';
+import { Clock, MapPin, UserCircle, LibrarySquare } from 'lucide-react';
 
-export default function MasterScheduleTable({ schedules, onEdit, onDelete }) {
+export default function MasterScheduleTable({ schedules }) {
   return (
     <div className="overflow-x-auto w-full">
-      <table className="w-full text-left border-collapse min-w-200">
+      <table className="w-full text-left border-collapse min-w-225">
         <thead>
-          <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200">
-            <th className="p-4 w-32">Sched ID</th>
-            <th className="p-4">Section</th>
-            <th className="p-4">Subject</th>
-            <th className="p-4">Professor</th>
-            <th className="p-4">Room</th>
-            <th className="p-4">Schedule</th>
-            <th className="p-4 w-28 text-center">Action</th>
+          <tr className="bg-slate-50 text-xs uppercase text-slate-400 font-black border-b-2 border-slate-200">
+            <th className="p-4 w-32">Section</th>
+            <th className="p-4 w-48">Subject</th>
+            <th className="p-4">Assigned Faculty</th>
+            <th className="p-4 w-40">Room</th>
+            <th className="p-4 w-56">Timetable</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {schedules.map((sched) => (
             <tr key={sched.schedule_ID} className="hover:bg-slate-50 transition-colors group">
-              <td className="p-4 font-bold text-blue-600 font-mono text-sm">{sched.schedule_ID}</td>
-              <td className="p-4 font-black text-slate-800">{sched.section_ID}</td>
-              <td className="p-4 font-bold text-slate-700">{sched.subject_Code}</td>
-              <td className="p-4 font-medium text-slate-600">{sched.professor_ID || <span className="italic text-slate-400">Unassigned</span>}</td>
-              <td className="p-4 font-bold text-emerald-600">{sched.room_ID || '-'}</td>
+              
+              {/* Section ID */}
               <td className="p-4">
-                 <div className="text-sm font-bold text-slate-700">{sched.class_Days || 'TBA'}</div>
-                 <div className="text-xs font-medium text-slate-500">{sched.time_Start} - {sched.time_End}</div>
+                <span className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-black text-sm tracking-tight border border-blue-200">
+                  {sched.section_ID}
+                </span>
               </td>
-              <td className="p-4 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <button onClick={() => onEdit(sched)} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" title="Edit Schedule">
-                    <Edit2 size={18} />
-                  </button>
-                  <button onClick={() => onDelete(sched.schedule_ID)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200" title="Delete Schedule">
-                    <Trash2 size={18} />
-                  </button>
+
+              {/* Subject Info */}
+              <td className="p-4">
+                <div className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><LibrarySquare size={14} className="text-indigo-400"/> {sched.subject_Code}</div>
+                <div className="text-xs font-bold text-slate-500 truncate max-w-50" title={sched.subject_Title}>
+                  {sched.subject_Title || 'Subject Title'}
                 </div>
+              </td>
+
+              {/* Professor */}
+              <td className="p-4">
+                <div className="flex items-center gap-2">
+                  <UserCircle size={18} className={sched.professor_Name === 'Unassigned' ? 'text-rose-400' : 'text-slate-400'} />
+                  <span className={`font-bold text-sm ${sched.professor_Name === 'Unassigned' ? 'text-rose-600 italic' : 'text-slate-700'}`}>
+                    {sched.professor_Name || sched.professor_ID || 'Unassigned'}
+                  </span>
+                </div>
+              </td>
+
+              {/* Room */}
+              <td className="p-4">
+                <div className="flex items-center gap-1.5 font-bold text-sm text-emerald-600">
+                  <MapPin size={16} /> {sched.room_ID || 'TBA'}
+                </div>
+              </td>
+
+              {/* Timetable */}
+              <td className="p-4">
+                 <div className="flex flex-col gap-0.5">
+                    <div className="text-sm font-bold text-slate-700">{sched.class_Days || 'TBA'}</div>
+                    <div className="flex items-center gap-1 text-xs font-bold text-amber-600">
+                      <Clock size={12} /> {sched.time_Start} - {sched.time_End}
+                    </div>
+                 </div>
               </td>
             </tr>
           ))}
+          
           {schedules.length === 0 && (
-            <tr><td colSpan="7" className="p-8 text-center text-slate-500 font-bold bg-slate-50/50">No schedules found.</td></tr>
+            <tr>
+              <td colSpan="5" className="p-12 text-center text-slate-500 font-bold bg-slate-50/50 border-t border-slate-100">
+                No schedules match your current global filters.
+              </td>
+            </tr>
           )}
         </tbody>
       </table>
