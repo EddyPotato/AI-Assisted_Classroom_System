@@ -11,21 +11,24 @@ namespace campus_backend.Repositories
         public ScheduleRepository(IConfiguration configuration)
         {
             _connectionString = configuration.GetConnectionString("OracleConnection") 
-                ?? throw new InvalidOperationException("Oracle connection string is missing.");
+                 ?? throw new InvalidOperationException("Oracle connection string is missing.");
         }
 
-        // --- GET ALL SCHEDULES ---
         public async Task<IEnumerable<Schedule>> GetAllSchedulesAsync()
         {
             var schedules = new List<Schedule>();
+
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
+                // THE FIX: Full Middle Name logic + fetching u.FACE_REFERENCE_PATH
                 string sql = @"
-                    SELECT s.Schedule_ID, s.Subject_Code, sub.Title AS Subject_Title, 
-                           s.Section_ID, sec.Section_Name, 
-                           s.Professor_ID, u.First_Name || ' ' || u.Last_Name AS Professor_Name, 
-                           s.Room_ID, r.Building, 
-                           s.Time_Start, s.Time_End, s.Class_Days
+                    SELECT s.Schedule_ID, s.Subject_Code, sub.Title AS Subject_Title,
+                            s.Section_ID, sec.Section_Name,
+                            s.Professor_ID, 
+                            u.First_Name || CASE WHEN u.MIDDLE_NAME IS NOT NULL THEN ' ' || u.MIDDLE_NAME ELSE '' END || ' ' || u.Last_Name AS Professor_Name,
+                            u.FACE_REFERENCE_PATH AS Professor_Face_Reference_Path,
+                            s.Room_ID, r.Building,
+                            s.Time_Start, s.Time_End, s.Class_Days
                     FROM Schedules s
                     LEFT JOIN Subjects sub ON s.Subject_Code = sub.Subject_Code
                     LEFT JOIN Sections sec ON s.Section_ID = sec.Section_ID
@@ -48,6 +51,7 @@ namespace campus_backend.Repositories
                                 Section_Name = reader["Section_Name"].ToString(),
                                 Professor_ID = reader["Professor_ID"].ToString(),
                                 Professor_Name = reader["Professor_Name"].ToString(),
+                                Professor_Face_Reference_Path = reader["Professor_Face_Reference_Path"]?.ToString(),
                                 Room_ID = reader["Room_ID"].ToString(),
                                 Building = reader["Building"].ToString(),
                                 Time_Start = reader["Time_Start"].ToString(),

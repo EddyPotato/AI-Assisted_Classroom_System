@@ -213,15 +213,17 @@ export default function SectionRoster({ section, onBack }) {
           )}
 
           {activeTab === 'subjects' && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-200">
+            <div className="overflow-x-auto w-full">
+              {/* Added min-w-[1000px] to prevent squishing */}
+              <table className="w-full text-left border-collapse min-w-250">
                 <thead>
                   <tr className="bg-white text-xs uppercase text-slate-400 font-black border-b-2 border-slate-100">
                     <th className="p-4 w-28">Code</th>
-                    <th className="p-4 w-56">Subject Title</th>
-                    <th className="p-4 w-16 text-center">Units</th>
-                    <th className="p-4 min-w-[200px]">Assigned Professor</th>
-                    <th className="p-4 w-56">Schedule & Room</th>
+                    {/* Subject Title takes remaining flexible width */}
+                    <th className="p-4 w-auto">Subject Title</th>
+                    <th className="p-4 w-20 text-center">Units</th>
+                    <th className="p-4 w-72">Assigned Professor</th>
+                    <th className="p-4 w-64">Schedule & Room</th>
                     <th className="p-4 w-28 text-center">Action</th>
                   </tr>
                 </thead>

@@ -150,7 +150,8 @@ namespace campus_backend.Repositories
                             if (reader["FIRST_NAME"] != DBNull.Value && reader["LAST_NAME"] != DBNull.Value)
                             {
                                 string first = reader["FIRST_NAME"].ToString()!;
-                                string middle = reader["MIDDLE_NAME"] != DBNull.Value ? $" {reader["MIDDLE_NAME"].ToString()![0]}." : "";
+                                // THE FIX: Changed from reader["MIDDLE_NAME"].ToString()![0] + "." to the full string!
+                                string middle = reader["MIDDLE_NAME"] != DBNull.Value ? $" {reader["MIDDLE_NAME"].ToString()!}" : "";
                                 string last = reader["LAST_NAME"].ToString()!;
                                 profName = $"{first}{middle} {last}";
                             }
