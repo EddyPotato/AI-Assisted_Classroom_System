@@ -11,7 +11,7 @@ export default function MasterScheduleTable({ schedules, onZoom, sortConfig, onS
 
   return (
     <div className="overflow-x-auto w-full">
-      <table className="w-full text-left border-collapse min-w-[1000px]">
+      <table className="w-full text-left border-collapse min-w-250">
         <thead>
           <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 cursor-pointer select-none">
             <th className="p-4 w-32 hover:bg-slate-100 transition-colors outline-none" onClick={() => onSort('section_ID')}>

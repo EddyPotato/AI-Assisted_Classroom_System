@@ -186,7 +186,7 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
                
                <div className="w-36">
                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Type</label>
-                 <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200 shadow-inner h-[50px] items-center">
+                 <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200 shadow-inner h-12.5 items-center">
                     <button type="button" onClick={() => setFormData({...formData, subject_Type: 'Lec'})} className={`flex-1 h-full text-sm font-black rounded-lg transition-all ${formData.subject_Type === 'Lec' ? 'bg-white text-blue-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>LEC</button>
                     <button type="button" onClick={() => setFormData({...formData, subject_Type: 'Lab'})} className={`flex-1 h-full text-sm font-black rounded-lg transition-all ${formData.subject_Type === 'Lab' ? 'bg-white text-amber-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>LAB</button>
                  </div>
@@ -200,7 +200,7 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
               {formData.professor_ID && !isProfDropdownOpen && selectedProfObj ? (
                  <div 
                     onClick={() => { setIsProfDropdownOpen(true); setProfSearch(''); }}
-                    className="w-full flex items-center gap-3 px-4 py-2 h-[50px] border border-slate-300 rounded-xl bg-white shadow-sm cursor-text transition-all hover:border-blue-400 group"
+                    className="w-full flex items-center gap-3 px-4 py-2 h-12.5 border border-slate-300 rounded-xl bg-white shadow-sm cursor-text transition-all hover:border-blue-400 group"
                  >
                     {selectedProfObj?.face_Reference_Path && !selectedProfObj.face_Reference_Path.includes("C:") ? (
                        <img src={`http://localhost:5106/ReferenceFaces/${selectedProfObj.face_Reference_Path}?t=${cacheBuster}`} className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-sm" alt="avatar" />
@@ -227,7 +227,7 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
                        onFocus={() => setIsProfDropdownOpen(true)} // THE FIX: Show dropdown on focus
                        onBlur={() => setTimeout(() => setIsProfDropdownOpen(false), 200)}
                        placeholder="Type to search professors..." 
-                       className="w-full pl-9 pr-4 py-3 h-[50px] border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm transition-all" 
+                       className="w-full pl-9 pr-4 py-3 h-12.5 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm transition-all" 
                     />
                  </div>
               )}
@@ -260,7 +260,7 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
               {formData.room_ID && !isRoomDropdownOpen && selectedRoomObj ? (
                  <div 
                     onClick={() => { setIsRoomDropdownOpen(true); setRoomSearch(''); }}
-                    className="w-full flex items-center gap-3 px-4 py-2 h-[50px] border border-slate-300 rounded-xl bg-white shadow-sm cursor-text transition-all hover:border-emerald-400 group"
+                    className="w-full flex items-center gap-3 px-4 py-2 h-12.5 border border-slate-300 rounded-xl bg-white shadow-sm cursor-text transition-all hover:border-emerald-400 group"
                  >
                     <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 border border-slate-200 shadow-sm shrink-0"><Building2 size={16}/></div>
                     <div className="flex-1 min-w-0">
@@ -282,7 +282,7 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
                        onFocus={() => setIsRoomDropdownOpen(true)} // THE FIX: Show dropdown on focus
                        onBlur={() => setTimeout(() => setIsRoomDropdownOpen(false), 200)}
                        placeholder="Type to search rooms..." 
-                       className="w-full pl-9 pr-4 py-3 h-[50px] border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-slate-700 shadow-sm transition-all" 
+                       className="w-full pl-9 pr-4 py-3 h-12.5 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-slate-700 shadow-sm transition-all" 
                     />
                  </div>
               )}
@@ -334,7 +334,7 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
                     type="time" 
                     value={timeStart24} 
                     onChange={(e) => setTimeStart24(e.target.value)} 
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm cursor-text h-[50px]" 
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm cursor-text h-12.5" 
                  />
                </div>
                <div className="flex-1">
@@ -343,7 +343,7 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
                     type="time" 
                     value={timeEnd24} 
                     onChange={(e) => setTimeEnd24(e.target.value)} 
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm cursor-text h-[50px]" 
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm cursor-text h-12.5" 
                  />
                </div>
             </div>

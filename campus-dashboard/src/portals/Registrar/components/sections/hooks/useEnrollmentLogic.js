@@ -3,7 +3,9 @@ import { useState, useCallback, useEffect } from 'react';
 export function useEnrollmentLogic(sectionId) {
   const [enrolledStudents, setEnrolledStudents] = useState([]);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, student: null });
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  // THE FIX: Correctly declared state for the new View
+  const [showAddStudentsView, setShowAddStudentsView] = useState(false);
 
   const fetchRoster = useCallback(() => {
     fetch(`http://localhost:5106/api/sections/${sectionId}/students`)
@@ -44,8 +46,9 @@ export function useEnrollmentLogic(sectionId) {
     enrolledStudents,
     confirmModal,
     setConfirmModal,
-    isAddModalOpen,
-    setIsAddModalOpen,
+    // THE FIX: Exporting the correct state names
+    showAddStudentsView,
+    setShowAddStudentsView,
     handleAddStudents,
     executeRemoveStudent
   };

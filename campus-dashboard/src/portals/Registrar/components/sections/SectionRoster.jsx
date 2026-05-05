@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { ArrowLeft, Search, UserPlus, BookOpen, Users, CalendarPlus } from 'lucide-react';
+
 import { useEnrollmentLogic } from './hooks/useEnrollmentLogic';
 import { useScheduleLogic } from './hooks/useScheduleLogic';
-import AddStudentsModal from './AddStudentsModal';
+
+// THE FIX: Import the View instead of the Modal
+import AddStudentsView from './AddStudentsView'; 
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
 import ScheduleForm from '../schedules/ScheduleForm';
 import FaceZoomModal from '../users/FaceZoomModal';
@@ -15,17 +18,18 @@ export default function SectionRoster({ section, onBack }) {
   const [zoomedImage, setZoomedImage] = useState(null);
   const [cacheBuster] = useState(() => Date.now());
 
-  // Enrollment logic
+  // Using your awesome custom hooks
   const enrollment = useEnrollmentLogic(section.section_ID);
-
-  // Schedule logic
   const schedule = useScheduleLogic(section.section_ID);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSearchQuery('');
+    // Safely close forms when switching tabs
     if (tab === 'students') {
       schedule.setShowScheduleForm(false);
+    } else if (tab === 'subjects') {
+      enrollment.setShowAddStudentsView(false);
     }
   };
 
@@ -36,27 +40,22 @@ export default function SectionRoster({ section, onBack }) {
       
       <FaceZoomModal zoomedImage={zoomedImage} onClose={() => setZoomedImage(null)} />
 
-      <AddStudentsModal 
-        isOpen={enrollment.isAddModalOpen} 
-        onClose={() => enrollment.setIsAddModalOpen(false)} 
-        onAdd={enrollment.handleAddStudents} 
-        currentEnrollees={enrollment.enrolledStudents} 
+      {/* Modals for deletions/removals */}
+      <ConfirmModal
+        isOpen={enrollment.confirmModal.isOpen}
+        type="danger"
+        title="Remove Student"
+        message={`Remove ${enrollment.confirmModal.student?.first_Name} from this section?`}
+        onConfirm={enrollment.executeRemoveStudent}
+        onCancel={() => enrollment.setConfirmModal({ isOpen: false, student: null })}
       />
-      <ConfirmModal 
-        isOpen={enrollment.confirmModal.isOpen} 
-        type="danger" 
-        title="Remove Student" 
-        message={`Remove ${enrollment.confirmModal.student?.first_Name} from this section?`} 
-        onConfirm={enrollment.executeRemoveStudent} 
-        onCancel={() => enrollment.setConfirmModal({ isOpen: false, student: null })} 
-      />
-      <ConfirmModal 
-        isOpen={schedule.confirmSchedModal.isOpen} 
-        type="danger" 
-        title="Remove Subject" 
-        message="Remove this subject and schedule from the section?" 
-        onConfirm={schedule.executeDeleteSchedule} 
-        onCancel={() => schedule.setConfirmSchedModal({ isOpen: false, scheduleId: null })} 
+      <ConfirmModal
+        isOpen={schedule.confirmSchedModal.isOpen}
+        type="danger"
+        title="Remove Subject"
+        message="Remove this subject and schedule from the section?"
+        onConfirm={schedule.executeDeleteSchedule}
+        onCancel={() => schedule.setConfirmSchedModal({ isOpen: false, scheduleId: null })}
       />
 
       <div className="flex items-center justify-between mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
@@ -72,22 +71,22 @@ export default function SectionRoster({ section, onBack }) {
       </div>
 
       <div className="flex gap-2 mb-6 border-b border-slate-200 pb-px">
-        <button 
+        <button
           onClick={() => handleTabChange('students')}
           className={`flex items-center gap-2 px-6 py-3 font-bold text-sm rounded-t-xl transition-all border-b-2 ${
-            activeTab === 'students' 
-              ? 'bg-blue-50/50 text-blue-700 border-blue-600' 
+            activeTab === 'students'
+              ? 'bg-blue-50/50 text-blue-700 border-blue-600'
               : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-transparent'
           }`}
         >
           <Users size={18} /> Student List <span className="ml-1 bg-white border border-slate-200 text-xs px-2 py-0.5 rounded-full text-slate-600">{enrollment.enrolledStudents.length}</span>
         </button>
-        
-        <button 
+
+        <button
           onClick={() => handleTabChange('subjects')}
           className={`flex items-center gap-2 px-6 py-3 font-bold text-sm rounded-t-xl transition-all border-b-2 ${
-            activeTab === 'subjects' 
-              ? 'bg-indigo-50/50 text-indigo-700 border-indigo-600' 
+            activeTab === 'subjects'
+              ? 'bg-indigo-50/50 text-indigo-700 border-indigo-600'
               : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-transparent'
           }`}
         >
@@ -95,30 +94,42 @@ export default function SectionRoster({ section, onBack }) {
         </button>
       </div>
 
-      {activeTab === 'subjects' && schedule.showScheduleForm ? (
-         <ScheduleForm 
-            schedule={schedule.editingSchedule} 
-            sectionId={section.section_ID} 
-            onBack={() => { schedule.setShowScheduleForm(false); schedule.setEditingSchedule(null); }} 
-            onSuccess={() => { schedule.setShowScheduleForm(false); schedule.setEditingSchedule(null); schedule.fetchSchedule(); }}
-         />
+      {/* --- THE ROUTING LOGIC --- */}
+      {activeTab === 'students' && enrollment.showAddStudentsView ? (
+        <AddStudentsView
+          section={section}
+          currentEnrollees={enrollment.enrolledStudents}
+          onBack={() => enrollment.setShowAddStudentsView(false)}
+          onAdd={(newStudents) => {
+            enrollment.handleAddStudents(newStudents);
+            enrollment.setShowAddStudentsView(false); // Auto-close after adding!
+          }}
+        />
+      ) : activeTab === 'subjects' && schedule.showScheduleForm ? (
+        <ScheduleForm
+          schedule={schedule.editingSchedule}
+          sectionId={section.section_ID}
+          onBack={() => { schedule.setShowScheduleForm(false); schedule.setEditingSchedule(null); }}
+          onSuccess={() => { schedule.setShowScheduleForm(false); schedule.setEditingSchedule(null); schedule.fetchSchedule(); }}
+        />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in">
-          
+
           <div className="p-5 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input 
-                type="text" 
-                placeholder={`Search ${activeTab === 'students' ? 'students' : 'schedules'}...`} 
-                value={searchQuery} 
-                onChange={(e) => setSearchQuery(e.target.value)} 
+              <input
+                type="text"
+                placeholder={`Search ${activeTab === 'students' ? 'students' : 'schedules'}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
               />
             </div>
-            
+
             {activeTab === 'students' ? (
-              <button onClick={() => enrollment.setIsAddModalOpen(true)} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap">
+              // THE FIX: Triggering the new view state from the hook
+              <button onClick={() => enrollment.setShowAddStudentsView(true)} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap">
                 <UserPlus size={18} /> Add Students
               </button>
             ) : (
@@ -128,8 +139,9 @@ export default function SectionRoster({ section, onBack }) {
             )}
           </div>
 
+          {/* Render the decoupled tabs */}
           {activeTab === 'students' && (
-            <StudentListTab 
+            <StudentListTab
               enrolledStudents={enrollment.enrolledStudents}
               searchQuery={searchQuery}
               onSetZoomedImage={setZoomedImage}
