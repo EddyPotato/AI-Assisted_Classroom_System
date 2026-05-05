@@ -52,7 +52,7 @@ namespace campus_backend.Repositories
         {
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
-                string sql = "SELECT USER_ID, FIRST_NAME, MIDDLE_NAME, LAST_NAME, ROLE, EMAIL, CONTACT_NUMBER, ADDRESS, STATUS, FACE_REFERENCE_PATH FROM USERS WHERE USER_ID = :id";
+                string sql = "SELECT USER_ID, FIRST_NAME, MIDDLE_NAME, LAST_NAME, PASSWORD, ROLE, EMAIL, CONTACT_NUMBER, ADDRESS, STATUS, FACE_REFERENCE_PATH FROM USERS WHERE USER_ID = :id";
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     cmd.Parameters.Add(new OracleParameter("id", id));
@@ -67,6 +67,7 @@ namespace campus_backend.Repositories
                                 First_Name = reader["FIRST_NAME"]?.ToString() ?? "",
                                 Middle_Name = reader["MIDDLE_NAME"]?.ToString(),
                                 Last_Name = reader["LAST_NAME"]?.ToString() ?? "",
+                                Password = reader["PASSWORD"]?.ToString(),
                                 Role = reader["ROLE"]?.ToString() ?? "",
                                 Email = reader["EMAIL"]?.ToString(),
                                 Contact_Number = reader["CONTACT_NUMBER"]?.ToString(),
