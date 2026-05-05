@@ -155,7 +155,7 @@ export default function StaffDirectoryTab() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300 relative">
       {toastMessage && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 fade-in duration-300">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-100 bg-slate-800 text-white px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 fade-in duration-300">
           <CheckCircle2 className="text-emerald-400" size={20} />
           <span className="font-bold text-sm">{toastMessage}</span>
         </div>

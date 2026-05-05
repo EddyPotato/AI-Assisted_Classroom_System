@@ -1,13 +1,13 @@
-import { Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 
 export default function StaffFormFields({ formData, handleChange, isEditing }) {
   const [showPassword, setShowPassword] = useState(false);
 
-  // THE FIX: Auto-formats the phone number to 4-3-4 (e.g., 0912 345 6789)
+  // Auto-formats the phone number to 4-3-4 (e.g., 0912 345 6789)
   const handlePhoneChange = (e) => {
-    let val = e.target.value.replace(/\D/g, ''); // Strip all non-digits
-    if (val.length > 11) val = val.substring(0, 11); // Max 11 digits
+    let val = e.target.value.replace(/\D/g, ''); 
+    if (val.length > 11) val = val.substring(0, 11); 
 
     let formatted = val;
     if (val.length > 4 && val.length <= 7) {
@@ -16,7 +16,6 @@ export default function StaffFormFields({ formData, handleChange, isEditing }) {
       formatted = `${val.slice(0, 4)} ${val.slice(4, 7)} ${val.slice(7)}`;
     }
 
-    // Send the formatted string back to the parent's handleChange
     handleChange({ target: { name: 'contact_Number', value: formatted } });
   };
 
@@ -43,23 +42,9 @@ export default function StaffFormFields({ formData, handleChange, isEditing }) {
           <option value="Faculty">Faculty</option>
           <option value="Guard">Guard</option>
           <option value="Registrar">Registrar</option>
-          {/* THE FIX: Unified Admin/Principal into just Principal */}
-          <option value="Principal">Principal</option>
+          {/* Principal has been removed from this view for security */}
         </select>
       </div>
-
-      {/* THE FIX: Dynamic Security Warning for Top-Level Roles */}
-      {formData.role === 'Principal' && (
-        <div className="col-span-2 bg-rose-50 border border-rose-200 rounded-lg p-3 flex items-start gap-3 animate-in fade-in zoom-in-95 duration-200">
-          <AlertTriangle className="text-rose-500 shrink-0 mt-0.5" size={18} />
-          <div>
-            <p className="text-sm font-bold text-rose-800">High-Level Access Warning</p>
-            <p className="text-xs font-medium text-rose-600 mt-0.5">
-              The Principal role has unrestricted access to the entire system. In production, only an existing Principal should be allowed to create or modify this role.
-            </p>
-          </div>
-        </div>
-      )}
 
       <div className="col-span-2 sm:col-span-1">
         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">First Name <span className="text-rose-500 ml-0.5">*</span></label>

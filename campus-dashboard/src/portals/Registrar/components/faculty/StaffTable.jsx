@@ -8,7 +8,7 @@ export default function StaffTable({ staffList, sortConfig, onSort, onZoom, onVi
 
   return (
     <div className="overflow-x-auto w-full">
-        <table className="w-full text-left border-collapse min-w-[800px]">
+        <table className="w-full text-left border-collapse min-w-200">
         <thead>
             <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 cursor-pointer select-none">
             <th className="p-4 w-32 hover:bg-slate-100 transition-colors outline-none" onClick={() => onSort('user_ID')}><div className="flex items-center gap-1">User ID {renderSortIcon('user_ID')}</div></th>
