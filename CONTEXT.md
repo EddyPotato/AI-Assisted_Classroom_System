@@ -183,6 +183,12 @@ Located at: `src/portals/Registrar/components/sections/SectionRoster.jsx`
    - Falls back to UserCircle icon if no photo
    - Cache buster timestamp prevents stale image loads
 
+### Component Status & Observations:
+- **`SectionRoster.jsx`** (320 lines): Consolidates Student List and Schedules tabs
+  - Current structure: State management, data fetching, filtering, sorting, modals, and two table renderings in single file
+  - **Candidate for future refactoring:** Could be decomposed into smaller functional components without changing behavior
+  - Main responsibilities: Student enrollment management, subject/schedule assignment, face photo display, sorting/filtering
+
 ---
 
 ## 📁 FILE STRUCTURE SUMMARY
@@ -320,14 +326,24 @@ USERS (1) ──────────────── (*) ENROLLMENTS
 
 ## 🚀 NEXT STEPS (When Continuing)
 
-1. **Implement role-based access control (RBAC)** - Currently basic role checking
-2. **Add face verification workflow** - Currently only storage, not matching
-3. **Complete Guard & Principal portals** - Stubs exist, need UI/logic
-4. **Add batch import** - CSV upload for students/staff/schedules
-5. **Implement attendance reporting** - Based on EVENT_LOGS data
-6. **Add notification system** - Via SignalR to push alerts
-7. **Optimize image storage** - Consider cloud storage (Azure Blob, AWS S3)
-8. **Add audit logging** - Track all data modifications
+1. **Refactor `SectionRoster.jsx` (320 lines)**
+   - **Why:** Component currently handles multiple concerns in one file
+   - **How:** Decompose into functional subcomponents:
+     - `StudentListTab.jsx` - Student enrollment table & management
+     - `SchedulesTab.jsx` - Subject/schedule table & assignment
+     - `useEnrollmentLogic.js` - Custom hook for student add/remove/fetch logic
+     - `useScheduleLogic.js` - Custom hook for schedule fetch/edit/delete/sort logic
+     - Keep parent component lightweight for tab switching & modal coordination
+   - **Benefit:** Improved code maintainability, easier to test individual features, reduced cognitive load per file
+
+2. **Implement role-based access control (RBAC)** - Currently basic role checking
+3. **Add face verification workflow** - Currently only storage, not matching
+4. **Complete Guard & Principal portals** - Stubs exist, need UI/logic
+5. **Add batch import** - CSV upload for students/staff/schedules
+6. **Implement attendance reporting** - Based on EVENT_LOGS data
+7. **Add notification system** - Via SignalR to push alerts
+8. **Optimize image storage** - Consider cloud storage (Azure Blob, AWS S3)
+9. **Add audit logging** - Track all data modifications
 
 ---
 

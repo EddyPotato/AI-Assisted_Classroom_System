@@ -1,8 +1,26 @@
 # AI-Assisted Smart Campus & Classroom System
 
-An integrated IoT and web-based platform for university attendance, behavior monitoring, and registrar/HR management. This system utilizes a React/Vite frontend, a C# ASP.NET Core backend, an Oracle Database, and a Python-based edge node (Raspberry Pi) for facial recognition and barcode scanning.
-
 ---
+
+## 📊 Project Status (May 5, 2026)
+
+**Current Phase:** UI/UX Polish & Refactoring Planning
+
+**Recent Completions:**
+- ✅ Renamed section roster tabs for clarity ("Student List" & "Schedules")
+- ✅ Fixed table column spacing and alignment in schedule views
+- ✅ Enhanced professor face photo display with fallback icons
+- ✅ Implemented sorting functionality in schedules table
+- ✅ Added cache-busting for profile images
+
+**In Progress:**
+- 📋 Documentation updates (CONTEXT.md & README.md)
+- 🔍 Code quality review for decomposition opportunities
+
+**Planned (Next Phase):**
+- Component refactoring (see CONTEXT.md for SectionRoster.jsx decomposition plan)
+- RBAC implementation
+- Face verification workflow
 
 ## 👥 Team Collaboration Guide
 
@@ -352,6 +370,11 @@ User data stored in browser localStorage:
 - **CONTEXT.md:** High-level project architecture & design decisions
 - **CAMPUS.md** (if exists): API documentation
 - **Controllers:** Inline comments explain complex logic
+
+### Component Status & Refactoring Plan
+- **`SectionRoster.jsx` (320 lines):** Currently consolidates Student List and Schedules management
+  - Monitor file size if more features added
+  - Planned decomposition (see CONTEXT.md NEXT STEPS) would split into subcomponents without changing functionality
 
 ### Common Tasks
 
