@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Search, UserMinus, UserPlus, BookOpen, Users, Camera, Clock, MapPin, UserCircle, CalendarPlus, Edit2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Search, UserMinus, UserPlus, BookOpen, Users, Camera, Clock, MapPin, UserCircle, CalendarPlus, Edit2, Trash2, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import AddStudentsModal from './AddStudentsModal';
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
 import ScheduleForm from '../schedules/ScheduleForm';
-import FaceZoomModal from '../users/FaceZoomModal'; // THE FIX: Import the zoom modal
+import FaceZoomModal from '../users/FaceZoomModal';
 
 export default function SectionRoster({ section, onBack }) {
   const [activeTab, setActiveTab] = useState('students');
@@ -18,9 +18,10 @@ export default function SectionRoster({ section, onBack }) {
   
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
-  
-  // THE FIX: State for handling zoomed images
   const [zoomedImage, setZoomedImage] = useState(null);
+
+  // NEW: Sort State for the Schedule Tab
+  const [schedSortConfig, setSchedSortConfig] = useState({ key: 'subject_Code', direction: 'asc' });
 
   const fetchRoster = useCallback(() => {
     fetch(`http://localhost:5106/api/sections/${section.section_ID}/students`)
@@ -85,12 +86,34 @@ export default function SectionRoster({ section, onBack }) {
     sched.professor_Name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // NEW: Sort the schedules
+  const sortedSchedule = [...filteredSchedule].sort((a, b) => {
+    if (!schedSortConfig.key) return 0;
+    const aValue = a[schedSortConfig.key] || '';
+    const bValue = b[schedSortConfig.key] || '';
+    if (aValue < bValue) return schedSortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return schedSortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // NEW: Handle Sort Logic
+  const handleSchedSort = (key) => {
+    let direction = 'asc';
+    if (schedSortConfig.key === key && schedSortConfig.direction === 'asc') direction = 'desc';
+    setSchedSortConfig({ key, direction });
+  };
+
+  // NEW: Render Icon
+  const renderSchedSortIcon = (key) => {
+    if (schedSortConfig.key !== key) return <ArrowUpDown size={14} className="text-slate-300" />;
+    return schedSortConfig.direction === 'asc' ? <ChevronUp size={14} className="text-indigo-500" /> : <ChevronDown size={14} className="text-indigo-500" />;
+  };
+
   if (!section) return null;
 
   return (
     <div className="animate-in slide-in-from-right-8 duration-300 pb-10">
       
-      {/* THE FIX: Render the FaceZoomModal component globally for this view */}
       <FaceZoomModal zoomedImage={zoomedImage} onClose={() => setZoomedImage(null)} />
 
       <AddStudentsModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onAdd={handleAddStudents} currentEnrollees={enrolledStudents} />
@@ -167,7 +190,7 @@ export default function SectionRoster({ section, onBack }) {
           </div>
 
           {activeTab === 'students' && (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-left border-collapse min-w-200">
                 <thead>
                   <tr className="bg-white text-xs uppercase text-slate-400 font-black border-b-2 border-slate-100">
@@ -182,7 +205,6 @@ export default function SectionRoster({ section, onBack }) {
                   {filteredStudents.map((student) => (
                     <tr key={student.student_ID} className="hover:bg-slate-50 transition-colors group">
                       <td className="p-3 flex justify-center items-center">
-                        {/* THE FIX: Added onClick to zoom the student face and cursor/hover classes */}
                         {student.face_Reference_Path && !student.face_Reference_Path.includes("C:") ? (
                           <img 
                             src={`http://localhost:5106/ReferenceFaces/${student.face_Reference_Path}?t=${cacheBuster}`} 
@@ -214,28 +236,37 @@ export default function SectionRoster({ section, onBack }) {
 
           {activeTab === 'subjects' && (
             <div className="overflow-x-auto w-full">
-              {/* Added min-w-[1000px] to prevent squishing */}
+              {/* THE FIX: Replaced headers to support sorting states */}
               <table className="w-full text-left border-collapse min-w-250">
                 <thead>
-                  <tr className="bg-white text-xs uppercase text-slate-400 font-black border-b-2 border-slate-100">
-                    <th className="p-4 w-28">Code</th>
-                    {/* Subject Title takes remaining flexible width */}
-                    <th className="p-4 w-auto">Subject Title</th>
-                    <th className="p-4 w-20 text-center">Units</th>
-                    <th className="p-4 w-72">Assigned Professor</th>
-                    <th className="p-4 w-64">Schedule & Room</th>
-                    <th className="p-4 w-28 text-center">Action</th>
+                  <tr className="bg-white text-xs uppercase text-slate-500 font-black border-b-2 border-slate-100 cursor-pointer select-none">
+                    <th className="p-4 w-28 hover:bg-slate-50 transition-colors outline-none" onClick={() => handleSchedSort('subject_Code')}>
+                      <div className="flex items-center gap-1">Code {renderSchedSortIcon('subject_Code')}</div>
+                    </th>
+                    <th className="p-4 w-auto hover:bg-slate-50 transition-colors outline-none" onClick={() => handleSchedSort('subject_Title')}>
+                      <div className="flex items-center gap-1">Subject Title {renderSchedSortIcon('subject_Title')}</div>
+                    </th>
+                    <th className="p-4 w-20 text-center hover:bg-slate-50 transition-colors outline-none" onClick={() => handleSchedSort('units')}>
+                      <div className="flex items-center justify-center gap-1">Units {renderSchedSortIcon('units')}</div>
+                    </th>
+                    <th className="p-4 w-72 hover:bg-slate-50 transition-colors outline-none" onClick={() => handleSchedSort('professor_Name')}>
+                      <div className="flex items-center gap-1">Assigned Professor {renderSchedSortIcon('professor_Name')}</div>
+                    </th>
+                    <th className="p-4 w-64 hover:bg-slate-50 transition-colors outline-none" onClick={() => handleSchedSort('time_Start')}>
+                      <div className="flex items-center gap-1">Schedule & Room {renderSchedSortIcon('time_Start')}</div>
+                    </th>
+                    <th className="p-4 w-28 text-center cursor-default outline-none">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filteredSchedule.map((sched) => (
+                  {/* THE FIX: Render sorted data instead of just filtered */}
+                  {sortedSchedule.map((sched) => (
                     <tr key={sched.schedule_ID} className="hover:bg-slate-50 transition-colors">
                       <td className="p-4 font-bold text-indigo-600 font-mono text-sm">{sched.subject_Code}</td>
                       <td className="p-4 font-black text-slate-800 leading-tight">{sched.subject_Title}</td>
                       <td className="p-4 font-bold text-slate-500 text-center">{sched.units}</td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          {/* THE FIX: Added onClick to zoom the professor face and cursor/hover classes */}
                           {sched.professor_Face_Reference_Path && !sched.professor_Face_Reference_Path.includes("C:") ? (
                             <img 
                               src={`http://localhost:5106/ReferenceFaces/${sched.professor_Face_Reference_Path}?t=${cacheBuster}`} 
@@ -275,7 +306,7 @@ export default function SectionRoster({ section, onBack }) {
                       </td>
                     </tr>
                   ))}
-                  {filteredSchedule.length === 0 && (
+                  {sortedSchedule.length === 0 && (
                     <tr><td colSpan="6" className="p-12 text-center text-slate-500 font-bold">No subjects scheduled for this section yet.</td></tr>
                   )}
                 </tbody>

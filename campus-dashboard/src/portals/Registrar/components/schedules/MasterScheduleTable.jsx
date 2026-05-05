@@ -1,22 +1,36 @@
-import { Clock, MapPin, UserCircle, LibrarySquare } from 'lucide-react';
+import { Clock, MapPin, UserCircle, LibrarySquare, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
-export default function MasterScheduleTable({ schedules, onZoom }) {
+// THE FIX: Accept sortConfig and onSort as props
+export default function MasterScheduleTable({ schedules, onZoom, sortConfig, onSort }) {
   const [cacheBuster] = useState(() => Date.now());
+
+  // THE FIX: Sort Icon renderer
+  const renderSortIcon = (key) => {
+    if (sortConfig.key !== key) return <ArrowUpDown size={14} className="text-slate-300" />;
+    return sortConfig.direction === 'asc' ? <ChevronUp size={14} className="text-indigo-500" /> : <ChevronDown size={14} className="text-indigo-500" />;
+  };
 
   return (
     <div className="overflow-x-auto w-full">
-      {/* THE FIX: Added min-w-[1000px] to prevent crushing */}
       <table className="w-full text-left border-collapse min-w-250">
         <thead>
-          <tr className="bg-slate-50 text-xs uppercase text-slate-400 font-black border-b-2 border-slate-200">
-            <th className="p-4 w-32">Section</th>
-            {/* Subject uses auto to eat remaining width */}
-            <th className="p-4 w-auto">Subject</th>
-            {/* THE FIX: Renamed Faculty to Professor and adjusted width */}
-            <th className="p-4 w-72">Assigned Professor</th>
-            <th className="p-4 w-32">Room</th>
-            <th className="p-4 w-64">Timetable</th>
+          <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 cursor-pointer select-none">
+            <th className="p-4 w-32 hover:bg-slate-100 transition-colors outline-none" onClick={() => onSort('section_ID')}>
+              <div className="flex items-center gap-1">Section {renderSortIcon('section_ID')}</div>
+            </th>
+            <th className="p-4 w-auto hover:bg-slate-100 transition-colors outline-none" onClick={() => onSort('subject_Title')}>
+              <div className="flex items-center gap-1">Subject {renderSortIcon('subject_Title')}</div>
+            </th>
+            <th className="p-4 w-72 hover:bg-slate-100 transition-colors outline-none" onClick={() => onSort('professor_Name')}>
+              <div className="flex items-center gap-1">Assigned Professor {renderSortIcon('professor_Name')}</div>
+            </th>
+            <th className="p-4 w-32 hover:bg-slate-100 transition-colors outline-none" onClick={() => onSort('room_ID')}>
+              <div className="flex items-center gap-1">Room {renderSortIcon('room_ID')}</div>
+            </th>
+            <th className="p-4 w-64 hover:bg-slate-100 transition-colors outline-none" onClick={() => onSort('time_Start')}>
+              <div className="flex items-center gap-1">Timetable {renderSortIcon('time_Start')}</div>
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -37,7 +51,6 @@ export default function MasterScheduleTable({ schedules, onZoom }) {
               </td>
 
               <td className="p-4">
-                {/* THE FIX: Brought in the photo/avatar logic with zoom! */}
                 <div className="flex items-center gap-3">
                     {sched.professor_Face_Reference_Path && !sched.professor_Face_Reference_Path.includes("C:") ? (
                     <img 
