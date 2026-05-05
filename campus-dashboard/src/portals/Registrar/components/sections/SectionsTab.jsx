@@ -1,19 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Plus, Users, LibrarySquare } from 'lucide-react';
 import SectionRoster from './SectionRoster';
 
 export default function SectionsTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSection, setSelectedSection] = useState(null);
+  const [sections, setSections] = useState([]);
 
-  // MOCK DATA: Updated to include Professor Names and Student Counts
-  const [sections] = useState([
-    { section_ID: 'SEC-001', section_Name: 'SBIT-1A', program: 'IT', year_Level: 1, professor_Name: 'Dr. Maria Santos', student_Count: 35 },
-    { section_ID: 'SEC-002', section_Name: 'SBIT-2A', program: 'IT', year_Level: 2, professor_Name: 'Engr. John Doe', student_Count: 42 },
-    { section_ID: 'SEC-003', section_Name: 'SBCS-3B', program: 'CS', year_Level: 3, professor_Name: 'Prof. Alan Turing', student_Count: 28 },
-  ]);
+  // FETCH REAL SECTIONS FROM DB
+  useEffect(() => {
+    fetch('http://localhost:5106/api/sections')
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setSections(data); })
+      .catch(err => console.error(err));
+  }, []);
 
-  // Helper to expand acronyms
   const getFullProgramName = (code) => {
     const dict = {
       'IT': 'Bachelor of Science in Information Technology',
@@ -26,7 +27,7 @@ export default function SectionsTab() {
 
   const filteredSections = sections.filter(section =>
     section.section_Name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    section.program.toLowerCase().includes(searchQuery.toLowerCase())
+    section.course.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (selectedSection) {
@@ -70,7 +71,6 @@ export default function SectionsTab() {
                 {section.section_Name}
               </div>
               
-              {/* NEW: Student Count Badge */}
               <div className="flex items-center gap-1.5 text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg font-bold text-sm border border-slate-200">
                 <Users size={16} className="text-slate-400" />
                 {section.student_Count || 0} Students
@@ -78,27 +78,19 @@ export default function SectionsTab() {
             </div>
             
             <div className="space-y-4 flex-1">
-              {/* NEW: Full Program Name & Year */}
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><LibrarySquare size={14}/> Program & Level</p>
-                <p className="font-bold text-slate-700 leading-tight">{getFullProgramName(section.program)}</p>
+                <p className="font-bold text-slate-700 leading-tight">{getFullProgramName(section.course)}</p>
                 <p className="text-sm font-bold text-blue-600 mt-0.5">Year {section.year_Level}</p>
               </div>
 
-              {/* NEW: Professor Name display */}
               <div className="pt-4 border-t border-slate-100 mt-auto">
                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Assigned Adviser</p>
-                 <p className="font-black text-slate-800">{section.professor_Name || 'Unassigned'}</p>
+                 <p className="font-black text-slate-800">{section.primary_Adviser || 'Unassigned'}</p>
               </div>
             </div>
           </div>
         ))}
-
-        {filteredSections.length === 0 && (
-          <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
-            <p className="text-slate-500 font-bold">No sections found matching your search.</p>
-          </div>
-        )}
       </div>
     </div>
   );

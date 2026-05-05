@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react'; // FIX: Imported useCallback
 import { ArrowLeft, Search, UserMinus, UserPlus, BookOpen, UserCircle, Camera } from 'lucide-react';
 import AddStudentsModal from './AddStudentsModal';
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
@@ -7,28 +7,47 @@ export default function SectionRoster({ section, onBack }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, student: null });
-  
-  // THE FIX 1: Stable cache buster that only generates once on mount!
   const [cacheBuster] = useState(() => Date.now());
 
-  // MOCK STATE: In a real app, this list comes from fetching the section's enrolled students via an API
   const [enrolledStudents, setEnrolledStudents] = useState([]); 
 
-  const handleAddStudents = (newStudents) => {
-    // Add new students to the roster and sort them automatically by Last Name
-    setEnrolledStudents(prev => {
-      const combined = [...prev, ...newStudents];
-      return combined.sort((a, b) => a.last_Name.localeCompare(b.last_Name));
-    });
+  // FIX: Wrapped fetchRoster in useCallback
+  const fetchRoster = useCallback(() => {
+    fetch(`http://localhost:5106/api/sections/${section.section_ID}/students`)
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setEnrolledStudents(data); })
+      .catch(err => console.error(err));
+  }, [section.section_ID]); // Dependency array included here
+
+  // FIX: Added fetchRoster to the useEffect dependency array
+  useEffect(() => { 
+    fetchRoster(); 
+  }, [fetchRoster]);
+
+  const handleAddStudents = async (newStudents) => {
+    const studentIds = newStudents.map(s => s.student_ID);
+    try {
+      const res = await fetch(`http://localhost:5106/api/sections/${section.section_ID}/students`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(studentIds)
+      });
+      if (res.ok) fetchRoster(); // Reload to get fresh data
+    } catch (err) { console.error(err); }
   };
 
   const handleRemoveClick = (student) => {
     setConfirmModal({ isOpen: true, student });
   };
 
-  const executeRemove = () => {
-    // Here you would do a DELETE fetch to remove the student from the section junction table
-    setEnrolledStudents(prev => prev.filter(s => s.student_ID !== confirmModal.student.student_ID));
+  // ACTUALLY DELETE FROM DATABASE
+  const executeRemove = async () => {
+    try {
+      const res = await fetch(`http://localhost:5106/api/sections/${section.section_ID}/students/${confirmModal.student.student_ID}`, { method: 'DELETE' });
+      if (res.ok) {
+         setEnrolledStudents(prev => prev.filter(s => s.student_ID !== confirmModal.student.student_ID));
+      }
+    } catch (err) { console.error(err); }
     setConfirmModal({ isOpen: false, student: null });
   };
 
@@ -42,23 +61,9 @@ export default function SectionRoster({ section, onBack }) {
   return (
     <div className="animate-in slide-in-from-right-8 duration-300 pb-10">
       
-      <AddStudentsModal 
-        isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
-        onAdd={handleAddStudents}
-        currentEnrollees={enrolledStudents}
-      />
+      <AddStudentsModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onAdd={handleAddStudents} currentEnrollees={enrolledStudents} />
+      <ConfirmModal isOpen={confirmModal.isOpen} type="danger" title="Remove from Section" message={`Remove ${confirmModal.student?.first_Name} ${confirmModal.student?.last_Name} from ${section.section_Name}?`} onConfirm={executeRemove} onCancel={() => setConfirmModal({ isOpen: false, student: null })} />
 
-      <ConfirmModal 
-        isOpen={confirmModal.isOpen} 
-        type="danger" 
-        title="Remove from Section" 
-        message={`Are you sure you want to remove ${confirmModal.student?.first_Name} ${confirmModal.student?.last_Name} from ${section.section_Name}?`}
-        onConfirm={executeRemove} 
-        onCancel={() => setConfirmModal({ isOpen: false, student: null })} 
-      />
-
-      {/* Header */}
       <div className="flex items-center justify-between mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 hover:text-blue-600 hover:border-blue-300 transition-all shadow-sm">
@@ -71,14 +76,12 @@ export default function SectionRoster({ section, onBack }) {
         </div>
       </div>
 
-      {/* Subject and Professor Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 flex items-center gap-4 shadow-sm">
           <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl"><BookOpen size={24} /></div>
           <div>
             <p className="text-xs font-black text-indigo-500 uppercase tracking-widest mb-0.5">Assigned Subject</p>
-            {/* Hardcoded for visual design until Subject Directory is built */}
-            <p className="text-lg font-black text-indigo-900 leading-tight">Advanced Database Systems (IT301)</p>
+            <p className="text-lg font-black text-indigo-900 leading-tight">{section.primary_Subject || "No Subject Assigned"}</p>
           </div>
         </div>
         
@@ -86,38 +89,24 @@ export default function SectionRoster({ section, onBack }) {
           <div className="p-3 bg-amber-100 text-amber-600 rounded-xl"><UserCircle size={24} /></div>
           <div>
             <p className="text-xs font-black text-amber-500 uppercase tracking-widest mb-0.5">Primary Adviser</p>
-            <p className="text-lg font-black text-amber-900 leading-tight">{section.professor_Name || "No Adviser Assigned"}</p>
+            <p className="text-lg font-black text-amber-900 leading-tight">{section.primary_Adviser || "No Adviser Assigned"}</p>
           </div>
         </div>
       </div>
 
-      {/* The Roster Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        
-        {/* Roster Toolbar */}
         <div className="p-5 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search roster by Name or ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
-            />
+            <input type="text" placeholder="Search roster by Name or ID..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm" />
           </div>
           
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap"
-          >
+          <button onClick={() => setIsAddModalOpen(true)} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap">
             <UserPlus size={18} /> Add Students
           </button>
         </div>
 
-        {/* Detailed Table */}
         <div className="overflow-x-auto">
-          {/* THE FIX 2: Replaced min-w-[800px] with the official min-w-200 utility */}
           <table className="w-full text-left border-collapse min-w-200">
             <thead>
               <tr className="bg-white text-xs uppercase text-slate-400 font-black border-b-2 border-slate-100">

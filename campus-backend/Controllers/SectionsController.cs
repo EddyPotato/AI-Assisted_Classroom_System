@@ -8,31 +8,39 @@ namespace campus_backend.Controllers
     [ApiController]
     public class SectionsController : ControllerBase
     {
-        private readonly ISectionRepository _sectionRepo;
+        private readonly ISectionRepository _sectionRepository;
 
-        public SectionsController(ISectionRepository sectionRepo)
+        public SectionsController(ISectionRepository sectionRepository)
         {
-            _sectionRepo = sectionRepo;
+            _sectionRepository = sectionRepository;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllSections() => Ok(await _sectionRepo.GetAllSectionsAsync());
-
-        [HttpGet("{id}/students")]
-        public async Task<IActionResult> GetSectionRoster(string id) => Ok(await _sectionRepo.GetSectionRosterAsync(id));
-
-        [HttpPost]
-        public async Task<IActionResult> CreateSection([FromBody] Section section)
+        public async Task<IActionResult> GetAllSections()
         {
-            await _sectionRepo.CreateSectionAsync(section);
-            return Ok(new { message = "Section created successfully" });
+            var sections = await _sectionRepository.GetAllSectionsAsync();
+            return Ok(sections);
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteSection(string id)
+        [HttpGet("{id}/students")]
+        public async Task<IActionResult> GetStudentsInSection(string id)
         {
-            await _sectionRepo.DeleteSectionAsync(id);
-            return Ok(new { message = "Section deleted successfully" });
+            var students = await _sectionRepository.GetStudentsInSectionAsync(id);
+            return Ok(students);
+        }
+
+        [HttpPost("{id}/students")]
+        public async Task<IActionResult> AddStudentsToSection(string id, [FromBody] List<string> studentIds)
+        {
+            await _sectionRepository.AddStudentsToSectionAsync(id, studentIds);
+            return Ok(new { message = "Students added successfully" });
+        }
+
+        [HttpDelete("{sectionId}/students/{studentId}")]
+        public async Task<IActionResult> RemoveStudent(string sectionId, string studentId)
+        {
+            await _sectionRepository.RemoveStudentFromSectionAsync(sectionId, studentId);
+            return Ok(new { message = "Student removed successfully" });
         }
     }
 }

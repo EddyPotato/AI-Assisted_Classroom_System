@@ -4,9 +4,9 @@ namespace campus_backend.Repositories
 {
     public interface ISectionRepository
     {
-        Task<IEnumerable<Section>> GetAllSectionsAsync();
-        Task<IEnumerable<RosterStudent>> GetSectionRosterAsync(string sectionId);
-        Task CreateSectionAsync(Section section);
-        Task DeleteSectionAsync(string id);
+        Task<IEnumerable<SectionDTO>> GetAllSectionsAsync();
+        Task<IEnumerable<Student>> GetStudentsInSectionAsync(string sectionId);
+        Task AddStudentsToSectionAsync(string sectionId, List<string> studentIds);
+        Task RemoveStudentFromSectionAsync(string sectionId, string studentId);
     }
 }
