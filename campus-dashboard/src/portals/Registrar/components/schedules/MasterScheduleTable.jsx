@@ -1,11 +1,9 @@
-import { Clock, MapPin, UserCircle, LibrarySquare, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Clock, MapPin, UserCircle, BookOpen, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
-// THE FIX: Accept sortConfig and onSort as props
 export default function MasterScheduleTable({ schedules, onZoom, sortConfig, onSort }) {
   const [cacheBuster] = useState(() => Date.now());
 
-  // THE FIX: Sort Icon renderer
   const renderSortIcon = (key) => {
     if (sortConfig.key !== key) return <ArrowUpDown size={14} className="text-slate-300" />;
     return sortConfig.direction === 'asc' ? <ChevronUp size={14} className="text-indigo-500" /> : <ChevronDown size={14} className="text-indigo-500" />;
@@ -13,7 +11,7 @@ export default function MasterScheduleTable({ schedules, onZoom, sortConfig, onS
 
   return (
     <div className="overflow-x-auto w-full">
-      <table className="w-full text-left border-collapse min-w-250">
+      <table className="w-full text-left border-collapse min-w-[1000px]">
         <thead>
           <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 cursor-pointer select-none">
             <th className="p-4 w-32 hover:bg-slate-100 transition-colors outline-none" onClick={() => onSort('section_ID')}>
@@ -44,8 +42,14 @@ export default function MasterScheduleTable({ schedules, onZoom, sortConfig, onS
               </td>
 
               <td className="p-4">
-                <div className="font-bold text-slate-800 text-sm flex items-center gap-1.5"><LibrarySquare size={14} className="text-indigo-400"/> {sched.subject_Code}</div>
-                <div className="text-xs font-bold text-slate-500 truncate" title={sched.subject_Title}>
+                <div className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <BookOpen size={14} className="text-indigo-400"/> 
+                  {sched.subject_Code}
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-black tracking-widest ${sched.subject_Type === 'Lab' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {sched.subject_Type || 'Lec'}
+                  </span>
+                </div>
+                <div className="text-xs font-bold text-slate-500 truncate mt-0.5" title={sched.subject_Title}>
                   {sched.subject_Title || 'Subject Title'}
                 </div>
               </td>

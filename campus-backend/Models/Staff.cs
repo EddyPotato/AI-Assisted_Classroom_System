@@ -7,5 +7,6 @@ namespace campus_backend.Models
         public string Middle_Name { get; set; } = string.Empty;
         public string Last_Name { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty; 
+        public string? Face_Reference_Path { get; set; } // THE FIX: Added this!
     }
 }

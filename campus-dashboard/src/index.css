@@ -25,3 +25,14 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Removes the default browser black outline on clickable table headers and rows */
+th[onClick], 
+th[onClick]:focus, 
+th[onClick]:active,
+tr:focus,
+tr:active {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
+}

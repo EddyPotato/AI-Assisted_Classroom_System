@@ -126,11 +126,11 @@ namespace campus_backend.Repositories
             var schedule = new List<SectionScheduleDTO>();
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
-                // THE FIX: Added u.FACE_REFERENCE_PATH to the query
+                // THE FIX: Added sch.PROFESSOR_ID and sch.SUBJECT_TYPE to the query
                 string sql = @"
                     SELECT 
-                        sch.SCHEDULE_ID, sub.SUBJECT_CODE, sub.TITLE, sub.UNITS,
-                        u.FIRST_NAME, u.MIDDLE_NAME, u.LAST_NAME, u.FACE_REFERENCE_PATH,
+                        sch.SCHEDULE_ID, sub.SUBJECT_CODE, sub.TITLE, sub.UNITS, sch.SUBJECT_TYPE,
+                        u.FIRST_NAME, u.MIDDLE_NAME, u.LAST_NAME, u.FACE_REFERENCE_PATH, sch.PROFESSOR_ID,
                         sch.CLASS_DAYS, sch.TIME_START, sch.TIME_END, sch.ROOM_ID
                     FROM SCHEDULES sch
                     JOIN SUBJECTS sub ON sch.SUBJECT_CODE = sub.SUBJECT_CODE
@@ -150,7 +150,6 @@ namespace campus_backend.Repositories
                             if (reader["FIRST_NAME"] != DBNull.Value && reader["LAST_NAME"] != DBNull.Value)
                             {
                                 string first = reader["FIRST_NAME"].ToString()!;
-                                // THE FIX: Changed from reader["MIDDLE_NAME"].ToString()![0] + "." to the full string!
                                 string middle = reader["MIDDLE_NAME"] != DBNull.Value ? $" {reader["MIDDLE_NAME"].ToString()!}" : "";
                                 string last = reader["LAST_NAME"].ToString()!;
                                 profName = $"{first}{middle} {last}";
@@ -160,13 +159,15 @@ namespace campus_backend.Repositories
                             {
                                 Schedule_ID = reader["SCHEDULE_ID"]?.ToString() ?? "",
                                 Subject_Code = reader["SUBJECT_CODE"]?.ToString() ?? "",
+                                Subject_Type = reader["SUBJECT_TYPE"]?.ToString() ?? "Lec",
                                 Subject_Title = reader["TITLE"]?.ToString() ?? "",
                                 Units = reader["UNITS"] != DBNull.Value ? Convert.ToInt32(reader["UNITS"]) : 0,
+                                
+                                // THE FIX: Map the ID so React knows who is assigned!
+                                Professor_ID = reader["PROFESSOR_ID"]?.ToString(),
+                                
                                 Professor_Name = profName,
-                                
-                                // THE FIX: Map the face path from the reader
                                 Professor_Face_Reference_Path = reader["FACE_REFERENCE_PATH"]?.ToString(),
-                                
                                 Class_Days = reader["CLASS_DAYS"]?.ToString() ?? "TBA",
                                 Time_Start = reader["TIME_START"]?.ToString() ?? "TBA",
                                 Time_End = reader["TIME_END"]?.ToString() ?? "TBA",

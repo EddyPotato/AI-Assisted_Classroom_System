@@ -17,7 +17,7 @@ namespace campus_backend.Repositories
             var staffList = new List<Staff>();
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
-                string sql = "SELECT USER_ID, FIRST_NAME, MIDDLE_NAME, LAST_NAME, ROLE FROM USERS WHERE ROLE != 'Principal'";
+                string sql = "SELECT USER_ID, FIRST_NAME, MIDDLE_NAME, LAST_NAME, ROLE, FACE_REFERENCE_PATH FROM USERS WHERE ROLE != 'Principal'";
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     await con.OpenAsync();
@@ -27,6 +27,7 @@ namespace campus_backend.Repositories
                         {
                             staffList.Add(new Staff
                             {
+                                Face_Reference_Path = reader["FACE_REFERENCE_PATH"]?.ToString(),
                                 User_ID = reader["USER_ID"].ToString() ?? "",
                                 First_Name = reader["FIRST_NAME"].ToString() ?? "",
                                 Middle_Name = reader["MIDDLE_NAME"].ToString() ?? "",

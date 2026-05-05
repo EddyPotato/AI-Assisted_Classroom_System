@@ -14,15 +14,16 @@ namespace campus_backend.Repositories
                  ?? throw new InvalidOperationException("Oracle connection string is missing.");
         }
 
+        // --- GET ALL SCHEDULES ---
         public async Task<IEnumerable<Schedule>> GetAllSchedulesAsync()
         {
             var schedules = new List<Schedule>();
 
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
-                // THE FIX: Full Middle Name logic + fetching u.FACE_REFERENCE_PATH
+                // THE FIX: Full Middle Name logic, u.FACE_REFERENCE_PATH, and s.SUBJECT_TYPE
                 string sql = @"
-                    SELECT s.Schedule_ID, s.Subject_Code, sub.Title AS Subject_Title,
+                    SELECT s.Schedule_ID, s.Subject_Code, s.Subject_Type, sub.Title AS Subject_Title,
                             s.Section_ID, sec.Section_Name,
                             s.Professor_ID, 
                             u.First_Name || CASE WHEN u.MIDDLE_NAME IS NOT NULL THEN ' ' || u.MIDDLE_NAME ELSE '' END || ' ' || u.Last_Name AS Professor_Name,
@@ -46,6 +47,8 @@ namespace campus_backend.Repositories
                             {
                                 Schedule_ID = reader["Schedule_ID"].ToString(),
                                 Subject_Code = reader["Subject_Code"].ToString(),
+                                // Default to 'Lec' if the column is null for older records
+                                Subject_Type = reader["Subject_Type"] != DBNull.Value ? reader["Subject_Type"].ToString() : "Lec",
                                 Subject_Title = reader["Subject_Title"].ToString(),
                                 Section_ID = reader["Section_ID"].ToString(),
                                 Section_Name = reader["Section_Name"].ToString(),
@@ -72,22 +75,26 @@ namespace campus_backend.Repositories
             {
                 Random rnd = new Random();
                 string newId = $"SCH-{rnd.Next(1000, 9999)}";
-
+                
                 string sql = @"
-                    INSERT INTO Schedules (Schedule_ID, Subject_Code, Section_ID, Professor_ID, Room_ID, Time_Start, Time_End, Class_Days) 
-                    VALUES (:id, :subj, :sec, :prof, :room, :tstart, :tend, :days)";
+                    INSERT INTO Schedules (Schedule_ID, Subject_Code, Subject_Type, Section_ID, Professor_ID, Room_ID, Time_Start, Time_End, Class_Days) 
+                    VALUES (:id, :subj, :type, :sec, :prof, :room, :tstart, :tend, :days)";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     cmd.Parameters.Add(new OracleParameter("id", newId));
                     cmd.Parameters.Add(new OracleParameter("subj", schedule.Subject_Code));
+                    cmd.Parameters.Add(new OracleParameter("type", string.IsNullOrEmpty(schedule.Subject_Type) ? "Lec" : schedule.Subject_Type));
                     cmd.Parameters.Add(new OracleParameter("sec", schedule.Section_ID));
-                    cmd.Parameters.Add(new OracleParameter("prof", schedule.Professor_ID));
-                    cmd.Parameters.Add(new OracleParameter("room", schedule.Room_ID));
+                    
+                    // Handle nullable foreign keys properly for Oracle
+                    cmd.Parameters.Add(new OracleParameter("prof", string.IsNullOrEmpty(schedule.Professor_ID) ? DBNull.Value : schedule.Professor_ID));
+                    cmd.Parameters.Add(new OracleParameter("room", string.IsNullOrEmpty(schedule.Room_ID) ? DBNull.Value : schedule.Room_ID));
+                    
                     cmd.Parameters.Add(new OracleParameter("tstart", schedule.Time_Start));
                     cmd.Parameters.Add(new OracleParameter("tend", schedule.Time_End));
                     cmd.Parameters.Add(new OracleParameter("days", schedule.Class_Days));
-
+                    
                     await con.OpenAsync();
                     await cmd.ExecuteNonQueryAsync();
                 }
@@ -101,21 +108,31 @@ namespace campus_backend.Repositories
             {
                 string sql = @"
                     UPDATE Schedules 
-                    SET Subject_Code = :subj, Section_ID = :sec, Professor_ID = :prof, 
-                        Room_ID = :room, Time_Start = :tstart, Time_End = :tend, Class_Days = :days 
+                    SET Subject_Code = :subj, 
+                        Subject_Type = :type, 
+                        Section_ID = :sec, 
+                        Professor_ID = :prof, 
+                        Room_ID = :room, 
+                        Time_Start = :tstart, 
+                        Time_End = :tend, 
+                        Class_Days = :days 
                     WHERE Schedule_ID = :id";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     cmd.Parameters.Add(new OracleParameter("subj", schedule.Subject_Code));
+                    cmd.Parameters.Add(new OracleParameter("type", string.IsNullOrEmpty(schedule.Subject_Type) ? "Lec" : schedule.Subject_Type));
                     cmd.Parameters.Add(new OracleParameter("sec", schedule.Section_ID));
-                    cmd.Parameters.Add(new OracleParameter("prof", schedule.Professor_ID));
-                    cmd.Parameters.Add(new OracleParameter("room", schedule.Room_ID));
+                    
+                    cmd.Parameters.Add(new OracleParameter("prof", string.IsNullOrEmpty(schedule.Professor_ID) ? DBNull.Value : schedule.Professor_ID));
+                    cmd.Parameters.Add(new OracleParameter("room", string.IsNullOrEmpty(schedule.Room_ID) ? DBNull.Value : schedule.Room_ID));
+                    
                     cmd.Parameters.Add(new OracleParameter("tstart", schedule.Time_Start));
                     cmd.Parameters.Add(new OracleParameter("tend", schedule.Time_End));
                     cmd.Parameters.Add(new OracleParameter("days", schedule.Class_Days));
+                    
                     cmd.Parameters.Add(new OracleParameter("id", schedule.Schedule_ID));
-
+                    
                     await con.OpenAsync();
                     await cmd.ExecuteNonQueryAsync();
                 }

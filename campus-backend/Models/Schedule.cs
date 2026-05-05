@@ -20,5 +20,7 @@ namespace campus_backend.Models
         public string? Professor_Face_Reference_Path { get; set; }
         
         public string? Building { get; set; }
+
+        public string? Subject_Type { get; set; }
     }
 }
