@@ -2,24 +2,25 @@ import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Search, UserMinus, UserPlus, BookOpen, Users, Camera, Clock, MapPin, UserCircle, CalendarPlus, Edit2, Trash2 } from 'lucide-react';
 import AddStudentsModal from './AddStudentsModal';
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
-import ScheduleForm from '../schedules/ScheduleForm'; // NEW: Imported the form
+import ScheduleForm from '../schedules/ScheduleForm';
+import FaceZoomModal from '../users/FaceZoomModal'; // THE FIX: Import the zoom modal
 
 export default function SectionRoster({ section, onBack }) {
   const [activeTab, setActiveTab] = useState('students');
   const [searchQuery, setSearchQuery] = useState('');
-  
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, student: null });
-  const [confirmSchedModal, setConfirmSchedModal] = useState({ isOpen: false, scheduleId: null }); // NEW: For deleting schedules
+  const [confirmSchedModal, setConfirmSchedModal] = useState({ isOpen: false, scheduleId: null });
   
   const [cacheBuster] = useState(() => Date.now());
-
   const [enrolledStudents, setEnrolledStudents] = useState([]); 
   const [scheduleData, setScheduleData] = useState([]);
-
-  // NEW: State for managing the embedded Schedule Form
+  
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
+  
+  // THE FIX: State for handling zoomed images
+  const [zoomedImage, setZoomedImage] = useState(null);
 
   const fetchRoster = useCallback(() => {
     fetch(`http://localhost:5106/api/sections/${section.section_ID}/students`)
@@ -40,7 +41,6 @@ export default function SectionRoster({ section, onBack }) {
     fetchSchedule();
   }, [fetchRoster, fetchSchedule]);
 
-  // --- Student Handlers ---
   const handleAddStudents = async (newStudents) => {
     const studentIds = newStudents.map(s => s.student_ID);
     try {
@@ -61,7 +61,6 @@ export default function SectionRoster({ section, onBack }) {
     setConfirmModal({ isOpen: false, student: null });
   };
 
-  // --- Schedule Handlers ---
   const handleEditSchedule = (sched) => {
     setEditingSchedule(sched);
     setShowScheduleForm(true);
@@ -91,11 +90,13 @@ export default function SectionRoster({ section, onBack }) {
   return (
     <div className="animate-in slide-in-from-right-8 duration-300 pb-10">
       
+      {/* THE FIX: Render the FaceZoomModal component globally for this view */}
+      <FaceZoomModal zoomedImage={zoomedImage} onClose={() => setZoomedImage(null)} />
+
       <AddStudentsModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onAdd={handleAddStudents} currentEnrollees={enrolledStudents} />
       <ConfirmModal isOpen={confirmModal.isOpen} type="danger" title="Remove Student" message={`Remove ${confirmModal.student?.first_Name} from this section?`} onConfirm={executeRemoveStudent} onCancel={() => setConfirmModal({ isOpen: false, student: null })} />
       <ConfirmModal isOpen={confirmSchedModal.isOpen} type="danger" title="Remove Subject" message="Remove this subject and schedule from the section?" onConfirm={executeDeleteSchedule} onCancel={() => setConfirmSchedModal({ isOpen: false, scheduleId: null })} />
 
-      {/* Top Header */}
       <div className="flex items-center justify-between mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 hover:text-blue-600 hover:border-blue-300 transition-all shadow-sm">
@@ -108,7 +109,6 @@ export default function SectionRoster({ section, onBack }) {
         </div>
       </div>
 
-      {/* Tab Navigation */}
       <div className="flex gap-2 mb-6 border-b border-slate-200 pb-px">
         <button 
           onClick={() => { setActiveTab('students'); setSearchQuery(''); setShowScheduleForm(false); }}
@@ -118,7 +118,7 @@ export default function SectionRoster({ section, onBack }) {
               : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-transparent'
           }`}
         >
-          <Users size={18} /> Student Roster <span className="ml-1 bg-white border border-slate-200 text-xs px-2 py-0.5 rounded-full text-slate-600">{enrolledStudents.length}</span>
+          <Users size={18} /> Student List <span className="ml-1 bg-white border border-slate-200 text-xs px-2 py-0.5 rounded-full text-slate-600">{enrolledStudents.length}</span>
         </button>
         
         <button 
@@ -129,32 +129,29 @@ export default function SectionRoster({ section, onBack }) {
               : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-transparent'
           }`}
         >
-          <BookOpen size={18} /> Subjects & Faculty <span className="ml-1 bg-white border border-slate-200 text-xs px-2 py-0.5 rounded-full text-slate-600">{scheduleData.length}</span>
+          <BookOpen size={18} /> Schedules <span className="ml-1 bg-white border border-slate-200 text-xs px-2 py-0.5 rounded-full text-slate-600">{scheduleData.length}</span>
         </button>
       </div>
 
-      {/* --- SCHEDULE FORM OVERRIDE --- */}
       {activeTab === 'subjects' && showScheduleForm ? (
          <ScheduleForm 
             schedule={editingSchedule} 
             sectionId={section.section_ID} 
             onBack={() => { setShowScheduleForm(false); setEditingSchedule(null); }} 
-            onSuccess={() => { setShowScheduleForm(false); setEditingSchedule(null); fetchSchedule(); }} 
+            onSuccess={() => { setShowScheduleForm(false); setEditingSchedule(null); fetchSchedule(); }}
          />
       ) : (
-        /* --- MAIN DATA CONTAINER --- */
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in">
           
-          {/* Universal Toolbar */}
           <div className="p-5 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 type="text" 
-                placeholder={`Search ${activeTab === 'students' ? 'students' : 'subjects/faculty'}...`} 
+                placeholder={`Search ${activeTab === 'students' ? 'students' : 'schedules'}...`} 
                 value={searchQuery} 
                 onChange={(e) => setSearchQuery(e.target.value)} 
-                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm" 
+                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
               />
             </div>
             
@@ -169,7 +166,6 @@ export default function SectionRoster({ section, onBack }) {
             )}
           </div>
 
-          {/* --- STUDENT ROSTER TAB --- */}
           {activeTab === 'students' && (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-200">
@@ -186,8 +182,14 @@ export default function SectionRoster({ section, onBack }) {
                   {filteredStudents.map((student) => (
                     <tr key={student.student_ID} className="hover:bg-slate-50 transition-colors group">
                       <td className="p-3 flex justify-center items-center">
-                         {student.face_Reference_Path && !student.face_Reference_Path.includes("C:") ? (
-                          <img src={`http://localhost:5106/ReferenceFaces/${student.face_Reference_Path}?t=${cacheBuster}`} alt="Face" className="w-10 h-10 object-cover aspect-square rounded-full border border-slate-200 shadow-sm" />
+                        {/* THE FIX: Added onClick to zoom the student face and cursor/hover classes */}
+                        {student.face_Reference_Path && !student.face_Reference_Path.includes("C:") ? (
+                          <img 
+                            src={`http://localhost:5106/ReferenceFaces/${student.face_Reference_Path}?t=${cacheBuster}`} 
+                            alt="Face" 
+                            onClick={() => setZoomedImage(`http://localhost:5106/ReferenceFaces/${student.face_Reference_Path}?t=${cacheBuster}`)}
+                            className="w-10 h-10 object-cover aspect-square rounded-full border border-slate-200 shadow-sm cursor-zoom-in hover:opacity-80 transition-opacity" 
+                          />
                         ) : (
                           <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 border border-slate-200"><Camera size={14}/></div>
                         )}
@@ -210,17 +212,16 @@ export default function SectionRoster({ section, onBack }) {
             </div>
           )}
 
-          {/* --- SUBJECTS & FACULTY TAB --- */}
           {activeTab === 'subjects' && (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-200">
                 <thead>
                   <tr className="bg-white text-xs uppercase text-slate-400 font-black border-b-2 border-slate-100">
-                    <th className="p-4 w-32">Code</th>
-                    <th className="p-4 w-64">Subject Title</th>
+                    <th className="p-4 w-28">Code</th>
+                    <th className="p-4 w-56">Subject Title</th>
                     <th className="p-4 w-16 text-center">Units</th>
-                    <th className="p-4 w-64">Assigned Professor</th>
-                    <th className="p-4">Schedule & Room</th>
+                    <th className="p-4 min-w-[200px]">Assigned Professor</th>
+                    <th className="p-4 w-56">Schedule & Room</th>
                     <th className="p-4 w-28 text-center">Action</th>
                   </tr>
                 </thead>
@@ -231,9 +232,21 @@ export default function SectionRoster({ section, onBack }) {
                       <td className="p-4 font-black text-slate-800 leading-tight">{sched.subject_Title}</td>
                       <td className="p-4 font-bold text-slate-500 text-center">{sched.units}</td>
                       <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <UserCircle size={16} className={sched.professor_Name === 'Unassigned' ? 'text-rose-400' : 'text-slate-400'} />
-                          <span className={`font-bold ${sched.professor_Name === 'Unassigned' ? 'text-rose-600 italic' : 'text-slate-700'}`}>
+                        <div className="flex items-center gap-3">
+                          {/* THE FIX: Added onClick to zoom the professor face and cursor/hover classes */}
+                          {sched.professor_Face_Reference_Path && !sched.professor_Face_Reference_Path.includes("C:") ? (
+                            <img 
+                              src={`http://localhost:5106/ReferenceFaces/${sched.professor_Face_Reference_Path}?t=${cacheBuster}`} 
+                              alt="Professor" 
+                              onClick={() => setZoomedImage(`http://localhost:5106/ReferenceFaces/${sched.professor_Face_Reference_Path}?t=${cacheBuster}`)}
+                              className="w-8 h-8 object-cover aspect-square rounded-full border border-slate-200 shadow-sm shrink-0 cursor-zoom-in hover:opacity-80 transition-opacity" 
+                            />
+                          ) : (
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border border-slate-200 ${sched.professor_Name === 'Unassigned' ? 'bg-rose-50 text-rose-400' : 'bg-slate-100 text-slate-400'}`}>
+                              <UserCircle size={16} />
+                            </div>
+                          )}
+                          <span className={`font-bold text-sm ${sched.professor_Name === 'Unassigned' ? 'text-rose-600 italic' : 'text-slate-700'}`}>
                             {sched.professor_Name}
                           </span>
                         </div>
@@ -267,7 +280,6 @@ export default function SectionRoster({ section, onBack }) {
               </table>
             </div>
           )}
-
         </div>
       )}
     </div>

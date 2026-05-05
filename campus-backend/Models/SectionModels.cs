@@ -11,7 +11,6 @@ namespace campus_backend.Models
         public string? Primary_Subject { get; set; }
     }
 
-    // THE FIX: Added the new Data Model for the Subjects & Faculty List
     public class SectionScheduleDTO
     {
         public string Schedule_ID { get; set; } = string.Empty;
@@ -19,6 +18,10 @@ namespace campus_backend.Models
         public string Subject_Title { get; set; } = string.Empty;
         public int Units { get; set; }
         public string Professor_Name { get; set; } = string.Empty;
+        
+        // THE FIX: Added the face path for the professor
+        public string? Professor_Face_Reference_Path { get; set; }
+        
         public string Class_Days { get; set; } = string.Empty;
         public string Time_Start { get; set; } = string.Empty;
         public string Time_End { get; set; } = string.Empty;

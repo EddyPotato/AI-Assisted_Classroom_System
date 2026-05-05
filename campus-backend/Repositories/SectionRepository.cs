@@ -18,7 +18,6 @@ namespace campus_backend.Repositories
             var sections = new List<SectionDTO>();
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
-                // Grabs the Section data, counts the enrollments, and fetches the first Professor/Subject assigned to it via schedules
                 string sql = @"
                     SELECT 
                         s.SECTION_ID, s.SECTION_NAME, s.COURSE, s.YEAR_LEVEL,
@@ -77,8 +76,8 @@ namespace campus_backend.Repositories
                                 Student_ID = reader["STUDENT_ID"]?.ToString() ?? "",
                                 First_Name = reader["FIRST_NAME"]?.ToString() ?? "",
                                 Last_Name = reader["LAST_NAME"]?.ToString() ?? "",
-                                Middle_Name = reader["MIDDLE_NAME"]?.ToString() ?? "", // FIX: Added ?? ""
-                                Face_Reference_Path = reader["FACE_REFERENCE_PATH"]?.ToString() ?? "" // FIX: Added ?? ""
+                                Middle_Name = reader["MIDDLE_NAME"]?.ToString() ?? "",
+                                Face_Reference_Path = reader["FACE_REFERENCE_PATH"]?.ToString() ?? ""
                             });
                         }
                     }
@@ -101,7 +100,7 @@ namespace campus_backend.Repositories
                         cmd.Parameters.Add(new OracleParameter("sid", sId));
                         cmd.Parameters.Add(new OracleParameter("secid", sectionId));
                         try { await cmd.ExecuteNonQueryAsync(); } 
-                        catch { /* Ignore if already enrolled to prevent crashes */ }
+                        catch { /* Ignore if already enrolled */ }
                     }
                 }
             }
@@ -127,10 +126,11 @@ namespace campus_backend.Repositories
             var schedule = new List<SectionScheduleDTO>();
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
+                // THE FIX: Added u.FACE_REFERENCE_PATH to the query
                 string sql = @"
                     SELECT 
                         sch.SCHEDULE_ID, sub.SUBJECT_CODE, sub.TITLE, sub.UNITS,
-                        u.FIRST_NAME, u.MIDDLE_NAME, u.LAST_NAME,
+                        u.FIRST_NAME, u.MIDDLE_NAME, u.LAST_NAME, u.FACE_REFERENCE_PATH,
                         sch.CLASS_DAYS, sch.TIME_START, sch.TIME_END, sch.ROOM_ID
                     FROM SCHEDULES sch
                     JOIN SUBJECTS sub ON sch.SUBJECT_CODE = sub.SUBJECT_CODE
@@ -152,7 +152,7 @@ namespace campus_backend.Repositories
                                 string first = reader["FIRST_NAME"].ToString()!;
                                 string middle = reader["MIDDLE_NAME"] != DBNull.Value ? $" {reader["MIDDLE_NAME"].ToString()![0]}." : "";
                                 string last = reader["LAST_NAME"].ToString()!;
-                                profName = $"{first}{middle} {last}"; // e.g., Joel M. Olayon
+                                profName = $"{first}{middle} {last}";
                             }
 
                             schedule.Add(new SectionScheduleDTO
@@ -162,6 +162,10 @@ namespace campus_backend.Repositories
                                 Subject_Title = reader["TITLE"]?.ToString() ?? "",
                                 Units = reader["UNITS"] != DBNull.Value ? Convert.ToInt32(reader["UNITS"]) : 0,
                                 Professor_Name = profName,
+                                
+                                // THE FIX: Map the face path from the reader
+                                Professor_Face_Reference_Path = reader["FACE_REFERENCE_PATH"]?.ToString(),
+                                
                                 Class_Days = reader["CLASS_DAYS"]?.ToString() ?? "TBA",
                                 Time_Start = reader["TIME_START"]?.ToString() ?? "TBA",
                                 Time_End = reader["TIME_END"]?.ToString() ?? "TBA",
