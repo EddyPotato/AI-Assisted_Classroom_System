@@ -1,9 +1,10 @@
 import { Search, UserPlus, X } from 'lucide-react';
 
 export default function StaffToolbar({ 
-  searchQuery, setSearchQuery, filterRole, setFilterRole, onEnroll 
+  searchQuery, setSearchQuery, filterRole, setFilterRole, onEnroll, viewMode 
 }) {
-  const roleOptions = ['All', 'Faculty', 'Registrar', 'Guard'];
+  // THE FIX: Added 'Principal' to the filter options
+  const roleOptions = ['All', 'Faculty', 'Registrar', 'Guard', 'Principal'];
 
   return (
     <div className="p-5 border-b border-slate-200 bg-white flex flex-col xl:flex-row xl:items-center justify-between gap-4">
@@ -28,30 +29,33 @@ export default function StaffToolbar({
           )}
         </div>
         
-        {/* Pill Selection for Roles */}
-        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 w-full sm:w-auto overflow-x-auto">
-          {roleOptions.map(role => (
-            <button
-              key={role}
-              onClick={() => setFilterRole(role)}
-              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap ${
-                filterRole === role 
-                  ? 'bg-white text-indigo-600 shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {role === 'All' ? 'All Roles' : role}
-            </button>
-          ))}
-        </div>
+        {viewMode === 'active' && (
+          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 w-full sm:w-auto overflow-x-auto">
+            {roleOptions.map(role => (
+              <button
+                key={role}
+                onClick={() => setFilterRole(role)}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap ${
+                  filterRole === role 
+                    ? 'bg-white text-indigo-600 shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {role === 'All' ? 'All Roles' : role}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <button
-        onClick={onEnroll}
-        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap"
-      >
-        <UserPlus size={18} /> Add New Staff
-      </button>
+      {viewMode === 'active' && (
+        <button
+          onClick={onEnroll}
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap"
+        >
+          <UserPlus size={18} /> Add New Staff
+        </button>
+      )}
     </div>
   );
 }
