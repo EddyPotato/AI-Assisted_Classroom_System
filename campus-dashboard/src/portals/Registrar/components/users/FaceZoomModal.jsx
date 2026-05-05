@@ -20,7 +20,7 @@ export default function FaceZoomModal({ zoomedImage, onClose }) {
   const modalContent = (
     // THE FIX: Lighter background (slate-900/50) and softer blur (backdrop-blur-sm)
     <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200 select-none cursor-zoom-out"
+      className="fixed inset-0 z-9999 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200 select-none cursor-zoom-out"
       onClick={onClose} 
     >
       {/* THE FIX: Removed 'w-full' and 'max-w-3xl' so the wrapper shrinks to fit the image perfectly */}

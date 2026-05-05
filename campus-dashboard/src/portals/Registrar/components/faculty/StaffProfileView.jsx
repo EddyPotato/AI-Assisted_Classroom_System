@@ -36,7 +36,7 @@ export default function StaffProfileView({ staff, onBack, onEdit }) {
         
         {/* Left Column: ID Card */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col items-center text-center relative overflow-hidden self-start">
-          <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-slate-700 to-slate-900"></div>
+          <div className="absolute top-0 left-0 w-full h-24 g-linear-to-r from-slate-700 to-slate-900"></div>
           
           <div className="relative mt-8 w-32 h-32 rounded-full border-4 border-white shadow-xl bg-slate-100 overflow-hidden flex items-center justify-center mb-4">
             {imageUrl ? (
@@ -96,7 +96,7 @@ export default function StaffProfileView({ staff, onBack, onEdit }) {
           </div>
 
           {/* System Activity Logs Placeholder */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 h-full min-h-[250px]">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 h-full min-h-62.5">
             <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-4">
               <Briefcase className="text-indigo-500" />
               <h3 className="text-lg font-black text-slate-800">System Activity Logs</h3>
