@@ -1,122 +1,441 @@
-Haha, let me clear this up fast so you can go to work!
-
-To answer your two questions:
-
-The Oracle Database: YES! You just export your tables as a .sql file, put it in a folder named database inside your project, and push it to GitHub. Your groupmates will download it and run it in their own local Oracle SQL Developer.
-
-The .env file: Do NOT delete it, but you should add .env to your .gitignore file! The .env file holds your personal laptop's IP address. Your groupmates will create their own .env file on their own laptops. I have updated the README below to tell them exactly how to do that!
-
-Here is the complete, final README.md for your GitHub repository. Copy and paste everything inside the box below!
-
-Markdown
 # AI-Assisted Smart Campus & Classroom System
 
 An integrated IoT and web-based platform for university attendance, behavior monitoring, and registrar/HR management. This system utilizes a React/Vite frontend, a C# ASP.NET Core backend, an Oracle Database, and a Python-based edge node (Raspberry Pi) for facial recognition and barcode scanning.
+
+---
 
 ## 👥 Team Collaboration Guide
 
 This repository does **not** include heavy dependencies like `node_modules` or `.dll` files. When you clone this project for the first time, you must install the dependencies for each module locally by following the steps below.
 
-### Prerequisites
+---
+
+## 📋 Prerequisites
+
 Before starting, ensure you have the following installed on your machine:
-* **[Node.js](https://nodejs.org/)** (v18+ recommended) - For the React frontend.
-* **[.NET 8 SDK](https://dotnet.microsoft.com/download)** - For the C# backend.
-* **[Python 3.10+](https://www.python.org/downloads/)** - For the Edge AI vision node.
-* **[Oracle Database 21c Express Edition (XE)](https://www.oracle.com/database/technologies/xe-downloads.html)** & **SQL Developer** - For the local database.
+
+| Component | Version | Purpose | Download |
+|-----------|---------|---------|----------|
+| **Node.js** | v18+ | React frontend package management | [nodejs.org](https://nodejs.org/) |
+| **.NET SDK** | 8.0+ | C# backend compilation | [dotnet.microsoft.com](https://dotnet.microsoft.com/download) |
+| **Python** | 3.10+ | Edge node (Raspberry Pi) vision processing | [python.org](https://www.python.org/downloads/) |
+| **Oracle Database 21c XE** | Latest | Local database instance | [oracle.com/xe](https://www.oracle.com/database/technologies/xe-downloads.html) |
+| **Oracle SQL Developer** | Latest | Database management tool | [oracle.com/sqldev](https://www.oracle.com/database/sqldeveloper/download/) |
+| **Git** | Latest | Version control | [git-scm.com](https://git-scm.com/) |
 
 ---
 
 ## 🚀 Quick Start Installation
 
-### Step 1: Clone the Repository
+### **Step 1: Clone the Repository**
+
 ```bash
-git clone [https://github.com/YOUR-USERNAME/YOUR-REPO-NAME.git](https://github.com/YOUR-USERNAME/YOUR-REPO-NAME.git)
-cd YOUR-REPO-NAME
-Step 2: Database Setup (Oracle)
-Since we are using local databases, you need to create the tables on your machine so your backend doesn't crash.
+git clone https://github.com/EddyPotato/AI-Assisted_Classroom_System.git
+cd AI-Assisted_Classroom_System
+```
 
-Open Oracle SQL Developer and connect to your local XE database (usually localhost:1521/XEPDB1).
+---
 
-Open the database/schema.sql file located in this repository.
+### **Step 2: Database Setup (Oracle)**
 
-Run the entire script to generate the USERS, STUDENTS, SCHEDULES, and ROOMS tables and insert the default administrative data.
+Since we use local databases, each team member must create the tables on their machine.
 
-Step 3: Backend Setup (C# ASP.NET Core)
-The backend handles our API endpoints and Oracle database connections.
+#### **Option A: Using SQL Developer (Recommended for Beginners)**
 
-Bash
-# Navigate to the backend directory
+1. **Open Oracle SQL Developer** and connect to your local XE database
+   - Connection Name: `Local XE`
+   - Username: `sys` (or `system`)
+   - Password: (your XE password)
+   - Hostname: `localhost`
+   - Port: `1521`
+   - Service Name: `XEPDB1`
+   - Click **Connect**
+
+2. **Open and run the database schema:**
+   - File → Open → Navigate to `database/schema.sql`
+   - Select all the code (Ctrl+A)
+   - Run (Ctrl+Enter or F9)
+
+3. **Verify tables were created:**
+   ```sql
+   SELECT table_name FROM user_tables WHERE owner = 'CAMPUS_ADMIN';
+   ```
+   You should see: `STUDENTS`, `STAFF`, `USERS`, `SECTIONS`, `SCHEDULES`, `ROOMS`, `ENROLLMENTS`, `EVENT_LOGS`
+
+#### **Option B: Using Command Line (Advanced)**
+
+```bash
+# Connect to Oracle
+sqlplus sys@localhost:1521/XEPDB1 as sysdba
+
+# Run the schema file
+@database/schema.sql
+
+# Verify
+SELECT table_name FROM user_tables WHERE owner = 'CAMPUS_ADMIN';
+
+# Exit
+EXIT;
+```
+
+---
+
+### **Step 3: Backend Setup (.NET Core)**
+
+```bash
+# Navigate to backend directory
 cd campus-backend
 
-# Restore all NuGet packages and dependencies
+# Restore dependencies
 dotnet restore
 
-# Run the server (Defaults to http://localhost:5106)
-dotnet run
-Note: If your local Oracle database has a different password than the default admin123, update the OracleConnection string inside campus-backend/appsettings.json before running the server.
+# Build the project
+dotnet build
 
-Step 4: Frontend Setup (React + Vite + Tailwind CSS)
-The dashboard uses a modern React 19+ and Tailwind CSS setup. Open a new terminal window and run:
+# Check if build was successful
+# You should see: "Build succeeded"
 
-Bash
-# Navigate to the frontend directory
+# Go back to root
+cd ..
+```
+
+**Note:** The backend is configured to:
+- Auto-create the `ReferenceFaces/` folder for profile photos
+- Connect to Oracle at: `localhost:1521/XEPDB1`
+- Listen on: `http://localhost:5106`
+- CORS allows: `http://localhost:5173` (frontend)
+
+---
+
+### **Step 4: Frontend Setup (React)**
+
+```bash
+# Navigate to frontend directory
 cd campus-dashboard
 
-# Install all Node modules and packages
+# Install dependencies
 npm install
 
-# Start the Vite development server
-npm run dev
-The dashboard will be available at http://localhost:5173.
+# Verify installation
+npm list react
 
-Step 5: Edge Node Setup (Python IoT)
-The Python node handles the camera hardware and MQTT communications. Open a third terminal window:
+# Go back to root
+cd ..
+```
 
-Bash
-# Navigate to the edge node directory
+---
+
+### **Step 5: Edge Node Setup (Python)**
+
+```bash
+# Navigate to edge directory
 cd campus-edge
 
 # Create a virtual environment (recommended)
 python -m venv venv
 
-# Activate the virtual environment
+# Activate virtual environment
 # On Windows:
 venv\Scripts\activate
-# On Mac/Linux:
+# On macOS/Linux:
 source venv/bin/activate
 
-# Install required Python packages
+# Install dependencies
 pip install -r requirements.txt
-⚠️ Important Python Environment Step:
-You must create a .env file inside the campus-edge folder. This tells the Python script where your C# server is located. Create the file and add this code, changing the IP address to match your laptop's IPv4 address:
 
-Ini, TOML
-BACKEND_API_URL=http://YOUR_LAPTOP_IP:5106/api
-MQTT_BROKER_IP=YOUR_LAPTOP_IP
-MQTT_PORT=1883
-ROOM_ID=RM-101
-Once the .env is created, you can run the camera script:
+# Verify installation
+pip list
 
-Bash
+# Go back to root
+cd ..
+```
+
+#### **Create `.env` File (Local Configuration)**
+
+Each team member must create their own `.env` file with their local IP address:
+
+```bash
+# In campus-edge/ directory, create a new file named: .env
+
+# Add this line (replace with YOUR laptop IP):
+BACKEND_IP=192.168.x.x
+```
+
+**How to find your IP:**
+- Windows: Open CMD and type `ipconfig` → Look for "IPv4 Address"
+- macOS/Linux: Open Terminal and type `ifconfig` → Look for "inet"
+
+**IMPORTANT:** The `.env` file is already in `.gitignore` — do NOT commit it! Each team member creates their own.
+
+---
+
+## 🏃 Running the Application
+
+You'll need **3 terminal windows** to run all services simultaneously.
+
+### **Terminal 1: Start Backend (ASP.NET Core)**
+
+```bash
+cd campus-backend
+dotnet run
+```
+
+Expected output:
+```
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5106
+```
+
+### **Terminal 2: Start Frontend (React)**
+
+```bash
+cd campus-dashboard
+npm run dev
+```
+
+Expected output:
+```
+  VITE v8.0.9  ready in 123 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  press h to show help
+```
+
+### **Terminal 3: Start Edge Node (Python)**
+
+```bash
+cd campus-edge
+
+# Activate virtual environment first (if not already active)
+# Windows: venv\Scripts\activate
+# macOS/Linux: source venv/bin/activate
+
 python vision_node.py
-📁 Project Structure
-/campus-dashboard/ - The React/Vite frontend UI (Registrar, HR, Principal, Guard portals).
+```
 
-/campus-backend/ - The C# ASP.NET Core REST API.
+Expected output:
+```
+ * Running on http://0.0.0.0:5000
+ * Press CTRL+C to quit
+```
 
-/campus-edge/ - Python scripts for the Raspberry Pi 5 camera hardware.
+---
 
-/database/ - SQL scripts to initialize and sync the Oracle database across team members.
+## 🎯 Accessing the Application
 
-🛠️ Typical Git Workflow for the Team
-To prevent overriding each other's code, please follow this workflow:
+Once all services are running:
 
-Before starting work, always pull the latest changes: git pull origin main
+1. **Open your browser** and navigate to: `http://localhost:5173`
+2. **Login** with a test user account (see database setup notes)
+3. **Navigate** to different portals:
+   - **Registrar Portal:** Manage schedules, sections, students, staff
+   - **Faculty Portal:** View attendance logs
+   - **Guard Portal:** Door access control
+   - **Principal Portal:** System overview
 
-Create a new branch for your feature: git checkout -b feature-your-feature-name
+---
 
-Commit your changes: git commit -m "Added new scheduling feature"
+## 🗂️ Project Structure Overview
 
-Push to your branch: git push origin feature-your-feature-name
+```
+AI-Assisted_Classroom_System/
+├── CONTEXT.md                    # AI memory & project manifest (READ FIRST)
+├── README.md                     # This file
+├── campus-backend/               # C# ASP.NET Core API
+│   ├── Controllers/              # API endpoints
+│   ├── Repositories/             # Database layer
+│   ├── Models/                   # Data models
+│   ├── Services/                 # Business logic
+│   ├── Program.cs                # App configuration
+│   └── campus-backend.csproj     # Dependencies
+├── campus-dashboard/             # React Vite frontend
+│   ├── src/
+│   │   ├── portals/              # Role-based dashboards (Registrar, Faculty, etc.)
+│   │   ├── components/           # Shared UI components
+│   │   └── App.jsx               # Main routing
+│   ├── package.json              # Dependencies
+│   └── vite.config.js            # Build configuration
+├── campus-edge/                  # Python edge node (Raspberry Pi)
+│   ├── vision_node.py            # Main camera processing script
+│   ├── requirements.txt          # Python dependencies
+│   └── .env                      # Local IP config (DO NOT COMMIT)
+└── database/
+    └── schema.sql                # Oracle database schema
+```
 
-Create a Pull Request (PR) on GitHub to merge into main.
+---
+
+## 📝 Key Development Notes
+
+### Naming Conventions
+
+| Category | Style | Example |
+|----------|-------|---------|
+| Database columns | SCREAMING_SNAKE_CASE | `FACE_REFERENCE_PATH` |
+| C# class properties | PascalCase | `FirstName`, `LastName` |
+| React components | PascalCase | `StaffTable`, `SectionRoster` |
+| React files | PascalCase | `StudentTable.jsx` |
+| React hooks/utils | camelCase | `useStudents()`, `fetchData()` |
+| CSS classes | Tailwind utility | `p-4`, `text-slate-800` |
+
+### Database Connection String
+
+```
+User Id=CAMPUS_ADMIN;
+Password=yourpassword;
+Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=XEPDB1)));
+```
+
+Configured in: `campus-backend/appsettings.json`
+
+### API Base URL
+
+All API calls use: `http://localhost:5106/api/`
+
+Examples:
+- Get all students: `GET /api/student`
+- Get schedule: `GET /api/schedules`
+- Create enrollment: `POST /api/enrollments`
+
+### Frontend Authentication
+
+User data stored in browser localStorage:
+```javascript
+// Example structure
+{
+  User_ID: "USR001",
+  First_Name: "John",
+  Last_Name: "Doe",
+  Role: "Registrar",
+  Email: "john@campus.edu"
+}
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### "Cannot connect to backend"
+- ✅ Verify backend is running: `dotnet run` in `campus-backend/`
+- ✅ Check port 5106 is not in use
+- ✅ Restart backend and refresh browser
+
+### "Database connection fails"
+- ✅ Verify Oracle XE is running
+- ✅ Check connection string in `appsettings.json`
+- ✅ Ensure `schema.sql` was executed successfully
+- ✅ Verify tables exist: `SELECT * FROM user_tables;` in SQL Developer
+
+### "npm install fails"
+- ✅ Clear cache: `npm cache clean --force`
+- ✅ Delete `node_modules` and `package-lock.json`
+- ✅ Reinstall: `npm install`
+- ✅ Ensure Node.js version is 18+
+
+### "Python dependencies fail to install"
+- ✅ Ensure virtual environment is activated
+- ✅ Check Python version: `python --version`
+- ✅ Update pip: `python -m pip install --upgrade pip`
+- ✅ Install with: `pip install -r requirements.txt --upgrade`
+
+### "Face photos not showing"
+- ✅ Check `ReferenceFaces/` folder exists
+- ✅ Verify image files are in the folder
+- ✅ Check browser console for 404 errors
+- ✅ Ensure database has correct file paths
+
+---
+
+## 📚 Additional Resources
+
+### Code Documentation
+- **CONTEXT.md:** High-level project architecture & design decisions
+- **CAMPUS.md** (if exists): API documentation
+- **Controllers:** Inline comments explain complex logic
+
+### Common Tasks
+
+**How to add a new feature:**
+1. Read `CONTEXT.md` for architecture overview
+2. Check relevant controller in `campus-backend/Controllers/`
+3. Update React component in `campus-dashboard/src/portals/Registrar/`
+4. Test with API calls via `campus-backend.http`
+
+**How to debug API issues:**
+1. Open `campus-backend.http` in VS Code
+2. Use **REST Client** extension (if installed)
+3. Test endpoints directly
+
+**How to check database:**
+1. Open SQL Developer
+2. Connect to local XE
+3. Open SQL Worksheet
+4. Query tables directly
+
+---
+
+## 🚨 Important Before Committing
+
+1. **DO NOT commit:**
+   - `node_modules/` (frontend)
+   - `bin/` and `obj/` (backend)
+   - `.env` file (Python local config)
+   - `campus-edge/.env` with your IP address
+
+2. **DO commit:**
+   - `database/schema.sql` (required for others)
+   - `package.json` & `package-lock.json`
+   - `.csproj` files
+   - `requirements.txt`
+   - Source code only (`.cs`, `.jsx`, `.py`)
+
+3. **Before pushing:**
+   ```bash
+   git status
+   # Make sure ONLY your code changes are staged
+   # DO NOT include node_modules, bin, obj, .env
+   ```
+
+---
+
+## 💡 Tips for Collaboration
+
+1. **Create a feature branch:**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Keep CONTEXT.md updated:**
+   - If you change architecture, update CONTEXT.md
+   - This helps future team members understand decisions
+
+3. **Test locally before pushing:**
+   - Run all 3 services
+   - Test your changes thoroughly
+   - Check for errors in browser console
+
+4. **Document your changes:**
+   - Clear commit messages
+   - Add comments to complex code
+
+---
+
+## 📞 Support & Questions
+
+If you encounter issues:
+1. Check this README for troubleshooting
+2. Review CONTEXT.md for architecture decisions
+3. Check existing GitHub issues
+4. Ask team leads
+
+---
+
+## 📜 License & Credits
+
+**Team:** EddyPotato (Lead Developer)  
+**Last Updated:** May 5, 2026  
+**Status:** Development Phase
+
+---
+
+**Happy coding! 🚀 If you have any setup issues, please reach out to the team lead.**
