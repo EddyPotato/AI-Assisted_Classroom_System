@@ -6,9 +6,8 @@ export default function SectionForm({ section, onBack, onSuccess, onShowToast })
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // THE FIX: Removed 'setStatus' from this list since the UI is currently visual-only
   const {
-    formData, isEditing, isSubmitting,
+    formData, isEditing, isSubmitting, campuses,
     handleChange, setYearLevel, setCourse, handleSubmit,
     availablePrograms, getProgramName
   } = useSectionFormLogic(section, onSuccess, onShowToast);
@@ -41,7 +40,7 @@ export default function SectionForm({ section, onBack, onSuccess, onShowToast })
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
-            {/* Campus Input */}
+            {/* Dynamic Campus Dropdown */}
             <div className="col-span-1">
                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Campus Location <span className="text-rose-500">*</span></label>
                <div className="relative">
@@ -52,9 +51,11 @@ export default function SectionForm({ section, onBack, onSuccess, onShowToast })
                     onChange={handleChange} 
                     className="w-full pl-11 pr-4 py-3 h-13 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm transition-all appearance-none bg-white cursor-pointer"
                  >
-                    <option value="Main">Main Campus</option>
-                    <option value="SB">San Bartolome (SB)</option>
-                    <option value="Batasan">Batasan Campus</option>
+                    {campuses.map(campus => (
+                      <option key={campus.campus_Code || campus.code} value={campus.campus_Code || campus.code}>
+                        {campus.campus_Name || campus.name}
+                      </option>
+                    ))}
                  </select>
                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                </div>
@@ -118,7 +119,7 @@ export default function SectionForm({ section, onBack, onSuccess, onShowToast })
                />
             </div>
 
-            {/* Section Name Input */}
+            {/* THE FIX: Placeholder updated to remove the hyphen */}
             <div className="col-span-1">
                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Section Name <span className="text-rose-500">*</span></label>
                <input 
@@ -128,7 +129,7 @@ export default function SectionForm({ section, onBack, onSuccess, onShowToast })
                   value={formData.section_Name} 
                   onChange={handleChange} 
                   maxLength="20"
-                  placeholder="e.g. SBIT2A" 
+                  placeholder="e.g. SBIT1A" 
                   className="w-full px-4 py-3 h-13 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm transition-all uppercase" 
                />
             </div>

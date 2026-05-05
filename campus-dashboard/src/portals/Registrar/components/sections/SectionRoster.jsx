@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { ArrowLeft, Search, UserPlus, BookOpen, Users, CalendarPlus } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, Search, UserPlus, BookOpen, Users, CalendarPlus } from 'lucide-react';
 
 import { useEnrollmentLogic } from './hooks/useEnrollmentLogic';
 import { useScheduleLogic } from './hooks/useScheduleLogic';
 
-// THE FIX: Import the View instead of the Modal
 import AddStudentsView from './AddStudentsView'; 
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
 import ScheduleForm from '../schedules/ScheduleForm';
@@ -12,7 +11,7 @@ import FaceZoomModal from '../users/FaceZoomModal';
 import StudentListTab from './StudentListTab';
 import SchedulesTab from './SchedulesTab';
 
-export default function SectionRoster({ section, onBack }) {
+export default function SectionRoster({ section, onBack, onEdit, onDelete }) {
   const [activeTab, setActiveTab] = useState('students');
   const [searchQuery, setSearchQuery] = useState('');
   const [zoomedImage, setZoomedImage] = useState(null);
@@ -58,7 +57,10 @@ export default function SectionRoster({ section, onBack }) {
         onCancel={() => schedule.setConfirmSchedModal({ isOpen: false, scheduleId: null })}
       />
 
-      <div className="flex items-center justify-between mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+      {/* THE FIX: Upgraded Header with Action Buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        
+        {/* Left Side: Title & Back Button */}
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 hover:text-blue-600 hover:border-blue-300 transition-all shadow-sm">
             <ArrowLeft size={20} strokeWidth={2.5} />
@@ -68,6 +70,23 @@ export default function SectionRoster({ section, onBack }) {
             <p className="text-sm font-bold text-slate-500">Block Section Master Roster</p>
           </div>
         </div>
+
+        {/* Right Side: Edit & Delete Buttons */}
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={onEdit} 
+            className="flex items-center gap-2 px-5 py-2.5 bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-700 rounded-xl font-bold transition-all border border-amber-200 shadow-sm active:scale-95 text-sm"
+          >
+            <Edit2 size={16} strokeWidth={2.5} /> Edit Details
+          </button>
+          <button 
+            onClick={onDelete} 
+            className="flex items-center gap-2 px-5 py-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 rounded-xl font-bold transition-all border border-rose-200 shadow-sm active:scale-95 text-sm"
+          >
+            <Trash2 size={16} strokeWidth={2.5} /> Delete Section
+          </button>
+        </div>
+
       </div>
 
       <div className="flex gap-2 mb-6 border-b border-slate-200 pb-px">
@@ -102,7 +121,7 @@ export default function SectionRoster({ section, onBack }) {
           onBack={() => enrollment.setShowAddStudentsView(false)}
           onAdd={(newStudents) => {
             enrollment.handleAddStudents(newStudents);
-            enrollment.setShowAddStudentsView(false); // Auto-close after adding!
+            enrollment.setShowAddStudentsView(false); 
           }}
         />
       ) : activeTab === 'subjects' && schedule.showScheduleForm ? (
@@ -128,7 +147,6 @@ export default function SectionRoster({ section, onBack }) {
             </div>
 
             {activeTab === 'students' ? (
-              // THE FIX: Triggering the new view state from the hook
               <button onClick={() => enrollment.setShowAddStudentsView(true)} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap">
                 <UserPlus size={18} /> Add Students
               </button>

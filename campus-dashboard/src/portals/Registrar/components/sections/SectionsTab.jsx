@@ -13,7 +13,6 @@ export default function SectionsTab() {
   const [isCourseDropdownOpen, setIsCourseDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Bring in the logic safely
   const {
     filteredSections, isLoading,
     searchQuery, setSearchQuery,
@@ -26,7 +25,6 @@ export default function SectionsTab() {
     uniqueYears, uniqueCourses, getFullProgramName
   } = useSectionsLogic();
 
-  // Close custom dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -37,9 +35,16 @@ export default function SectionsTab() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // --- ROUTING INTERCEPTS ---
   if (selectedSection) {
-    return <SectionRoster section={selectedSection} onBack={() => setSelectedSection(null)} />;
+    return (
+      <SectionRoster 
+        section={selectedSection} 
+        onBack={() => setSelectedSection(null)} 
+        // THE FIX: Pass the actions down to the roster view!
+        onEdit={() => { setSelectedSection(null); setEditingSection(selectedSection); setShowForm(true); }}
+        onDelete={() => handleActionClick(selectedSection, 'hard_delete')}
+      />
+    );
   }
 
   if (showForm) {
@@ -56,7 +61,6 @@ export default function SectionsTab() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300 relative">
       
-      {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-100 bg-slate-800 text-white px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 fade-in duration-300">
           <CheckCircle2 className="text-emerald-400" size={20} />
@@ -64,7 +68,6 @@ export default function SectionsTab() {
         </div>
       )}
 
-      {/* Confirmation Modal */}
       <ConfirmModal 
          isOpen={modal.isOpen} 
          type={modal.type} 
@@ -74,7 +77,6 @@ export default function SectionsTab() {
          onCancel={() => setModal({ ...modal, isOpen: false })} 
       />
 
-      {/* Header & View Toggle */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
         <div>
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Academic Sections</h2>
@@ -93,11 +95,9 @@ export default function SectionsTab() {
         </div>
       </div>
       
-      {/* Search & Filters Toolbar */}
       <div className="p-5 border border-slate-200 bg-white rounded-2xl shadow-sm flex flex-col gap-4">
         
         <div className="flex flex-col lg:flex-row justify-between gap-4">
-           {/* Search Bar */}
            <div className="relative w-full lg:w-96 shrink-0">
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
              <input
@@ -109,7 +109,6 @@ export default function SectionsTab() {
              />
            </div>
 
-           {/* Custom Built-In Course Dropdown */}
            <div className="relative w-full lg:w-72 shrink-0 z-20" ref={dropdownRef}>
               <div 
                  onClick={() => setIsCourseDropdownOpen(!isCourseDropdownOpen)}
@@ -153,7 +152,6 @@ export default function SectionsTab() {
            </button>
         </div>
 
-        {/* Pill-Shaped Year Selection Bar */}
         <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-hide border-t border-slate-100 pt-4">
            <span className="text-xs font-bold text-slate-400 uppercase whitespace-nowrap mr-2">Year Level:</span>
            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner shrink-0">
@@ -175,7 +173,6 @@ export default function SectionsTab() {
 
       </div>
       
-      {/* Grid Rendering */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {isLoading ? (
            <div className="col-span-full py-20 text-center flex flex-col items-center justify-center text-blue-600 font-bold bg-white rounded-2xl border border-slate-200 shadow-sm animate-pulse">
@@ -193,17 +190,18 @@ export default function SectionsTab() {
             <div 
               key={section.section_ID} 
               onClick={() => setSelectedSection(section)}
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group flex flex-col relative overflow-hidden"
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group flex flex-col relative"
             >
-              {/* ACTION BUTTONS (Hidden until hover) */}
-              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* THE FIX: Permanently visible action buttons in the top right corner */}
+              <div className="absolute top-4 right-4 flex gap-2">
                 {viewMode === 'active' ? (
                   <>
                     <button onClick={(e) => { e.stopPropagation(); setEditingSection(section); setShowForm(true); }} className="p-2 bg-white text-amber-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Edit Section">
                       <Edit2 size={16} />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleActionClick(section, 'archive'); }} className="p-2 bg-white text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Archive Section">
-                      <Archive size={16} />
+                    {/* Note: Kept Hard Delete here as requested for immediate testing. Swap to 'archive' later if preferred. */}
+                    <button onClick={(e) => { e.stopPropagation(); handleActionClick(section, 'hard_delete'); }} className="p-2 bg-white text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Delete Section">
+                      <Trash2 size={16} />
                     </button>
                   </>
                 ) : (
@@ -218,7 +216,8 @@ export default function SectionsTab() {
                 )}
               </div>
 
-              <div className="flex justify-between items-start mb-4 pr-16">
+              {/* Added pr-24 (padding-right) to ensure long section names don't overlap the buttons */}
+              <div className="flex justify-between items-start mb-4 pr-24">
                 <div className={`px-3 py-1.5 rounded-lg font-black text-xl tracking-tight border transition-colors ${viewMode === 'active' ? 'bg-blue-50 text-blue-700 border-blue-200 group-hover:bg-blue-600 group-hover:text-white' : 'bg-slate-100 text-slate-600 border-slate-300'}`}>
                   {section.section_Name}
                 </div>
