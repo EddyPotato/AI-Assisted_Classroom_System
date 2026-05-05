@@ -23,9 +23,15 @@ export default function StaffDirectoryTab() {
   const fetchStaff = useCallback(() => {
     let isMounted = true;
     fetch('http://localhost:5106/api/user')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+        return res.json();
+      })
       .then(data => { if (isMounted && Array.isArray(data)) setStaffList(data); })
-      .catch(err => console.error("Failed to fetch staff", err));
+      .catch(err => {
+        console.error("Failed to fetch staff:", err);
+        if (isMounted) setStaffList([]); // Prevents undefined crashes!
+      });
     return () => { isMounted = false; };
   }, []);
 

@@ -4,7 +4,10 @@ namespace campus_backend.Repositories
 {
     public interface IUserRepository
     {
-        Task<User?> GetUserByIdAsync(string userId);
-        Task UpdatePasswordAsync(string userId, string hashedPassword);
+        Task<IEnumerable<User>> GetAllUsersAsync();
+        Task<User?> GetUserByIdAsync(string id);
+        Task CreateUserAsync(User user);
+        Task UpdateUserAsync(User user);
+        Task DeleteUserAsync(string id);
     }
 }
