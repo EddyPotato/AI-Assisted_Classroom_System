@@ -179,5 +179,93 @@ namespace campus_backend.Repositories
             }
             return schedule;
         }
+
+        public async Task<SectionDTO> CreateSectionAsync(SectionDTO section)
+        {
+            using (OracleConnection con = new OracleConnection(_connectionString))
+            {
+                string sectionId = "SEC-" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
+                string sql = @"
+                    INSERT INTO SECTIONS (SECTION_ID, CAMPUS, COURSE, YEAR_LEVEL, SECTION_LETTER, SECTION_NAME) 
+                    VALUES (:secid, :campus, :course, :yearlevel, :sectionletter, :sectionname)";
+
+                using (OracleCommand cmd = new OracleCommand(sql, con))
+                {
+                    cmd.Parameters.Add(new OracleParameter("secid", sectionId));
+                    cmd.Parameters.Add(new OracleParameter("campus", section.Campus ?? "SB"));
+                    cmd.Parameters.Add(new OracleParameter("course", section.Course));
+                    cmd.Parameters.Add(new OracleParameter("yearlevel", section.Year_Level));
+                    cmd.Parameters.Add(new OracleParameter("sectionletter", section.Section_Letter ?? ""));
+                    cmd.Parameters.Add(new OracleParameter("sectionname", section.Section_Name));
+
+                    await con.OpenAsync();
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                section.Section_ID = sectionId;
+                section.Student_Count = 0;
+                return section;
+            }
+        }
+
+        public async Task<SectionDTO> UpdateSectionAsync(string sectionId, SectionDTO section)
+        {
+            using (OracleConnection con = new OracleConnection(_connectionString))
+            {
+                string sql = @"
+                    UPDATE SECTIONS 
+                    SET CAMPUS = :campus, COURSE = :course, YEAR_LEVEL = :yearlevel, 
+                        SECTION_LETTER = :sectionletter, SECTION_NAME = :sectionname 
+                    WHERE SECTION_ID = :secid";
+
+                using (OracleCommand cmd = new OracleCommand(sql, con))
+                {
+                    cmd.Parameters.Add(new OracleParameter("campus", section.Campus ?? "SB"));
+                    cmd.Parameters.Add(new OracleParameter("course", section.Course));
+                    cmd.Parameters.Add(new OracleParameter("yearlevel", section.Year_Level));
+                    cmd.Parameters.Add(new OracleParameter("sectionletter", section.Section_Letter ?? ""));
+                    cmd.Parameters.Add(new OracleParameter("sectionname", section.Section_Name));
+                    cmd.Parameters.Add(new OracleParameter("secid", sectionId));
+
+                    await con.OpenAsync();
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                section.Section_ID = sectionId;
+                return section;
+            }
+        }
+
+        public async Task DeleteSectionAsync(string sectionId)
+        {
+            using (OracleConnection con = new OracleConnection(_connectionString))
+            {
+                await con.OpenAsync();
+                
+                // Delete all enrollments for this section first (foreign key constraint)
+                string deleteEnrollmentsSql = "DELETE FROM ENROLLMENTS WHERE SECTION_ID = :secid";
+                using (OracleCommand cmd = new OracleCommand(deleteEnrollmentsSql, con))
+                {
+                    cmd.Parameters.Add(new OracleParameter("secid", sectionId));
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // Delete all schedules for this section
+                string deleteSchedulesSql = "DELETE FROM SCHEDULES WHERE SECTION_ID = :secid";
+                using (OracleCommand cmd = new OracleCommand(deleteSchedulesSql, con))
+                {
+                    cmd.Parameters.Add(new OracleParameter("secid", sectionId));
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // Finally delete the section
+                string deleteSectionSql = "DELETE FROM SECTIONS WHERE SECTION_ID = :secid";
+                using (OracleCommand cmd = new OracleCommand(deleteSectionSql, con))
+                {
+                    cmd.Parameters.Add(new OracleParameter("secid", sectionId));
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+        }
     }
 }

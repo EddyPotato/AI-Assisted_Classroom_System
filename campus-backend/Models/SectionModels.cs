@@ -6,6 +6,8 @@ namespace campus_backend.Models
         public string Section_Name { get; set; } = string.Empty;
         public string Course { get; set; } = string.Empty;
         public int Year_Level { get; set; }
+        public string? Campus { get; set; }
+        public string? Section_Letter { get; set; }
         public int Student_Count { get; set; }
         public string? Primary_Adviser { get; set; }
         public string? Primary_Subject { get; set; }

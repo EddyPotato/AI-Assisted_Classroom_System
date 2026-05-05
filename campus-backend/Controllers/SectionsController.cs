@@ -22,6 +22,37 @@ namespace campus_backend.Controllers
             return Ok(sections);
         }
 
+        [HttpPost]
+        public async Task<IActionResult> CreateSection([FromBody] SectionDTO section)
+        {
+            if (string.IsNullOrWhiteSpace(section.Section_Name) || string.IsNullOrWhiteSpace(section.Course))
+            {
+                return BadRequest(new { message = "Section name and course are required" });
+            }
+
+            var createdSection = await _sectionRepository.CreateSectionAsync(section);
+            return CreatedAtAction(nameof(GetAllSections), new { id = createdSection.Section_ID }, createdSection);
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateSection(string id, [FromBody] SectionDTO section)
+        {
+            if (string.IsNullOrWhiteSpace(section.Section_Name) || string.IsNullOrWhiteSpace(section.Course))
+            {
+                return BadRequest(new { message = "Section name and course are required" });
+            }
+
+            var updatedSection = await _sectionRepository.UpdateSectionAsync(id, section);
+            return Ok(updatedSection);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteSection(string id)
+        {
+            await _sectionRepository.DeleteSectionAsync(id);
+            return Ok(new { message = "Section deleted successfully" });
+        }
+
         [HttpGet("{id}/students")]
         public async Task<IActionResult> GetStudentsInSection(string id)
         {
