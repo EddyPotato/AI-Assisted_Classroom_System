@@ -1,726 +1,427 @@
 # AI-Assisted Smart Campus & Classroom System
 
----
+Smart campus platform for registrar workflows, classroom/room attendance, and Guard Portal access control using barcode/QR scanning, face recognition, Oracle Database, SignalR, MQTT, and a Python camera edge node.
 
-## 📊 Project Status (May 6, 2026)
-
-**Current Phase:** Guard Portal Phase 1 Complete → **Phase 2: Real-Time Access Control Enhancements**
-
-**Phase 1 Completions (Prototype):**
-- ✅ **Guard Portal Framework** - Camera feed viewer + access log
-- ✅ **Barcode/QR Scanning** - pyzbar integration with MQTT
-- ✅ **Real-Time Face Verification** - SignalR updates to UI
-- ✅ **Section Management CRUD** - Create, Edit, Delete operations with cascading deletes
-  - `POST /api/sections` - Create new section
-  - `PUT /api/sections/{id}` - Update section details
-  - `DELETE /api/sections/{id}` - Delete section (removes enrollments, schedules, section)
-- ✅ Enhanced `SectionDTO` with Campus and Section_Letter fields
-- ✅ Table column spacing fixes (Schedules & Faculty views)
-- ✅ Professor face photo display with fallback icons
-- ✅ Cache-busting for profile images
-
-**Phase 2 In Planning (See [NEXT_GOALS.md](./NEXT_GOALS.md) for Complete Roadmap):**
-- 🔄 **Camera Control System** - Off/On buttons (no auto-close on logout)
-- 🔄 **Manual ID Input** - Fallback text input for missing barcodes
-- 🔄 **Camera Location Configuration** - Support multiple cameras (entrance/exit/room-specific)
-- 🔄 **Privacy-Enhanced Event Logging** - Separate Access History tab (hidden from main UI)
-- 🔄 **Manual Bypass Feature** - For students/staff without ID cards
-- 🔄 **Controlled Environment Testing** - Room-based attendance scenarios (e.g., IL604)
-- 🔄 **Python Script Stability** - Investigate/fix unexpected shutdowns
-
-**Planned (Phase 3+):**
-- Component refactoring (SectionRoster.jsx decomposition)
-- Complete CRUD for Schedules and Rooms
-- RBAC implementation
-- Professor bypass & verification system
-- Auto-start vision_node.py when opening Guard Portal
-- Room-based attendance tracking
-- Advanced analytics & occupancy monitoring
+**Current date/state:** May 6, 2026  
+**Current phase:** Guard Portal Phase 2 integration in progress  
+**Latest verification:** Frontend lint/build and backend build pass after the latest fixes.
 
 ---
 
-## 🚔 **Guard Portal: Real-Time Face Recognition Access System**
+## Current Status
 
-### The AI Magic Behind the Scenes
+### Working or implemented
 
-The Guard Portal bridges **hardware (Raspberry Pi + camera)**, **AI (face recognition)**, and **real-time web dashboard** to create an instant access control system.
+- React/Vite dashboard with role-based portals:
+  - Faculty
+  - Guard
+  - Principal
+  - Registrar
+- ASP.NET Core backend with Oracle repositories
+- SignalR hub for real-time UI updates
+- MQTT listener for edge-node scan and verification events
+- Python edge node for:
+  - Camera feed
+  - Barcode/QR scanning
+  - Face recognition
+  - MQTT publishing
+- Registrar management flows:
+  - Students
+  - Staff
+  - Sections
+  - Enrollments
+  - Schedules
+  - Courses/subjects support
+- Guard Portal Phase 2 UI pieces:
+  - Camera location selector
+  - Start/Stop camera controls
+  - Manual ID input fallback
+  - Manual bypass modal
+  - Live Monitor tab
+  - Access History tab
+  - Privacy-first recent scan display
+- Database includes camera/location-aware access tracking:
+  - `CAMERA_LOCATIONS`
+  - `EVENT_LOGS.LOCATION_ID`
+  - `EVENT_LOGS.BYPASS_REASON`
 
-#### **Face Recognition Technology Stack**
-- **Library:** `face_recognition` v1.3.0 + OpenCV
-- **Detection:** HOG (Histogram of Oriented Gradients) to locate faces
-- **Encoding:** Pre-trained ResNet deep learning model (via dlib) generates 128-dimensional face map
-- **Comparison:** Live camera face vs. student's `FACE_REFERENCE_PATH` — threshold distance 0.6 = **99.38% accuracy**
-- **Speed:** ~200ms per frame (real-time performance)
+### Fixed today
 
-#### **Guard Portal Workflow: 2-Phase System**
+- Fixed Guard Portal lint failure caused by state updates inside `LiveCameraFeed.jsx`.
+- Moved camera stream cache-token updates into the `GuardPortal.jsx` start-camera flow.
+- Fixed backend camera/access code using the wrong Oracle connection-string key.
+- `CameraController.cs`, `CameraLocationRepository.cs`, and `AccessVerificationService.cs` now support the same fallback connection-string pattern used elsewhere.
+- Confirmed `GET /api/camera/locations` returns HTTP `200`.
+- Stopped a lingering backend process that caused `address already in use` on port `5106`.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ PHASE 1: BARCODE/QR SCAN (Student ID Verification)        │
-├─────────────────────────────────────────────────────────────┤
-│ 1. Student holds barcode/QR to camera                       │
-│ 2. Python edge node (pyzbar library) reads barcode          │
-│ 3. MQTT message sent: campus/door/scan → { student_id }    │
-│ 4. C# backend receives & looks up student record            │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PHASE 2: FACE RECOGNITION (Biometric Match)               │
-├─────────────────────────────────────────────────────────────┤
-│ 1. Edge node retrieves student's FACE_REFERENCE_PATH       │
-│ 2. Compares 128D face encoding from DB vs. live video      │
-│ 3. If distance < 0.6: ✅ MATCH FOUND                       │
-│ 4. MQTT message: campus/door/verified → { status }        │
-│ 5. C# backend logs event to EVENT_LOGS table               │
-│ 6. SignalR (WebSocket) pushes result to React Guard UI     │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ UI UPDATE: Guard sees real-time result (no page refresh)   │
-├─────────────────────────────────────────────────────────────┤
-│ ✅ Green: "John Doe (ID: STU001) - GATE UNLOCKED"          │
-│ ❌ Red: "Face mismatch - DENIED"                           │
-│ ⏱️ Access log updates instantly with timestamp             │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
+### Verified commands
 
-### Guard Portal UI Components (Current Phase 1)
-
-**Left Panel: Camera Feed**
-- Live MJPEG stream from edge node: `http://localhost:5000/video_feed`
-- Real-time status badge: LIVE | SIGNAL LOST
-- Camera identifier: CAM_01: MAIN GATE
-- *Phase 2: Will add Start/Stop camera buttons and location selector*
-
-**Right Panel: Access Log**
-- Real-time scan events from SignalR
-- Show: Student Photo | Name | ID | Status (✅/❌) | Timestamp
-- Filter/sort options: All | Approved | Denied | Today | This Week
-- *Phase 2: Limited to last 10 entries; full history in separate tab*
-
-**Bottom Controls**
-- **MANUAL BYPASS (FORGOTTEN ID):** Manual override for students without barcode
-  - *Phase 2: Improved with confirmation dialog and location tracking*
-- **TRIGGER LOCKDOWN:** Emergency security lockdown
-  - *Phase 2: Removed (inappropriate for access control)*
-
-**Phase 2 New Components:**
-- Camera location selector (Entrance/Exit/Room)
-- Manual ID text input form
-- Offline/Online camera status indicator
-- Access History tab (separate from main view)
-
-### Integration Points
-
-| Component | Connection | Purpose |
-|-----------|-----------|---------|
-| Python Edge Node | MQTT `campus/door/scan` | Sends barcode data & face match status |
-| C# Backend | MQTT Listener Service | Receives edge events → logs to DB |
-| SignalR Hub | `CampusHub.cs` | Broadcasts results to Guard UI in real-time |
-| React Frontend | SignalR client | Receives events → updates access log |
-| Oracle DB | EVENT_LOGS table | Stores attendance & access records |
-
----
-
-## 🔧 **Guard Portal Phase 2: Upcoming Improvements**
-
-See [NEXT_GOALS.md](./NEXT_GOALS.md) for complete development roadmap.
-
-### Key Enhancements
-
-| Feature | Current | Upcoming | Benefit |
-|---------|---------|----------|---------|
-| **Camera Control** | Auto-closes with logout | On/Off button | Manual control, prevents unexpected stops |
-| **ID Entry** | Barcode only | + Manual text input | Backup for missing/damaged barcodes |
-| **Camera Locations** | Hardcoded "Main Gate" | Configurable (entrance/exit/rooms) | Multi-gate support + room attendance |
-| **Event Logs** | Visible in main UI | Separate Access History tab | Privacy protection, cleaner interface |
-| **Manual Bypass** | Button present | Improved with confirmation | For students without ID cards |
-| **Lockdown Button** | Present | Removed | Inappropriate for access control |
-| **Verification Display** | Small profile pic | Large profile pic + better layout | Better UX, clearer verification status |
-
-### Use Case: Room-Based Attendance Tracking
-
-Example scenario - IL604 classroom, SE101 class (2:30 PM - 5:30 PM):
-
-```
-📍 Set Camera Location: IL604 Classroom
-📅 Check Schedule: SE101 (Professor + Students)
-🚪 Student arrives 5 min early → scans barcode at IL604 camera
-  ✓ Status: "present-in-room"
-  ✓ Logged: "Student entered IL604"
-📍 After class (5 minutes manual test)
-🚪 Student re-scans → exits IL604
-  ✓ Status: Returns to "in-campus"
-  ✓ Logged: "Student exited IL604"
-📊 Attendance automatically tracked for IL604
-```
-
-### Privacy-First Event Logging
-
-**Main Guard Portal:**
-- Shows only last 10 access log entries
-- Displays: Name, ID, Status, Timestamp, Location
-- No detailed scan history
-
-**Separate Access History Tab:**
-- Full event logs with filtering
-- Date range, student, location filters
-- For authorized personnel only (future RBAC)
-
----
-
-## 👥 Team Collaboration Guide
-
-This repository does **not** include heavy dependencies like `node_modules` or `.dll` files. When you clone this project for the first time, you must install the dependencies for each module locally by following the steps below.
-
----
-
-## 📋 Prerequisites
-
-Before starting, ensure you have the following installed on your machine:
-
-| Component | Version | Purpose | Download |
-|-----------|---------|---------|----------|
-| **Node.js** | v18+ | React frontend package management | [nodejs.org](https://nodejs.org/) |
-| **.NET SDK** | 8.0+ | C# backend compilation | [dotnet.microsoft.com](https://dotnet.microsoft.com/download) |
-| **Python** | 3.10+ | Edge node (Raspberry Pi) vision processing | [python.org](https://www.python.org/downloads/) |
-| **Oracle Database 21c XE** | Latest | Local database instance | [oracle.com/xe](https://www.oracle.com/database/technologies/xe-downloads.html) |
-| **Oracle SQL Developer** | Latest | Database management tool | [oracle.com/sqldev](https://www.oracle.com/database/sqldeveloper/download/) |
-| **Git** | Latest | Version control | [git-scm.com](https://git-scm.com/) |
-
----
-
-## 🚀 Quick Start Installation
-
-### **Step 1: Clone the Repository**
-
-```bash
-git clone https://github.com/EddyPotato/AI-Assisted_Classroom_System.git
-cd AI-Assisted_Classroom_System
-```
-
----
-
-### **Step 2: Database Setup (Oracle)**
-
-Since we use local databases, each team member must create the tables on their machine.
-
-#### **Option A: Using SQL Developer (Recommended for Beginners)**
-
-1. **Open Oracle SQL Developer** and connect to your local XE database
-   - Connection Name: `Local XE`
-   - Username: `sys` (or `system`)
-   - Password: (your XE password)
-   - Hostname: `localhost`
-   - Port: `1521`
-   - Service Name: `XEPDB1`
-   - Click **Connect**
-
-2. **Open and run the database schema:**
-   - File → Open → Navigate to `database/schema.sql`
-   - Select all the code (Ctrl+A)
-   - Run (Ctrl+Enter or F9)
-
-3. **Verify tables were created:**
-   ```sql
-   SELECT table_name FROM user_tables WHERE owner = 'CAMPUS_ADMIN';
-   ```
-   You should see: `STUDENTS`, `STAFF`, `USERS`, `SECTIONS`, `SCHEDULES`, `ROOMS`, `ENROLLMENTS`, `EVENT_LOGS`
-
-#### **Option B: Using Command Line (Advanced)**
-
-```bash
-# Connect to Oracle
-sqlplus sys@localhost:1521/XEPDB1 as sysdba
-
-# Run the schema file
-@database/schema.sql
-
-# Verify
-SELECT table_name FROM user_tables WHERE owner = 'CAMPUS_ADMIN';
-
-# Exit
-EXIT;
-```
-
----
-
-### **Step 3: Backend Setup (.NET Core)**
-
-```bash
-# Navigate to backend directory
-cd campus-backend
-
-# Restore dependencies
-dotnet restore
-
-# Build the project
-dotnet build
-
-# Check if build was successful
-# You should see: "Build succeeded"
-
-# Go back to root
-cd ..
-```
-
-**Note:** The backend is configured to:
-- Auto-create the `ReferenceFaces/` folder for profile photos
-- Connect to Oracle at: `localhost:1521/XEPDB1`
-- Listen on: `http://localhost:5106`
-- CORS allows: `http://localhost:5173` (frontend)
-
----
-
-### **Step 4: Frontend Setup (React)**
-
-```bash
-# Navigate to frontend directory
+```powershell
 cd campus-dashboard
+npm.cmd run lint
+npm.cmd run build
 
-# Install dependencies
+cd ../campus-backend
+dotnet build
+```
+
+All passed after the latest fixes.
+
+---
+
+## Tech Stack
+
+### Frontend
+
+- React `19.2.5`
+- Vite `8.0.9`
+- Tailwind CSS `4.2.4`
+- React Router `7.14.2`
+- Lucide React `1.8.0`
+- Microsoft SignalR client `10.0.0`
+
+### Backend
+
+- ASP.NET Core targeting `net10.0`
+- Oracle.ManagedDataAccess.Core `23.26.200`
+- BCrypt.Net-Next `4.1.0`
+- MQTTnet `4.3.7.1207`
+- SignalR
+
+### Edge Node
+
+- Python 3.10+
+- OpenCV
+- pyzbar
+- face_recognition
+- Flask
+- paho-mqtt
+
+### Database
+
+- Oracle Database 21c XE
+- Schema owner: `CAMPUS_ADMIN`
+
+---
+
+## Project Structure
+
+```text
+AI-Assisted_Classroom_System/
+  CONTEXT.md
+  README.md
+  AI-Assisted_Classroom_System.sln
+  campus-backend/
+    Controllers/
+    Hubs/
+    Models/
+    Repositories/
+    Services/
+    ReferenceFaces/
+    Program.cs
+    appsettings.json
+    campus-backend.csproj
+  campus-dashboard/
+    src/
+      components/
+      portals/
+        Faculty/
+        Guard/
+        Principal/
+        Registrar/
+    package.json
+    vite.config.js
+  campus-edge/
+    vision_node.py
+    requirements.txt
+  database/
+    schema.sql
+```
+
+---
+
+## Setup
+
+### Prerequisites
+
+- Node.js 18+
+- .NET SDK compatible with the project target
+- Python 3.10+
+- Oracle Database 21c XE
+- MQTT broker, such as Mosquitto
+- Git
+
+### 1. Database
+
+Run `database/schema.sql` in Oracle SQL Developer or SQL*Plus.
+
+The backend expects this connection string key in `campus-backend/appsettings.json`:
+
+```json
+{
+  "ConnectionStrings": {
+    "OracleConnection": "Data Source=localhost:1521/XEPDB1;User Id=campus_admin;Password=admin123;"
+  }
+}
+```
+
+### 2. Backend
+
+```powershell
+cd campus-backend
+dotnet restore
+dotnet build
+dotnet run
+```
+
+Backend URL:
+
+```text
+http://localhost:5106
+```
+
+### 3. Frontend
+
+Use `npm.cmd` on Windows PowerShell if `npm.ps1` is blocked by execution policy.
+
+```powershell
+cd campus-dashboard
 npm install
-
-# Verify installation
-npm list react
-
-# Go back to root
-cd ..
+npm.cmd run dev
 ```
 
----
+Frontend URL:
 
-### **Step 5: Edge Node Setup (Python)**
+```text
+http://localhost:5173
+```
 
-```bash
-# Navigate to edge directory
+### 4. Edge Node
+
+```powershell
 cd campus-edge
-
-# Create a virtual environment (recommended)
 python -m venv venv
-
-# Activate virtual environment
-# On Windows:
 venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Verify installation
-pip list
-
-# Go back to root
-cd ..
+python vision_node.py
 ```
 
-#### **Create `.env` File (Local Configuration)**
+Edge node URL:
 
-Each team member must create their own `.env` file with their local IP address:
-
-```bash
-# In campus-edge/ directory, create a new file named: .env
-
-# Add this line (replace with YOUR laptop IP):
-BACKEND_IP=192.168.x.x
+```text
+http://localhost:5000
 ```
 
-**How to find your IP:**
-- Windows: Open CMD and type `ipconfig` → Look for "IPv4 Address"
-- macOS/Linux: Open Terminal and type `ifconfig` → Look for "inet"
+Video feed:
 
-**IMPORTANT:** The `.env` file is already in `.gitignore` — do NOT commit it! Each team member creates their own.
+```text
+http://localhost:5000/video_feed
+```
 
 ---
 
-## 🏃 Running the Application
+## Running the Full System
 
-You'll need **3 terminal windows** to run all services simultaneously.
+Open three terminals:
 
-### **Terminal 1: Start Backend (ASP.NET Core)**
+### Terminal 1
 
-```bash
+```powershell
 cd campus-backend
 dotnet run
 ```
 
-Expected output:
-```
-info: Microsoft.Hosting.Lifetime[14]
-      Now listening on: http://localhost:5106
-```
+### Terminal 2
 
-### **Terminal 2: Start Frontend (React)**
-
-```bash
+```powershell
 cd campus-dashboard
-npm run dev
+npm.cmd run dev
 ```
 
-Expected output:
-```
-  VITE v8.0.9  ready in 123 ms
+### Terminal 3
 
-  ➜  Local:   http://localhost:5173/
-  ➜  press h to show help
-```
-
-### **Terminal 3: Start Edge Node (Python)**
-
-```bash
+```powershell
 cd campus-edge
-
-# Activate virtual environment first (if not already active)
-# Windows: venv\Scripts\activate
-# macOS/Linux: source venv/bin/activate
-
+venv\Scripts\activate
 python vision_node.py
 ```
 
-Expected output:
-```
- * Running on http://0.0.0.0:5000
- * Press CTRL+C to quit
-```
+Then open:
 
----
-
-## 🎯 Accessing the Application
-
-Once all services are running:
-
-1. **Open your browser** and navigate to: `http://localhost:5173`
-2. **Login** with a test user account (see database setup notes)
-3. **Navigate** to different portals:
-   - **Registrar Portal:** Manage schedules, sections, students, staff
-   - **Faculty Portal:** View attendance logs
-   - **Guard Portal:** Door access control
-   - **Principal Portal:** System overview
-
----
-
-## 🗂️ Project Structure Overview
-
-```
-AI-Assisted_Classroom_System/
-├── CONTEXT.md                    # AI memory & project manifest (READ FIRST)
-├── README.md                     # This file
-├── campus-backend/               # C# ASP.NET Core API
-│   ├── Controllers/              # API endpoints
-│   ├── Repositories/             # Database layer
-│   ├── Models/                   # Data models
-│   ├── Services/                 # Business logic
-│   ├── Program.cs                # App configuration
-│   └── campus-backend.csproj     # Dependencies
-├── campus-dashboard/             # React Vite frontend
-│   ├── src/
-│   │   ├── portals/              # Role-based dashboards (Registrar, Faculty, etc.)
-│   │   ├── components/           # Shared UI components
-│   │   └── App.jsx               # Main routing
-│   ├── package.json              # Dependencies
-│   └── vite.config.js            # Build configuration
-├── campus-edge/                  # Python edge node (Raspberry Pi)
-│   ├── vision_node.py            # Main camera processing script
-│   ├── requirements.txt          # Python dependencies
-│   └── .env                      # Local IP config (DO NOT COMMIT)
-└── database/
-    └── schema.sql                # Oracle database schema
+```text
+http://localhost:5173
 ```
 
 ---
 
-## 📝 Key Development Notes
+## Guard Portal Flow
 
-### Naming Conventions
+### Camera startup
 
-| Category | Style | Example |
-|----------|-------|---------|
-| Database columns | SCREAMING_SNAKE_CASE | `FACE_REFERENCE_PATH` |
-| C# class properties | PascalCase | `FirstName`, `LastName` |
-| React components | PascalCase | `StaffTable`, `SectionRoster` |
-| React files | PascalCase | `StudentTable.jsx` |
-| React hooks/utils | camelCase | `useStudents()`, `fetchData()` |
-| CSS classes | Tailwind utility | `p-4`, `text-slate-800` |
+1. Guard opens the Guard Portal.
+2. Guard selects a camera location.
+3. Guard clicks Start Camera.
+4. Frontend calls `POST /api/camera/start`.
+5. Backend proxies the request to Python `POST /start_camera`.
+6. Python wakes the webcam and serves the MJPEG stream.
+7. Guard Portal displays `http://localhost:5000/video_feed`.
 
-### Database Connection String
+### Barcode/face verification
 
-```
-User Id=CAMPUS_ADMIN;
-Password=yourpassword;
-Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=XEPDB1)));
-```
+1. Student shows barcode/QR code to the camera.
+2. Python reads the code with pyzbar.
+3. Python publishes MQTT message to `campus/door/scan`.
+4. Backend receives the scan, looks up the student, and broadcasts `ReceiveBarcode`.
+5. Python compares the live face with the stored reference face.
+6. Python publishes verification result to `campus/door/verified`.
+7. Backend logs the event and broadcasts `ReceiveScanResult`.
+8. Guard Portal updates in real time.
 
-Configured in: `campus-backend/appsettings.json`
+### Manual ID fallback
 
-### API Base URL & Endpoints
+1. Guard types a student ID.
+2. Frontend calls `POST /api/camera/manual-scan`.
+3. Backend looks up the student.
+4. UI shows the scan/verification state.
 
-All API calls use: `http://localhost:5106/api/`
+### Manual bypass
 
-#### **Section Management** (Fully Implemented)
-```
-GET    /api/sections                 # Get all sections
-POST   /api/sections                 # Create new section
-PUT    /api/sections/{id}            # Update section details
-DELETE /api/sections/{id}            # Delete section (cascades cleanup)
-GET    /api/sections/{id}/students   # Get students in section
-POST   /api/sections/{id}/students   # Add students to section
-DELETE /api/sections/{id}/students/{studentId}  # Remove student
-GET    /api/sections/{id}/schedule   # Get section schedule
-```
-
-#### **Other Endpoints**
-```
-GET    /api/student                  # Get all students
-GET    /api/schedules                # Get all schedules
-POST   /api/enrollments              # Create enrollment
-GET    /api/staff                    # Get all staff
-GET    /api/rooms                    # Get all rooms
-```
-
-**Request/Response Examples:**
-
-Create Section:
-```json
-POST /api/sections
-{
-  "section_Name": "SBIT2A",
-  "course": "IT",
-  "year_Level": 2,
-  "campus": "SB",
-  "section_Letter": "A"
-}
-```
-
-Update Section:
-```json
-PUT /api/sections/SEC-001
-{
-  "section_Name": "SBIT2A",
-  "course": "IT",
-  "year_Level": 2,
-  "campus": "SB",
-  "section_Letter": "A"
-}
-```
-
-### Frontend Authentication
-
-User data stored in browser localStorage:
-```javascript
-// Example structure
-{
-  User_ID: "USR001",
-  First_Name: "John",
-  Last_Name: "Doe",
-  Role: "Registrar",
-  Email: "john@campus.edu"
-}
-```
-
-### SignalR Real-Time Communication (Guard Portal)
-
-The Guard Portal uses SignalR WebSockets for real-time access log updates. Integration template:
-
-```javascript
-// In GuardPortal.jsx
-import { HubConnectionBuilder } from "@microsoft/signalr";
-import { useEffect, useState } from "react";
-
-export default function GuardPortal() {
-  const [accessLog, setAccessLog] = useState([]);
-  const [connection, setConnection] = useState(null);
-
-  useEffect(() => {
-    // Connect to SignalR hub
-    const newConnection = new HubConnectionBuilder()
-      .withUrl("http://localhost:5106/campushub")
-      .withAutomaticReconnect()
-      .build();
-
-    newConnection.start()
-      .then(() => console.log("SignalR connected"))
-      .catch(err => console.error("Connection failed:", err));
-
-    // Listen for scan results from backend
-    newConnection.on("ReceiveScanResult", (data) => {
-      // data structure: { student_id, first_name, last_name, status, timestamp, face_path }
-      setAccessLog(prev => [data, ...prev.slice(0, 49)]); // Keep last 50 entries
-    });
-
-    setConnection(newConnection);
-
-    return () => {
-      newConnection.stop();
-    };
-  }, []);
-
-  return (
-    // ... existing JSX
-    <div className="p-4 flex-1 overflow-y-auto space-y-3">
-      {accessLog.length === 0 ? (
-        <div className="text-center text-slate-600 font-bold mt-10">Awaiting gate scans...</div>
-      ) : (
-        accessLog.map((entry, idx) => (
-          <div key={idx} className={`p-3 rounded-lg ${entry.status === 'approved' ? 'bg-emerald-900/40' : 'bg-rose-900/40'}`}>
-            <div className="flex items-center gap-3">
-              {entry.face_path ? (
-                <img src={`http://localhost:5106/ReferenceFaces/${entry.face_path}`} alt={entry.first_name} className="w-10 h-10 rounded-full object-cover" />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold">?</div>
-              )}
-              <div className="flex-1">
-                <p className="font-bold text-white">{entry.first_name} {entry.last_name}</p>
-                <p className="text-xs text-slate-400">{entry.student_id}</p>
-              </div>
-              <span className={`text-xs font-black px-2 py-1 rounded ${entry.status === 'approved' ? 'bg-emerald-500 text-white' : 'bg-rose-600 text-white'}`}>
-                {entry.status === 'approved' ? '✅ APPROVED' : '❌ DENIED'}
-              </span>
-              <span className="text-xs text-slate-400">{entry.timestamp}</span>
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  );
-}
-```
-
-**Backend SignalR Hub** (`campus-backend/Hubs/CampusHub.cs`) already has the `Clients.All.SendAsync("ReceiveScanResult", data)` broadcast ready. MQTT listener service will trigger this on barcode scan events.
+1. Guard opens the bypass modal.
+2. Guard enters student ID and reason.
+3. Backend logs the bypass with `BYPASS_REASON`.
+4. UI receives the result through SignalR.
 
 ---
 
-## 🔧 Troubleshooting
+## Important API Endpoints
 
-### "Cannot connect to backend"
-- ✅ Verify backend is running: `dotnet run` in `campus-backend/`
-- ✅ Check port 5106 is not in use
-- ✅ Restart backend and refresh browser
+### Camera and Guard Portal
 
-### "Database connection fails"
-- ✅ Verify Oracle XE is running
-- ✅ Check connection string in `appsettings.json`
-- ✅ Ensure `schema.sql` was executed successfully
-- ✅ Verify tables exist: `SELECT * FROM user_tables;` in SQL Developer
+```text
+GET  /api/camera/locations
+POST /api/camera/locations
+PUT  /api/camera/location/{id}
+POST /api/camera/start
+POST /api/camera/stop
+POST /api/camera/manual-scan
+```
 
-### "npm install fails"
-- ✅ Clear cache: `npm cache clean --force`
-- ✅ Delete `node_modules` and `package-lock.json`
-- ✅ Reinstall: `npm install`
-- ✅ Ensure Node.js version is 18+
+### Sections
 
-### "Python dependencies fail to install"
-- ✅ Ensure virtual environment is activated
-- ✅ Check Python version: `python --version`
-- ✅ Update pip: `python -m pip install --upgrade pip`
-- ✅ Install with: `pip install -r requirements.txt --upgrade`
+```text
+GET    /api/sections
+POST   /api/sections
+PUT    /api/sections/{id}
+DELETE /api/sections/{id}
+GET    /api/sections/{id}/students
+POST   /api/sections/{id}/students
+DELETE /api/sections/{id}/students/{studentId}
+GET    /api/sections/{id}/schedule
+```
 
-### "Face photos not showing"
-- ✅ Check `ReferenceFaces/` folder exists
-- ✅ Verify image files are in the folder
-- ✅ Check browser console for 404 errors
-- ✅ Ensure database has correct file paths
+### Other common endpoints
 
----
+```text
+GET /api/student
+GET /api/staff
+GET /api/rooms
+GET /api/schedules
+POST /api/enrollments
+```
 
-## 📚 Additional Resources
+SignalR hub:
 
-### Code Documentation
-- **CONTEXT.md:** High-level project architecture & design decisions
-- **CAMPUS.md** (if exists): API documentation
-- **Controllers:** Inline comments explain complex logic
+```text
+http://localhost:5106/campushub
+```
 
-### Component Status & Refactoring Plan
-- **`SectionRoster.jsx` (320 lines):** Currently consolidates Student List and Schedules management
-  - Monitor file size if more features added
-  - Planned decomposition (see CONTEXT.md NEXT STEPS) would split into subcomponents without changing functionality
+Static face photos:
 
-### Common Tasks
-
-**How to add a new feature:**
-1. Read `CONTEXT.md` for architecture overview
-2. Check relevant controller in `campus-backend/Controllers/`
-3. Update React component in `campus-dashboard/src/portals/Registrar/`
-4. Test with API calls via `campus-backend.http`
-
-**How to debug API issues:**
-1. Open `campus-backend.http` in VS Code
-2. Use **REST Client** extension (if installed)
-3. Test endpoints directly
-
-**How to check database:**
-1. Open SQL Developer
-2. Connect to local XE
-3. Open SQL Worksheet
-4. Query tables directly
+```text
+http://localhost:5106/ReferenceFaces/{filename}
+```
 
 ---
 
-## 🚨 Important Before Committing
+## Troubleshooting
 
-1. **DO NOT commit:**
-   - `node_modules/` (frontend)
-   - `bin/` and `obj/` (backend)
-   - `.env` file (Python local config)
-   - `campus-edge/.env` with your IP address
+### Port 5106 is already in use
 
-2. **DO commit:**
-   - `database/schema.sql` (required for others)
-   - `package.json` & `package-lock.json`
-   - `.csproj` files
-   - `requirements.txt`
-   - Source code only (`.cs`, `.jsx`, `.py`)
+This means the backend is already running or a previous `campus-backend.exe` process is still alive.
 
-3. **Before pushing:**
-   ```bash
-   git status
-   # Make sure ONLY your code changes are staged
-   # DO NOT include node_modules, bin, obj, .env
-   ```
+```powershell
+Get-NetTCPConnection -LocalPort 5106 -ErrorAction SilentlyContinue
+Get-Process campus-backend -ErrorAction SilentlyContinue
+Stop-Process -Id <PID>
+```
 
----
+Only stop the specific backend process that is using port `5106`.
 
-## 💡 Tips for Collaboration
+### `npm` is blocked in PowerShell
 
-1. **Create a feature branch:**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
+Use:
 
-2. **Keep CONTEXT.md updated:**
-   - If you change architecture, update CONTEXT.md
-   - This helps future team members understand decisions
+```powershell
+npm.cmd run dev
+npm.cmd run build
+npm.cmd run lint
+```
 
-3. **Test locally before pushing:**
-   - Run all 3 services
-   - Test your changes thoroughly
-   - Check for errors in browser console
+### Backend returns `ORA-50029`
 
-4. **Document your changes:**
-   - Clear commit messages
-   - Add comments to complex code
+Check that the backend code is using `OracleConnection` from `appsettings.json`, or the fallback pattern documented in `CONTEXT.md`.
 
----
+### Camera start fails
 
-## 📞 Support & Questions
+Make sure the Python edge node is running:
 
-If you encounter issues:
-1. Check this README for troubleshooting
-2. Review CONTEXT.md for architecture decisions
-3. Check existing GitHub issues
-4. Ask team leads
+```powershell
+cd campus-edge
+venv\Scripts\activate
+python vision_node.py
+```
+
+### Guard Portal does not receive scan events
+
+Check:
+
+- Backend is running on `5106`
+- Frontend is running on `5173`
+- Python edge node is running on `5000`
+- MQTT broker is running
+- Oracle Database is running
+- Browser console has no SignalR connection errors
 
 ---
 
-## 📜 License & Credits
+## Git Ignore Notes
 
-**Team:** EddyPotato (Lead Developer)  
-**Last Updated:** May 5, 2026  
-**Status:** Development Phase
+Do not commit:
+
+- `node_modules/`
+- `dist/`
+- `bin/`
+- `obj/`
+- `.env`
+- `campus-edge/.env`
+- `venv/`
+- `.venv/`
+- `ReferenceFaces/`
+- real student/staff face photos
+- media files such as `.jpg`, `.jpeg`, `.png`, `.mp4`
+
+The selected `.gitignore` line `.venv\Scripts\activate` is only a commented note. The actual virtual environment folders are already ignored by `.venv/`, `venv/`, and `env/`.
 
 ---
 
-**Happy coding! 🚀 If you have any setup issues, please reach out to the team lead.**
+## Next Work
+
+Recommended next tasks:
+
+1. Test the full Guard Portal loop with frontend, backend, Oracle, MQTT, and Python edge node running together.
+2. Confirm camera location IDs flow from UI/backend into edge-node scan results where needed.
+3. Normalize `EVENT_LOGS.STATUS` values.
+4. Improve API error handling around missing camera locations and failed database operations.
+5. Continue Guard Portal Phase 2 testing before starting larger refactors.
+6. Later, refactor `SectionRoster.jsx` into smaller components.
+
