@@ -73,3 +73,5 @@ ReferenceFaces/
 Thumbs.db
 
 #.venv\Scripts\activate
+
+# python vision_node.py
