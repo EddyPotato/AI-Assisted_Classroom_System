@@ -17,7 +17,7 @@ export default function CameraControls({
           value={currentLocationId}
           onChange={(e) => onLocationChange(e.target.value)}
           disabled={streamStatus === 'active' || streamStatus === 'loading'}
-          className="bg-slate-50 border border-slate-200 text-slate-700 font-black text-lg rounded-2xl px-5 py-3 outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 transition-all w-full sm:w-[400px] lg:w-[500px]"
+          className="bg-slate-50 border border-slate-200 text-slate-700 font-black text-lg rounded-2xl px-5 py-3 outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 transition-all w-full sm:w-100 lg:w-125"
         >
           {locations.map(loc => (
             <option key={loc.location_ID} value={loc.location_ID}>
