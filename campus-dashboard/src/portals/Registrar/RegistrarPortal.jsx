@@ -6,8 +6,8 @@ import SectionsTab from './components/sections/SectionsTab';
 import SchedulesTab from './components/schedules/SchedulesTab';
 import UserDirectoryTab from './components/users/UserDirectoryTab';
 import StaffDirectoryTab from './components/faculty/StaffDirectoryTab';
-// THE FIX: Imported the new Subjects Tab
-import SubjectsTab from './components/subjects/SubjectsTab';
+// THE FIX: Imported the unified Resource Directory
+import ResourceDirectoryTab from './components/resources/ResourceDirectoryTab';
 
 export default function RegistrarPortal() {
   const navigate = useNavigate();
@@ -57,16 +57,16 @@ export default function RegistrarPortal() {
               <Calendar size={18} /> Schedule Directory
             </button>
 
-            {/* THE FIX: Added Subject Directory Tab here */}
+            {/* THE FIX: Unified Resource Directory Tab */}
             <button 
-              onClick={() => setActiveTab('subjects')} 
+              onClick={() => setActiveTab('resources')} 
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all whitespace-nowrap ${
-                activeTab === 'subjects' 
+                activeTab === 'resources' 
                   ? 'bg-white text-primary-600 shadow-sm border border-slate-200/50' 
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'
               }`}
             >
-              <BookOpen size={18} /> Subject Directory
+              <BookOpen size={18} /> Resource Directory
             </button>
 
             <button 
@@ -105,8 +105,8 @@ export default function RegistrarPortal() {
 
           {/* TAB CONTENT RENDERING */}
           {activeTab === 'schedules' && <SchedulesTab />}
-          {/* THE FIX: Render Subjects Tab */}
-          {activeTab === 'subjects' && <SubjectsTab />}
+          {/* THE FIX: Render the Resource Directory Component */}
+          {activeTab === 'resources' && <ResourceDirectoryTab />}
           {activeTab === 'sections' && <SectionsTab />}
           {activeTab === 'users' && <UserDirectoryTab />}
           {activeTab === 'faculty' && <StaffDirectoryTab />}

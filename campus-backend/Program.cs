@@ -17,6 +17,9 @@ builder.Services.AddScoped<campus_backend.Repositories.IEnrollmentRepository, ca
 
 builder.Services.AddScoped<campus_backend.Repositories.ISubjectRepository, campus_backend.Repositories.SubjectRepository>();
 
+// ADD THIS EXACT LINE FOR COURSES:
+builder.Services.AddScoped<campus_backend.Repositories.ICourseRepository, campus_backend.Repositories.CourseRepository>();
+
 builder.Services.AddControllers();
 
 builder.Services.AddCors(options => {

@@ -31,7 +31,6 @@ export default function SubjectsTab() {
     <div className="space-y-6 animate-in fade-in duration-300 relative">
       
       {toastMessage && (
-        // THE FIX: Changed z-[100] to z-100 for Tailwind v4 compatibility
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-100 bg-slate-800 text-white px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 fade-in duration-300">
           <CheckCircle2 className="text-emerald-400" size={20} />
           <span className="font-bold text-sm">{toastMessage}</span>
@@ -43,20 +42,11 @@ export default function SubjectsTab() {
          message={modal.message} onConfirm={modal.onConfirm} 
          onCancel={() => setModal({ ...modal, isOpen: false })} 
       />
-
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
-        <div>
-          <h2 className="text-3xl font-black text-slate-800 tracking-tight">Academic Subjects</h2>
-          <p className="text-slate-500 mt-1 font-medium">Manage course curriculum, credit units, and prerequisites.</p>
-        </div>
-        <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl border border-blue-100 font-bold text-sm flex items-center gap-2 shadow-sm">
-          <BookOpen size={18} /> {filteredSubjects.length} Total Subjects
-        </div>
-      </div>
       
       <div className="p-5 border border-slate-200 bg-white rounded-2xl shadow-sm flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row justify-between gap-4">
            
+           {/* Search Input */}
            <div className="relative w-full lg:w-96 shrink-0">
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
              <input
@@ -71,11 +61,18 @@ export default function SubjectsTab() {
              )}
            </div>
 
-           <button onClick={() => { setEditingSubject(null); setShowForm(true); }} className="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0">
-             <Plus size={18} /> Add Subject
-           </button>
+           {/* Toolbar Right Side (Stats + Button) */}
+           <div className="flex items-center gap-3 w-full lg:w-auto">
+             <div className="hidden sm:flex bg-blue-50 text-blue-700 px-4 py-2.5 rounded-xl border border-blue-100 font-bold text-sm items-center gap-2 shadow-sm whitespace-nowrap">
+               <BookOpen size={18} /> {filteredSubjects.length} Total
+             </div>
+             <button onClick={() => { setEditingSubject(null); setShowForm(true); }} className="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0">
+               <Plus size={18} /> Add Subject
+             </button>
+           </div>
         </div>
 
+        {/* Filter Pills */}
         <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-hide border-t border-slate-100 pt-4">
            <span className="text-xs font-bold text-slate-400 uppercase whitespace-nowrap mr-2">Credit Units:</span>
            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner shrink-0">
