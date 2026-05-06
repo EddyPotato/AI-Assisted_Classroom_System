@@ -23,8 +23,8 @@ export default function BypassModal({ isOpen, onClose, onSubmit, bypassForm, set
         </div>
         
         <div className="flex gap-3 mt-8">
-          <button onClick={onClose} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition-colors border border-slate-200">Cancel</button>
-          <button onClick={onSubmit} disabled={!bypassForm.student_id || !bypassForm.reason} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl transition-colors shadow-md disabled:opacity-50 disabled:hover:bg-amber-500">Confirm Log</button>
+          <button onClick={onClose} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition-colors border border-slate-200 active:scale-95">Cancel</button>
+          <button onClick={onSubmit} disabled={!bypassForm.student_id || !bypassForm.reason} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl transition-colors shadow-md disabled:opacity-50 disabled:hover:bg-amber-500 active:scale-95">Confirm Log</button>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, LogOut, LayoutDashboard, History, UserCheck, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, LogOut, LayoutDashboard, History, AlertTriangle } from 'lucide-react';
 import { HubConnectionBuilder } from "@microsoft/signalr";
 
 // --- Imported Modular Components ---
@@ -8,7 +8,6 @@ import CameraControls from './components/CameraControls';
 import ManualIDInput from './components/ManualIDInput';
 import VerificationPanel from './components/VerificationPanel';
 import AccessHistory from './components/AccessHistory';
-import AccessLogEntry from './components/AccessLogEntry';
 import LiveCameraFeed from './components/LiveCameraFeed';
 import BypassModal from './components/BypassModal';
 
@@ -94,7 +93,6 @@ export default function GuardPortal() {
   }, [currentLocationId]); // Re-bind when location changes
 
   // --- Handlers ---
-
   const handleStartCamera = async () => {
     setStreamStatus("loading");
     try {
@@ -153,10 +151,10 @@ export default function GuardPortal() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          Student_Id: bypassForm.student_id, 
-          Bypass_Reason: bypassForm.reason,
-          Camera_Location_Id: currentLocationId 
-        })
+           Student_Id: bypassForm.student_id, 
+           Bypass_Reason: bypassForm.reason,
+           Camera_Location_Id: currentLocationId 
+         })
       });
       if (res.ok) {
         setBypassModalOpen(false);
@@ -170,7 +168,6 @@ export default function GuardPortal() {
   };
 
   const latestScan = accessLog.length > 0 ? accessLog[0] : null;
-  const recentLogs = accessLog.filter(log => log.status !== 'scanning').slice(0, 10); // Keep main view clean
 
   return (
     <div className="h-screen flex flex-col bg-slate-50 font-sans overflow-hidden text-slate-900">
@@ -185,7 +182,6 @@ export default function GuardPortal() {
               {connectionStatus === 'connected' ? 'System Live' : 'Offline'}
             </span>
           </div>
-
           {/* Tab Navigation */}
           <div className="hidden md:flex bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button 
@@ -250,48 +246,25 @@ export default function GuardPortal() {
                 />
               </div>
 
-              {/* Verification Panel (Right) */}
-              <div className="flex-1 min-w-80 flex flex-col">
-                <VerificationPanel latestScan={latestScan} cacheBuster={cacheBuster} />
-              </div>
+              {/* Verification Panel & Manual Controls (Right) */}
+              <div className="flex-1 min-w-80 flex flex-col gap-4">
+                
+                {/* Result / Display / Reference Tab */}
+                <div className="flex-1 flex flex-col min-h-0">
+                    <VerificationPanel latestScan={latestScan} cacheBuster={cacheBuster} />
+                </div>
 
-            </div>
-
-            {/* Bottom Section: Manual Inputs & Recent Logs */}
-            <div className="flex flex-col lg:flex-row gap-6 shrink-0 h-48">
-              
-              {/* Left Bottom: Manual Fallbacks */}
-              <div className="flex-1 flex flex-col gap-4">
+                {/* Manual ID Input Component */}
                 <ManualIDInput onSubmit={handleManualIdSubmit} isLoading={isProcessingManual} />
                 
+                {/* Force Manual Bypass Button */}
                 <button 
-                  onClick={() => setBypassModalOpen(true)} 
-                  className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-black py-3 px-4 rounded-2xl flex items-center justify-center gap-3 border border-amber-200 shadow-sm transition-all active:scale-95 flex-1"
+                  onClick={() => setBypassModalOpen(true)}
+                  className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-black py-4 px-4 rounded-2xl flex items-center justify-center gap-3 border border-amber-200 shadow-sm transition-all active:scale-95 shrink-0"
                 >
                   <AlertTriangle size={20} /> 
                   <span className="uppercase tracking-widest text-sm">Force Manual Bypass</span>
                 </button>
-              </div>
-
-              {/* Right Bottom: Privacy-First Recent Logs (Max 10) */}
-              <div className="flex-2 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden">
-                <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0 px-5">
-                    <h2 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                        <UserCheck size={16} className="text-blue-600" /> Recent Station Scans
-                    </h2>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Last 10 Events Only</span>
-                </div>
-                <div className="p-3 overflow-x-auto bg-white flex gap-3 h-full items-center custom-scrollbar">
-                  {recentLogs.length === 0 ? (
-                    <p className="text-slate-400 font-bold text-sm w-full text-center">No recent scans recorded.</p>
-                  ) : (
-                    recentLogs.map((entry, idx) => (
-                      <div key={idx} className="w-80 shrink-0">
-                         <AccessLogEntry entry={entry} />
-                      </div>
-                    ))
-                  )}
-                </div>
               </div>
 
             </div>
@@ -311,11 +284,10 @@ export default function GuardPortal() {
       <BypassModal 
         isOpen={bypassModalOpen} 
         onClose={() => { setBypassModalOpen(false); setBypassForm({ student_id: '', reason: '' }); }} 
-        onSubmit={handleBypassSubmit} 
-        bypassForm={bypassForm} 
-        setBypassForm={setBypassForm} 
-      />
-      
+        onSubmit={handleBypassSubmit}
+        bypassForm={bypassForm}
+        setBypassForm={setBypassForm}
+      />      
     </div>
   );
 }
