@@ -35,6 +35,7 @@ namespace campus_backend.Repositories
                 {
                     Location_ID = reader["LOCATION_ID"].ToString(),
                     Camera_Name = reader["CAMERA_NAME"].ToString(),
+                    Logic_Type = reader["LOGIC_TYPE"]?.ToString() ?? "gate",
                     Location_Type = reader["LOCATION_TYPE"]?.ToString(),
                     Associated_Room_ID = reader["ASSOCIATED_ROOM_ID"] != DBNull.Value ? reader["ASSOCIATED_ROOM_ID"].ToString() : null,
                     Status_On_Scan = reader["STATUS_ON_SCAN"]?.ToString(),
@@ -61,6 +62,7 @@ namespace campus_backend.Repositories
                 {
                     Location_ID = reader["LOCATION_ID"].ToString(),
                     Camera_Name = reader["CAMERA_NAME"].ToString(),
+                    Logic_Type = reader["LOGIC_TYPE"]?.ToString() ?? "gate",
                     Location_Type = reader["LOCATION_TYPE"]?.ToString(),
                     Associated_Room_ID = reader["ASSOCIATED_ROOM_ID"] != DBNull.Value ? reader["ASSOCIATED_ROOM_ID"].ToString() : null,
                     Status_On_Scan = reader["STATUS_ON_SCAN"]?.ToString(),
@@ -76,13 +78,14 @@ namespace campus_backend.Repositories
             using var connection = new OracleConnection(_connectionString);
             await connection.OpenAsync();
 
-            var query = @"INSERT INTO CAMPUS_ADMIN.CAMERA_LOCATIONS 
-                         (LOCATION_ID, CAMERA_NAME, LOCATION_TYPE, ASSOCIATED_ROOM_ID, STATUS_ON_SCAN, IS_ACTIVE) 
-                         VALUES (:id, :name, :type, :room, :status, :active)";
-                         
+            var query = @"INSERT INTO CAMPUS_ADMIN.CAMERA_LOCATIONS
+                          (LOCATION_ID, CAMERA_NAME, LOGIC_TYPE, LOCATION_TYPE, ASSOCIATED_ROOM_ID, STATUS_ON_SCAN, IS_ACTIVE)
+                          VALUES (:id, :name, :logic, :type, :room, :status, :active)";
+            
             using var cmd = new OracleCommand(query, connection);
             cmd.Parameters.Add(new OracleParameter("id", location.Location_ID));
             cmd.Parameters.Add(new OracleParameter("name", location.Camera_Name));
+            cmd.Parameters.Add(new OracleParameter("logic", location.Logic_Type ?? "gate"));
             cmd.Parameters.Add(new OracleParameter("type", location.Location_Type));
             cmd.Parameters.Add(new OracleParameter("room", (object)location.Associated_Room_ID ?? DBNull.Value));
             cmd.Parameters.Add(new OracleParameter("status", location.Status_On_Scan));
@@ -97,13 +100,14 @@ namespace campus_backend.Repositories
             using var connection = new OracleConnection(_connectionString);
             await connection.OpenAsync();
 
-            var query = @"UPDATE CAMPUS_ADMIN.CAMERA_LOCATIONS 
-                         SET CAMERA_NAME = :name, LOCATION_TYPE = :type, 
-                             ASSOCIATED_ROOM_ID = :room, STATUS_ON_SCAN = :status, IS_ACTIVE = :active 
-                         WHERE LOCATION_ID = :id";
-                         
+            var query = @"UPDATE CAMPUS_ADMIN.CAMERA_LOCATIONS
+                          SET CAMERA_NAME = :name, LOGIC_TYPE = :logic, LOCATION_TYPE = :type, 
+                              ASSOCIATED_ROOM_ID = :room, STATUS_ON_SCAN = :status, IS_ACTIVE = :active
+                          WHERE LOCATION_ID = :id";
+            
             using var cmd = new OracleCommand(query, connection);
             cmd.Parameters.Add(new OracleParameter("name", location.Camera_Name));
+            cmd.Parameters.Add(new OracleParameter("logic", location.Logic_Type ?? "gate"));
             cmd.Parameters.Add(new OracleParameter("type", location.Location_Type));
             cmd.Parameters.Add(new OracleParameter("room", (object)location.Associated_Room_ID ?? DBNull.Value));
             cmd.Parameters.Add(new OracleParameter("status", location.Status_On_Scan));

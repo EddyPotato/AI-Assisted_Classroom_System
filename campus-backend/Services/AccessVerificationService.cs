@@ -53,7 +53,6 @@ namespace campus_backend.Services
         {
             _pendingStudentId = payload.Trim();
             
-            // Extract Student ID and Location ID if sent as JSON from Python
             if (payload.StartsWith("{"))
             {
                 try
@@ -82,6 +81,7 @@ namespace campus_backend.Services
                 var query = @"SELECT FIRST_NAME, MIDDLE_NAME, LAST_NAME, FACE_REFERENCE_PATH
                                FROM CAMPUS_ADMIN.STUDENTS WHERE STUDENT_ID = :id";
                 using var cmd = new OracleCommand(query, connection);
+                cmd.BindByName = true;
                 cmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
                 
                 using var reader = await cmd.ExecuteReaderAsync();
@@ -121,7 +121,6 @@ namespace campus_backend.Services
                     if (doc.RootElement.TryGetProperty("status", out var statusProp))
                         status = statusProp.GetString()?.ToLower() ?? "denied";
                         
-                    // Re-sync location ID just in case
                     if (doc.RootElement.TryGetProperty("camera_location_id", out var locProp))
                         _currentLocationId = locProp.GetString()?.Trim() ?? _currentLocationId;
                 }
@@ -133,27 +132,91 @@ namespace campus_backend.Services
                 using var connection = new OracleConnection(_connectionString);
                 await connection.OpenAsync();
 
-                // If approved, log the event into the database with the location!
-                if (status == "approved" && !string.IsNullOrEmpty(_pendingStudentId))
-                {
-                    // NORMALIZED STATUS: 'approved' instead of 'Access Granted'
-                    var logQuery = @"INSERT INTO CAMPUS_ADMIN.EVENT_LOGS (STUDENT_ID, STATUS, TIMESTAMP, LOCATION_ID)
-                                      VALUES (:id, 'approved', SYSDATE, :loc)";
-                    using var cmd = new OracleCommand(logQuery, connection);
-                    cmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
-                    cmd.Parameters.Add(new OracleParameter("loc", _currentLocationId));
-                    
-                    await cmd.ExecuteNonQueryAsync();
-                    _logger.LogInformation($"[SECURITY] Access Granted logged for {_pendingStudentId} at {_currentLocationId}");
-                }
-
-                // Resolve the camera name so the UI can display "Main Gate" instead of "CAM-001"
                 string locationName = "Unknown Location";
+                string logicType = "gate";
+                string locationType = "entrance";
+
+                // 1. Resolve Camera Attributes
                 using (var scope = _scopeFactory.CreateScope())
                 {
                     var repo = scope.ServiceProvider.GetRequiredService<ICameraLocationRepository>();
                     var locData = await repo.GetLocationByIdAsync(_currentLocationId);
-                    if (locData != null) locationName = locData.Camera_Name;
+                    if (locData != null) 
+                    {
+                        locationName = locData.Camera_Name;
+                        logicType = locData.Logic_Type?.ToLower() ?? "gate";
+                        locationType = locData.Location_Type?.ToLower() ?? "entrance";
+                    }
+                }
+
+                // 2. State Machine Logic (Only if AI Approved the face)
+                if (status == "approved" && !string.IsNullOrEmpty(_pendingStudentId))
+                {
+                    // Get current presence
+                    string currentPresence = "offline";
+                    var presQuery = "SELECT CAMPUS_PRESENCE FROM CAMPUS_ADMIN.STUDENTS WHERE STUDENT_ID = :id";
+                    using var presCmd = new OracleCommand(presQuery, connection);
+                    presCmd.BindByName = true;
+                    presCmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
+                    using var presReader = await presCmd.ExecuteReaderAsync();
+                    if (await presReader.ReadAsync())
+                    {
+                        currentPresence = presReader["CAMPUS_PRESENCE"]?.ToString() ?? "offline";
+                    }
+
+                    string newPresence = currentPresence;
+                    string eventLogStatus = "approved"; // Default valid access
+
+                    // --- THE BRAINS: EVALUATING THE RULES ---
+                    if (logicType == "gate")
+                    {
+                        if (locationType == "entrance")
+                        {
+                            newPresence = "in-campus";
+                        }
+                        else if (locationType == "exit")
+                        {
+                            // Catching the Cutter
+                            if (currentPresence == "in-class")
+                            {
+                                eventLogStatus = "Cutting / Early Exit";
+                                _logger.LogWarning($"[ALERT] {_pendingStudentId} flagged for CUTTING at {locationName}");
+                            }
+                            newPresence = "offline";
+                        }
+                    }
+                    else if (logicType == "room")
+                    {
+                        if (locationType == "entrance")
+                        {
+                            newPresence = "in-class";
+                        }
+                        // Note: We ignore room exits natively. Schedule sweeps handle resetting 'in-class' to 'in-campus'
+                    }
+
+                    // 3. Update Student State
+                    var updatePresQuery = "UPDATE CAMPUS_ADMIN.STUDENTS SET CAMPUS_PRESENCE = :pres WHERE STUDENT_ID = :id";
+                    using var updateCmd = new OracleCommand(updatePresQuery, connection);
+                    updateCmd.BindByName = true;
+                    updateCmd.Parameters.Add(new OracleParameter("pres", newPresence));
+                    updateCmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
+                    await updateCmd.ExecuteNonQueryAsync();
+
+                    // 4. Log the Event
+                    var logQuery = @"INSERT INTO CAMPUS_ADMIN.EVENT_LOGS (STUDENT_ID, STATUS, TIMESTAMP, LOCATION_ID)
+                                      VALUES (:id, :stat, SYSDATE, :loc)";
+                    using var logCmd = new OracleCommand(logQuery, connection);
+                    logCmd.BindByName = true;
+                    logCmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
+                    logCmd.Parameters.Add(new OracleParameter("stat", eventLogStatus));
+                    logCmd.Parameters.Add(new OracleParameter("loc", _currentLocationId));
+                    await logCmd.ExecuteNonQueryAsync();
+
+                    // If it was a cutting violation, override the UI status badge for visual feedback
+                    if (eventLogStatus == "Cutting / Early Exit") 
+                    {
+                        status = "cutting"; 
+                    }
                 }
 
                 // Broadcast final result to the React UI
