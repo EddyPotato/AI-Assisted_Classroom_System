@@ -6,7 +6,7 @@ using System.Text;
 using campus_backend.Models;
 using campus_backend.Repositories;
 using Microsoft.AspNetCore.SignalR;
-using campus_backend.Hubs; // Adjust to match your Hub namespace
+using campus_backend.Hubs;
 using System;
 using Oracle.ManagedDataAccess.Client;
 using Microsoft.Extensions.Configuration;
@@ -70,8 +70,13 @@ namespace campus_backend.Controllers
             try
             {
                 var client = _httpClientFactory.CreateClient();
-                // Assumes Python node is running locally on port 5000
-                var response = await client.PostAsync("http://localhost:5000/start_camera", null);
+                
+                // Forward the location ID to the Python edge node
+                var payload = JsonSerializer.Serialize(new { location_id = request.Camera_Location_Id });
+                var content = new StringContent(payload, Encoding.UTF8, "application/json");
+
+                var response = await client.PostAsync("http://localhost:5000/start_camera", content);
+                
                 if (response.IsSuccessStatusCode) return Ok(new { message = "Hardware activated." });
                 return StatusCode(502, "Edge node responded with an error.");
             }
@@ -111,7 +116,6 @@ namespace campus_backend.Controllers
             using var connection = new OracleConnection(_connectionString);
             await connection.OpenAsync();
 
-            // Fetch Student Data (Using the Middle Name logic we fixed earlier!)
             var query = "SELECT FIRST_NAME, MIDDLE_NAME, LAST_NAME, FACE_REFERENCE_PATH FROM CAMPUS_ADMIN.STUDENTS WHERE STUDENT_ID = :id";
             using var cmd = new OracleCommand(query, connection);
             cmd.Parameters.Add(new OracleParameter("id", request.Student_Id));
@@ -132,12 +136,14 @@ namespace campus_backend.Controllers
             // If it's a bypass, log it immediately without waiting for face scan
             if (!string.IsNullOrEmpty(request.Bypass_Reason))
             {
-                var logQuery = @"INSERT INTO CAMPUS_ADMIN.EVENT_LOGS (STUDENT_ID, STATUS, TIMESTAMP, LOCATION_ID, BYPASS_REASON) 
-                                 VALUES (:id, 'Access Granted', SYSDATE, :loc, :reason)";
+                // NORMALIZED STATUS: 'approved' instead of 'Access Granted'
+                var logQuery = @"INSERT INTO CAMPUS_ADMIN.EVENT_LOGS (STUDENT_ID, STATUS, TIMESTAMP, LOCATION_ID, BYPASS_REASON)
+                                  VALUES (:id, 'approved', SYSDATE, :loc, :reason)";
                 using var logCmd = new OracleCommand(logQuery, connection);
                 logCmd.Parameters.Add(new OracleParameter("id", request.Student_Id));
                 logCmd.Parameters.Add(new OracleParameter("loc", request.Camera_Location_Id ?? "CAM-001"));
                 logCmd.Parameters.Add(new OracleParameter("reason", request.Bypass_Reason));
+                
                 await logCmd.ExecuteNonQueryAsync();
 
                 // Broadcast the bypass to the UI

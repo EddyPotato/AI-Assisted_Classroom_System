@@ -61,7 +61,7 @@ namespace campus_backend.Services
                     using JsonDocument doc = JsonDocument.Parse(payload);
                     if (doc.RootElement.TryGetProperty("student_id", out var idProp))
                         _pendingStudentId = idProp.GetString()?.Trim() ?? "";
-                    
+                        
                     if (doc.RootElement.TryGetProperty("camera_location_id", out var locProp))
                         _currentLocationId = locProp.GetString()?.Trim() ?? "CAM-001";
                 }
@@ -79,9 +79,8 @@ namespace campus_backend.Services
                 using var connection = new OracleConnection(_connectionString);
                 await connection.OpenAsync();
 
-                var query = @"SELECT FIRST_NAME, MIDDLE_NAME, LAST_NAME, FACE_REFERENCE_PATH 
-                              FROM CAMPUS_ADMIN.STUDENTS WHERE STUDENT_ID = :id";
-
+                var query = @"SELECT FIRST_NAME, MIDDLE_NAME, LAST_NAME, FACE_REFERENCE_PATH
+                               FROM CAMPUS_ADMIN.STUDENTS WHERE STUDENT_ID = :id";
                 using var cmd = new OracleCommand(query, connection);
                 cmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
                 
@@ -104,7 +103,7 @@ namespace campus_backend.Services
                     location_id = _currentLocationId
                 });
             }
-            catch (Exception ex) { _logger.LogError($"❌ DB Error Phase 1: {ex.Message}"); }
+            catch (Exception ex) { _logger.LogError($"  DB Error Phase 1: {ex.Message}"); }
         }
 
         // ==========================================
@@ -113,6 +112,7 @@ namespace campus_backend.Services
         public async Task ProcessPhase2VerificationAsync(string payload)
         {
             string status = "denied";
+            
             if (payload.StartsWith("{"))
             {
                 try
@@ -120,6 +120,10 @@ namespace campus_backend.Services
                     using JsonDocument doc = JsonDocument.Parse(payload);
                     if (doc.RootElement.TryGetProperty("status", out var statusProp))
                         status = statusProp.GetString()?.ToLower() ?? "denied";
+                        
+                    // Re-sync location ID just in case
+                    if (doc.RootElement.TryGetProperty("camera_location_id", out var locProp))
+                        _currentLocationId = locProp.GetString()?.Trim() ?? _currentLocationId;
                 }
                 catch { }
             }
@@ -132,13 +136,14 @@ namespace campus_backend.Services
                 // If approved, log the event into the database with the location!
                 if (status == "approved" && !string.IsNullOrEmpty(_pendingStudentId))
                 {
-                    var logQuery = @"INSERT INTO CAMPUS_ADMIN.EVENT_LOGS (STUDENT_ID, STATUS, TIMESTAMP, LOCATION_ID) 
-                                     VALUES (:id, 'Access Granted', SYSDATE, :loc)";
+                    // NORMALIZED STATUS: 'approved' instead of 'Access Granted'
+                    var logQuery = @"INSERT INTO CAMPUS_ADMIN.EVENT_LOGS (STUDENT_ID, STATUS, TIMESTAMP, LOCATION_ID)
+                                      VALUES (:id, 'approved', SYSDATE, :loc)";
                     using var cmd = new OracleCommand(logQuery, connection);
                     cmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
                     cmd.Parameters.Add(new OracleParameter("loc", _currentLocationId));
+                    
                     await cmd.ExecuteNonQueryAsync();
-
                     _logger.LogInformation($"[SECURITY] Access Granted logged for {_pendingStudentId} at {_currentLocationId}");
                 }
 
@@ -164,7 +169,7 @@ namespace campus_backend.Services
                     location_name = locationName
                 });
             }
-            catch (Exception ex) { _logger.LogError($"❌ DB Error Phase 2: {ex.Message}"); }
+            catch (Exception ex) { _logger.LogError($"  DB Error Phase 2: {ex.Message}"); }
         }
     }
 }

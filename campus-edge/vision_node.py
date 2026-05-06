@@ -7,7 +7,7 @@ import numpy as np
 from pyzbar import pyzbar
 import paho.mqtt.publish as publish
 import face_recognition
-from flask import Flask, Response, jsonify
+from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -20,6 +20,7 @@ FACE_MATCH_TIMEOUT = 6.0
 
 # --- HARDWARE STATE CONTROL ---
 camera_active = False # Flag controlled by React UI
+current_location_id = "CAM-001" # Default fallback
 
 # --- STATE MACHINE VARIABLES ---
 current_state = "SCANNING_BARCODE"
@@ -30,10 +31,16 @@ verification_start_time = 0
 # === ON-DEMAND CAMERA APIS ===
 @app.route('/start_camera', methods=['POST'])
 def start_camera():
-    global camera_active
+    global camera_active, current_location_id
+    
+    # Extract location ID sent by the C# backend
+    data = request.get_json(silent=True) or {}
+    if "location_id" in data and data["location_id"]:
+        current_location_id = data["location_id"]
+        
     camera_active = True
-    print("\n[SYSTEM] Guard Portal Connected. Waking up camera...")
-    return jsonify({"status": "success"})
+    print(f"\n[SYSTEM] Guard Portal Connected at {current_location_id}. Waking up camera...")
+    return jsonify({"status": "success", "location": current_location_id})
 
 @app.route('/stop_camera', methods=['POST'])
 def stop_camera():
@@ -44,7 +51,7 @@ def stop_camera():
 
 # === CORE VISION LOOP ===
 def generate_frames():
-    global camera_active, current_state, target_student_id, target_face_encoding, verification_start_time
+    global camera_active, current_state, target_student_id, target_face_encoding, verification_start_time, current_location_id
     
     camera = None
     frame_counter = 0
@@ -105,8 +112,13 @@ def generate_frames():
                     draw_rects.append(((x, y), (x + w, y + h), (255, 191, 0)))
                     draw_texts.append((f"ID: {barcode_data}", (x, y - 10), (255, 191, 0)))
 
-                    print(f"\n[PHASE 1] Barcode Scanned: {barcode_data}")
-                    payload = json.dumps({"student_id": barcode_data})
+                    print(f"\n[PHASE 1] Barcode Scanned: {barcode_data} at {current_location_id}")
+                    
+                    # Include camera_location_id in MQTT Payload
+                    payload = json.dumps({
+                        "student_id": barcode_data,
+                        "camera_location_id": current_location_id
+                    })
                     publish.single("campus/door/scan", payload=payload, hostname=MQTT_BROKER)
                     
                     search_pattern = os.path.join(REFERENCE_FACES_DIR, f"*{barcode_data}*.*")
@@ -131,12 +143,12 @@ def generate_frames():
                                 draw_rects.clear() # Clear barcode box immediately
                                 draw_texts.clear()
                             else:
-                                publish.single("campus/door/verified", payload=json.dumps({"status": "denied"}), hostname=MQTT_BROKER)
+                                publish.single("campus/door/verified", payload=json.dumps({"status": "denied", "camera_location_id": current_location_id}), hostname=MQTT_BROKER)
                                 time.sleep(2)
                         except Exception as e:
                             pass
                     else:
-                        publish.single("campus/door/verified", payload=json.dumps({"status": "denied"}), hostname=MQTT_BROKER)
+                        publish.single("campus/door/verified", payload=json.dumps({"status": "denied", "camera_location_id": current_location_id}), hostname=MQTT_BROKER)
                         time.sleep(2)
 
             # ------------------------------------------
@@ -175,13 +187,13 @@ def generate_frames():
 
                 if match_found:
                     print(f"[SUCCESS] Identity Confirmed for {target_student_id}")
-                    publish.single("campus/door/verified", payload=json.dumps({"status": "approved"}), hostname=MQTT_BROKER)
+                    publish.single("campus/door/verified", payload=json.dumps({"status": "approved", "camera_location_id": current_location_id}), hostname=MQTT_BROKER)
                     current_state = "SCANNING_BARCODE"
                     time.sleep(2)
                     
                 elif (current_time - verification_start_time) > FACE_MATCH_TIMEOUT:
                     print(f"[FAILED] Match timeout for {target_student_id}")
-                    publish.single("campus/door/verified", payload=json.dumps({"status": "denied"}), hostname=MQTT_BROKER)
+                    publish.single("campus/door/verified", payload=json.dumps({"status": "denied", "camera_location_id": current_location_id}), hostname=MQTT_BROKER)
                     current_state = "SCANNING_BARCODE"
                     time.sleep(2)
 
