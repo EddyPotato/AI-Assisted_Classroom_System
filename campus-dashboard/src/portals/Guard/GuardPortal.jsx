@@ -1,35 +1,88 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, LogOut, ShieldAlert, Unlock, UserCheck } from 'lucide-react';
+import { ShieldCheck, LogOut, LayoutDashboard, History, UserCheck, AlertTriangle } from 'lucide-react';
 import { HubConnectionBuilder } from "@microsoft/signalr";
 
-// Import your newly extracted components
-import AccessLogEntry from './components/AccessLogEntry';
-import PhaseStepper from './components/PhaseStepper';
+// --- Imported Modular Components ---
+import CameraControls from './components/CameraControls';
+import ManualIDInput from './components/ManualIDInput';
 import VerificationPanel from './components/VerificationPanel';
+import AccessHistory from './components/AccessHistory';
+import AccessLogEntry from './components/AccessLogEntry';
 import LiveCameraFeed from './components/LiveCameraFeed';
 import BypassModal from './components/BypassModal';
 
 export default function GuardPortal() {
   const navigate = useNavigate();
-  const [accessLog, setAccessLog] = useState([]);
-  const [connectionStatus, setConnectionStatus] = useState("connecting");
-  const [bypassModalOpen, setBypassModalOpen] = useState(false);
-  const [bypassForm, setBypassForm] = useState({ student_id: '', reason: '' });
-  const [cacheBuster] = useState(() => Date.now());
-
   const user = JSON.parse(localStorage.getItem('campus_user') || 'null');
 
+  // --- Core State ---
+  const [activeTab, setActiveTab] = useState('live'); // 'live' or 'history'
+  const [connectionStatus, setConnectionStatus] = useState("connecting");
+  const [accessLog, setAccessLog] = useState([]);
+  const [cacheBuster] = useState(() => Date.now());
+
+  // --- Camera & Location State ---
+  const [locations, setLocations] = useState([]);
+  const [currentLocationId, setCurrentLocationId] = useState("");
+  const [streamStatus, setStreamStatus] = useState("offline"); // offline, loading, active, error
+  const [isProcessingManual, setIsProcessingManual] = useState(false);
+
+  // --- Modals ---
+  const [bypassModalOpen, setBypassModalOpen] = useState(false);
+  const [bypassForm, setBypassForm] = useState({ student_id: '', reason: '' });
+
+  // 1. Fetch Camera Locations on Mount
   useEffect(() => {
     let isMounted = true;
-    const newConnection = new HubConnectionBuilder().withUrl("http://localhost:5106/campushub").withAutomaticReconnect().build();
+    const fetchLocations = async () => {
+      try {
+        const res = await fetch('http://localhost:5106/api/camera/locations');
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) {
+            setLocations(data);
+            if (data.length > 0) setCurrentLocationId(data[0].location_ID);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load camera locations:", err);
+      }
+    };
+    fetchLocations();
+    return () => { isMounted = false; };
+  }, []);
+
+  // 2. Initialize SignalR Connection
+  useEffect(() => {
+    let isMounted = true;
+    const newConnection = new HubConnectionBuilder()
+      .withUrl("http://localhost:5106/campushub")
+      .withAutomaticReconnect()
+      .build();
 
     newConnection.start()
       .then(() => isMounted && setConnectionStatus('connected'))
       .catch(() => isMounted && setConnectionStatus('disconnected'));
 
-    const handleBarcode = (data) => isMounted && setAccessLog(prev => [data, ...prev.filter(log => log.status !== 'scanning' && log.status !== 'missing_face')]);
-    const handleResult = (data) => isMounted && setAccessLog(prev => [data, ...prev.filter(log => log.status !== 'scanning' && log.status !== 'missing_face')].slice(0, 50));
+    // Listen for Phase 1 (Barcode Scanned)
+    const handleBarcode = (data) => {
+      if (!isMounted) return;
+      // Only show scans for the currently monitored camera
+      if (data.location_id === currentLocationId) {
+        setAccessLog(prev => [data, ...prev.filter(log => log.status !== 'scanning' && log.status !== 'missing_face')]);
+      }
+    };
+
+    // Listen for Phase 2 (Face Verified)
+    const handleResult = (data) => {
+      if (!isMounted) return;
+      // Accept results for this location, or if it's a global manual bypass
+      if (data.location_id === currentLocationId || data.bypass_reason) {
+        setAccessLog(prev => [data, ...prev.filter(log => log.status !== 'scanning' && log.status !== 'missing_face')]);
+        setIsProcessingManual(false); // Reset manual loading state if it was active
+      }
+    };
 
     newConnection.on("ReceiveBarcode", handleBarcode);
     newConnection.on("receivebarcode", handleBarcode); 
@@ -37,109 +90,219 @@ export default function GuardPortal() {
     newConnection.on("receivescanresult", handleResult); 
 
     return () => { isMounted = false; newConnection.stop(); };
-  }, []);
+  }, [currentLocationId]); // Re-bind when location changes
 
-  const handleBypassSubmit = async () => {
+  // --- Handlers ---
+
+  const handleStartCamera = async () => {
+    setStreamStatus("loading");
     try {
-      const response = await fetch('http://localhost:5106/api/access/manual-override', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ student_id: bypassForm.student_id, bypass_reason: bypassForm.reason, timestamp: new Date().toISOString() })
+      const res = await fetch("http://localhost:5106/api/camera/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Camera_Location_Id: currentLocationId })
       });
-      if (response.ok) {
-        setBypassModalOpen(false);
-        setBypassForm({ student_id: '', reason: '' });
+      if (res.ok) {
+        setTimeout(() => setStreamStatus("active"), 1500); // Wait for hardware wakeup
       } else {
-        alert("Failed to log manual override.");
+        setStreamStatus("error");
       }
     } catch {
-      // FIX: Omitted the unused 'err' parameter entirely (valid in ES2019+)
-      alert("Network error processing bypass."); 
+      setStreamStatus("error");
     }
   };
 
-  const handleLockdown = async () => {
-    if (window.confirm('⚠️ CRITICAL ALERT: Are you sure you want to lock down the facility?')) {
-      try {
-        await fetch('http://localhost:5106/api/access/lockdown', { 
-          method: 'POST', 
-          headers: { 'Content-Type': 'application/json' }, 
-          body: JSON.stringify({ timestamp: new Date().toISOString() }) 
-        });
-        alert('🔒 SECURE LOCKDOWN PROTOCOL INITIATED.');
-      } catch (error) {
-        // FIX: Handled the error object so the block is no longer empty
-        console.error("Lockdown sequence failed:", error);
+  const handleStopCamera = async () => {
+    try {
+      await fetch("http://localhost:5106/api/camera/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Camera_Location_Id: currentLocationId })
+      });
+      setStreamStatus("offline");
+    } catch {
+      console.error("Failed to stop camera properly.");
+    }
+  };
+
+  const handleManualIdSubmit = async (studentId) => {
+    setIsProcessingManual(true);
+    try {
+      const res = await fetch("http://localhost:5106/api/camera/manual-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Student_Id: studentId, Camera_Location_Id: currentLocationId })
+      });
+      if (!res.ok) {
+        alert("Student ID not found in database.");
+        setIsProcessingManual(false);
       }
+    } catch {
+      alert("Network error processing manual scan.");
+      setIsProcessingManual(false);
+    }
+  };
+
+  const handleBypassSubmit = async () => {
+    try {
+      const res = await fetch("http://localhost:5106/api/camera/manual-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          Student_Id: bypassForm.student_id, 
+          Bypass_Reason: bypassForm.reason,
+          Camera_Location_Id: currentLocationId 
+        })
+      });
+      if (res.ok) {
+        setBypassModalOpen(false);
+        setBypassForm({ student_id: '', reason: '' });
+      } else {
+        alert("Failed to log bypass. Verify Student ID.");
+      }
+    } catch {
+      alert("Network error processing bypass.");
     }
   };
 
   const latestScan = accessLog.length > 0 ? accessLog[0] : null;
+  const recentLogs = accessLog.filter(log => log.status !== 'scanning').slice(0, 10); // Keep main view clean
 
   return (
-    <div className="h-screen flex flex-col bg-slate-100 font-sans overflow-hidden text-slate-900">
+    <div className="h-screen flex flex-col bg-slate-50 font-sans overflow-hidden text-slate-900">
       
       {/* GLOBAL HEADER */}
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-10 shadow-sm">
-        <div className="flex items-center gap-3">
-          <ShieldCheck className="text-blue-600" size={28} />
-          <h1 className="text-xl font-black text-slate-800 tracking-tight">Security & Access Control</h1>
-          <span className={`ml-4 px-3 py-1 rounded-lg text-[10px] uppercase font-black border flex items-center gap-2 ${connectionStatus === 'connected' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>
-            {connectionStatus === 'connected' ? 'System Live' : 'Offline'}
-          </span>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="text-blue-600" size={28} />
+            <h1 className="text-xl font-black text-slate-800 tracking-tight hidden sm:block">Campus Security</h1>
+            <span className={`ml-2 px-3 py-1 rounded-lg text-[10px] uppercase font-black border flex items-center gap-2 ${connectionStatus === 'connected' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>
+              {connectionStatus === 'connected' ? 'System Live' : 'Offline'}
+            </span>
+          </div>
+
+          {/* Tab Navigation */}
+          <div className="hidden md:flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button 
+              onClick={() => setActiveTab('live')}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg font-bold text-sm transition-all ${activeTab === 'live' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <LayoutDashboard size={16} /> Live Monitor
+            </button>
+            <button 
+              onClick={() => setActiveTab('history')}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg font-bold text-sm transition-all ${activeTab === 'history' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <History size={16} /> Access History
+            </button>
+          </div>
         </div>
+
         <div className="flex items-center gap-4">
           <div className="text-right hidden sm:block">
             <p className="text-sm font-bold text-slate-800">{user?.First_Name || user?.first_Name || 'Campus'} {user?.Last_Name || user?.last_Name || 'Guard'}</p>
-            <p className="text-xs font-bold text-slate-500 uppercase">Main Gate Station</p>
+            <p className="text-xs font-bold text-slate-500 uppercase">Station Duty</p>
           </div>
-          <button onClick={() => navigate('/login', { replace: true })} className="bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 p-2.5 rounded-lg transition-colors border border-slate-200">
+          <button 
+            onClick={() => {
+              if (streamStatus === 'active') handleStopCamera(); // Safety cleanup
+              navigate('/login', { replace: true });
+            }} 
+            className="bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 p-2.5 rounded-lg transition-colors border border-slate-200 shadow-sm active:scale-95"
+          >
             <LogOut size={18} />
           </button>
         </div>
       </header>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 p-6 flex gap-6 overflow-hidden">
+      <main className="flex-1 p-6 overflow-hidden">
         
-        {/* LEFT COLUMN: Massive Camera (Takes up all available remaining space) */}
-        {/* FIX: Replaced flex-[3] with canonical flex-3 */}
-        <div className="flex-3 flex flex-col min-w-[60%] h-full pb-4">
-            <LiveCameraFeed latestScan={latestScan} />
-        </div>
+        {/* VIEW 1: LIVE MONITOR */}
+        {activeTab === 'live' && (
+          <div className="h-full flex flex-col gap-6 max-w-400 mx-auto animate-in fade-in duration-300">
+            
+            {/* Top Bar: Controls */}
+            <CameraControls 
+              streamStatus={streamStatus}
+              onStart={handleStartCamera}
+              onStop={handleStopCamera}
+              locations={locations}
+              currentLocationId={currentLocationId}
+              onLocationChange={setCurrentLocationId}
+            />
 
-        {/* RIGHT COLUMN: Sidebar Control Center (Fixed width, vertically stacked) */}
-        {/* FIX: Replaced min-w-[360px] with min-w-90 and max-w-[450px] with max-w-112.5 */}
-        <div className="flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar pb-4 min-w-90 max-w-112.5">
-          <PhaseStepper latestScan={latestScan} />
-          <VerificationPanel latestScan={latestScan} cacheBuster={cacheBuster} />
-          
-          {/* Tactical Buttons */}
-          <div className="flex gap-3 shrink-0">
-            <button onClick={() => setBypassModalOpen(true)} className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-700 font-black py-4 rounded-xl flex items-center justify-center gap-2 border border-amber-200 shadow-sm transition-all active:scale-95">
-              <Unlock size={18} /> <span className="text-[10px] uppercase tracking-widest">Manual Bypass</span>
-            </button>
-            <button onClick={handleLockdown} className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-black py-4 rounded-xl flex items-center justify-center gap-2 border border-rose-200 shadow-sm transition-all active:scale-95">
-              <ShieldAlert size={18} /> <span className="text-[10px] uppercase tracking-widest">Lockdown</span>
-            </button>
-          </div>
+            {/* Middle Section: Camera & Verification */}
+            <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
+              
+              {/* Massive Camera Feed (Left) */}
+              <div className="flex-[2.5] flex flex-col">
+                <LiveCameraFeed 
+                  latestScan={latestScan} 
+                  streamStatus={streamStatus}
+                  onRetry={handleStartCamera} 
+                />
+              </div>
 
-          {/* Event Log */}
-          {/* FIX: Replaced min-h-[250px] with canonical min-h-62.5 */}
-          <div className="bg-white border border-slate-200 rounded-2xl flex flex-col flex-1 shadow-sm overflow-hidden min-h-62.5">
-            <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
-                <h2 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                    <UserCheck size={16} className="text-blue-600" /> Event Log
-                </h2>
-                <span className="text-[10px] font-black tracking-widest bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md uppercase">Live</span>
+              {/* Verification Panel (Right) */}
+              <div className="flex-1 min-w-80 flex flex-col">
+                <VerificationPanel latestScan={latestScan} cacheBuster={cacheBuster} />
+              </div>
+
             </div>
-            <div className="p-3 space-y-2 overflow-y-auto flex-1 bg-white">
-              {accessLog.filter(log => log.status !== 'scanning').map((entry, idx) => <AccessLogEntry key={idx} entry={entry} />)}
+
+            {/* Bottom Section: Manual Inputs & Recent Logs */}
+            <div className="flex flex-col lg:flex-row gap-6 shrink-0 h-48">
+              
+              {/* Left Bottom: Manual Fallbacks */}
+              <div className="flex-1 flex flex-col gap-4">
+                <ManualIDInput onSubmit={handleManualIdSubmit} isLoading={isProcessingManual} />
+                
+                <button 
+                  onClick={() => setBypassModalOpen(true)} 
+                  className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-black py-3 px-4 rounded-2xl flex items-center justify-center gap-3 border border-amber-200 shadow-sm transition-all active:scale-95 flex-1"
+                >
+                  <AlertTriangle size={20} /> 
+                  <span className="uppercase tracking-widest text-sm">Force Manual Bypass</span>
+                </button>
+              </div>
+
+              {/* Right Bottom: Privacy-First Recent Logs (Max 10) */}
+              <div className="flex-2 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden">
+                <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0 px-5">
+                    <h2 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                        <UserCheck size={16} className="text-blue-600" /> Recent Station Scans
+                    </h2>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Last 10 Events Only</span>
+                </div>
+                <div className="p-3 overflow-x-auto bg-white flex gap-3 h-full items-center custom-scrollbar">
+                  {recentLogs.length === 0 ? (
+                    <p className="text-slate-400 font-bold text-sm w-full text-center">No recent scans recorded.</p>
+                  ) : (
+                    recentLogs.map((entry, idx) => (
+                      <div key={idx} className="w-80 shrink-0">
+                         <AccessLogEntry entry={entry} />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
             </div>
           </div>
-        </div>
+        )}
+
+        {/* VIEW 2: ACCESS HISTORY (Privacy-First Full Logs) */}
+        {activeTab === 'history' && (
+          <div className="h-full max-w-300 mx-auto">
+            <AccessHistory logs={accessLog.filter(log => log.status !== 'scanning')} />
+          </div>
+        )}
+
       </main>
 
+      {/* Manual Bypass Modal */}
       <BypassModal 
         isOpen={bypassModalOpen} 
         onClose={() => { setBypassModalOpen(false); setBypassForm({ student_id: '', reason: '' }); }} 
@@ -148,8 +311,6 @@ export default function GuardPortal() {
         setBypassForm={setBypassForm} 
       />
       
-      {/* Keyframe Animations injected globally */}
-      <style dangerouslySetInnerHTML={{__html: `@keyframes scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } } .animate-spin-slow { animation: spin 3s linear infinite; }`}} />
     </div>
   );
 }

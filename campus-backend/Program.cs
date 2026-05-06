@@ -20,13 +20,16 @@ builder.Services.AddScoped<campus_backend.Repositories.ISubjectRepository, campu
 // ADD THIS EXACT LINE FOR COURSES:
 builder.Services.AddScoped<campus_backend.Repositories.ICourseRepository, campus_backend.Repositories.CourseRepository>();
 
-builder.Services.AddScoped<campus_backend.Repositories.ICameraLocationRepository, campus_backend.Repositories.CameraLocationRepository>();
+// 1. Enables HTTP calls to Python
+builder.Services.AddHttpClient(); 
 
-builder.Services.AddSingleton<IAccessVerificationService, AccessVerificationService>();
+// 2. Registers the new Database Repository
+builder.Services.AddScoped<campus_backend.Repositories.ICameraLocationRepository, campus_backend.Repositories.CameraLocationRepository>(); 
+
+// 3. Registers the new Business Logic Service for MQTT
+builder.Services.AddSingleton<campus_backend.Services.IAccessVerificationService, campus_backend.Services.AccessVerificationService>();
 
 builder.Services.AddControllers();
-
-builder.Services.AddHttpClient();
 
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowReactApp", policy => {
