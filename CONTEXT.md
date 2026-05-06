@@ -168,6 +168,22 @@ Located at: `src/portals/Registrar/components/sections/SectionRoster.jsx`
 
 ## 🔧 RECENT CHANGES (May 6, 2026)
 
+### Guard Portal Phase 1 - Prototype Completed:
+1. ✅ Camera feed integration (MJPEG streaming from Python edge node)
+2. ✅ Barcode/QR scanning via pyzbar
+3. ✅ Real-time face verification with SignalR broadcast
+4. ✅ Access log display (recent scans)
+5. ✅ Profile picture display with verification status
+6. ✅ Manual controls (but auto-close when portal closes)
+
+### Known Limitations (Addressed in Phase 2 - See NEXT_GOALS.md):
+- ⚠️ Camera stops when Guard Portal closes (needs off-camera button)
+- ⚠️ No manual ID input fallback for students without barcode
+- ⚠️ Camera location hardcoded as "Main Gate" (needs configuration)
+- ⚠️ Event logs visible in main UI (privacy concern - should be separate)
+- ⚠️ Lockdown button present (inappropriate for access control)
+- ⚠️ Python script can unexpectedly shutdown
+
 ### Core Backend Features Completed:
 1. **Section Management CRUD Operations:**
    - ✅ `POST /api/sections` - Create new sections with auto-generated IDs
@@ -221,6 +237,28 @@ Located at: `src/portals/Registrar/components/sections/SectionRoster.jsx`
   - Current structure: State management, data fetching, filtering, sorting, modals, and two table renderings in single file
   - **Candidate for future refactoring:** Could be decomposed into smaller functional components without changing behavior
   - Main responsibilities: Student enrollment management, subject/schedule assignment, face photo display, sorting/filtering
+
+---
+
+## 📈 NEXT PHASE: Guard Portal Enhancements (Phase 2)
+
+**See:** [NEXT_GOALS.md](./NEXT_GOALS.md) for complete roadmap
+
+**Key Improvements:**
+1. **Camera Control:** Off/On buttons instead of auto-close
+2. **Manual ID Entry:** Text input fallback for barcode scanning
+3. **Camera Location Configuration:** Support multiple cameras (entrance/exit/rooms)
+4. **Privacy-First Event Logs:** Hidden from main UI, separate Access History tab
+5. **Manual Bypass System:** For students/staff without ID cards
+6. **Controlled Environment Testing:** Scenario-based testing (e.g., IL604 classroom)
+
+**Status-Based Workflow:**
+- **Entrance Gate** → Sets status to "in-campus"
+- **Exit Gate** → Sets status to "offline"
+- **Room-Specific (e.g., IL604)** → Sets status to "present-in-room" with attendance tracking
+- **Manual Bypass** → Manual entry without face verification (logged separately)
+
+**Timeline:** May 8-12, 2026 (6 phases)
 
 ---
 

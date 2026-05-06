@@ -4,9 +4,12 @@
 
 ## 📊 Project Status (May 6, 2026)
 
-**Current Phase:** Backend CRUD Complete, Frontend Integration & UI Polish → **Guard Portal Real-Time Access System**
+**Current Phase:** Guard Portal Phase 1 Complete → **Phase 2: Real-Time Access Control Enhancements**
 
-**Recent Completions:**
+**Phase 1 Completions (Prototype):**
+- ✅ **Guard Portal Framework** - Camera feed viewer + access log
+- ✅ **Barcode/QR Scanning** - pyzbar integration with MQTT
+- ✅ **Real-Time Face Verification** - SignalR updates to UI
 - ✅ **Section Management CRUD** - Create, Edit, Delete operations with cascading deletes
   - `POST /api/sections` - Create new section
   - `PUT /api/sections/{id}` - Update section details
@@ -15,19 +18,24 @@
 - ✅ Table column spacing fixes (Schedules & Faculty views)
 - ✅ Professor face photo display with fallback icons
 - ✅ Cache-busting for profile images
-- ✅ Guard Portal layout with camera feed viewer & security controls
 
-**In Progress:**
-- 🔄 **Guard Portal Real-Time Workflow** (Building in Gemini AI Browser)
-  - Phase 1: Barcode/QR scan detection → MQTT event
-  - Phase 2: Live face recognition matching → SignalR push to UI
-  - Access log with real-time scan results
+**Phase 2 In Planning (See [NEXT_GOALS.md](./NEXT_GOALS.md) for Complete Roadmap):**
+- 🔄 **Camera Control System** - Off/On buttons (no auto-close on logout)
+- 🔄 **Manual ID Input** - Fallback text input for missing barcodes
+- 🔄 **Camera Location Configuration** - Support multiple cameras (entrance/exit/room-specific)
+- 🔄 **Privacy-Enhanced Event Logging** - Separate Access History tab (hidden from main UI)
+- 🔄 **Manual Bypass Feature** - For students/staff without ID cards
+- 🔄 **Controlled Environment Testing** - Room-based attendance scenarios (e.g., IL604)
+- 🔄 **Python Script Stability** - Investigate/fix unexpected shutdowns
 
-**Planned (Next Phase):**
+**Planned (Phase 3+):**
 - Component refactoring (SectionRoster.jsx decomposition)
 - Complete CRUD for Schedules and Rooms
 - RBAC implementation
-- Guard Portal barcode scanner integration
+- Professor bypass & verification system
+- Auto-start vision_node.py when opening Guard Portal
+- Room-based attendance tracking
+- Advanced analytics & occupancy monitoring
 
 ---
 
@@ -79,21 +87,31 @@ The Guard Portal bridges **hardware (Raspberry Pi + camera)**, **AI (face recogn
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Guard Portal UI Components (Building in Gemini AI)
+### Guard Portal UI Components (Current Phase 1)
 
 **Left Panel: Camera Feed**
 - Live MJPEG stream from edge node: `http://localhost:5000/video_feed`
 - Real-time status badge: LIVE | SIGNAL LOST
 - Camera identifier: CAM_01: MAIN GATE
+- *Phase 2: Will add Start/Stop camera buttons and location selector*
 
 **Right Panel: Access Log**
 - Real-time scan events from SignalR
 - Show: Student Photo | Name | ID | Status (✅/❌) | Timestamp
 - Filter/sort options: All | Approved | Denied | Today | This Week
+- *Phase 2: Limited to last 10 entries; full history in separate tab*
 
 **Bottom Controls**
-- **BYPASS GATE (FORGOTTEN ID):** Manual override for students without barcode
+- **MANUAL BYPASS (FORGOTTEN ID):** Manual override for students without barcode
+  - *Phase 2: Improved with confirmation dialog and location tracking*
 - **TRIGGER LOCKDOWN:** Emergency security lockdown
+  - *Phase 2: Removed (inappropriate for access control)*
+
+**Phase 2 New Components:**
+- Camera location selector (Entrance/Exit/Room)
+- Manual ID text input form
+- Offline/Online camera status indicator
+- Access History tab (separate from main view)
 
 ### Integration Points
 
@@ -104,6 +122,53 @@ The Guard Portal bridges **hardware (Raspberry Pi + camera)**, **AI (face recogn
 | SignalR Hub | `CampusHub.cs` | Broadcasts results to Guard UI in real-time |
 | React Frontend | SignalR client | Receives events → updates access log |
 | Oracle DB | EVENT_LOGS table | Stores attendance & access records |
+
+---
+
+## 🔧 **Guard Portal Phase 2: Upcoming Improvements**
+
+See [NEXT_GOALS.md](./NEXT_GOALS.md) for complete development roadmap.
+
+### Key Enhancements
+
+| Feature | Current | Upcoming | Benefit |
+|---------|---------|----------|---------|
+| **Camera Control** | Auto-closes with logout | On/Off button | Manual control, prevents unexpected stops |
+| **ID Entry** | Barcode only | + Manual text input | Backup for missing/damaged barcodes |
+| **Camera Locations** | Hardcoded "Main Gate" | Configurable (entrance/exit/rooms) | Multi-gate support + room attendance |
+| **Event Logs** | Visible in main UI | Separate Access History tab | Privacy protection, cleaner interface |
+| **Manual Bypass** | Button present | Improved with confirmation | For students without ID cards |
+| **Lockdown Button** | Present | Removed | Inappropriate for access control |
+| **Verification Display** | Small profile pic | Large profile pic + better layout | Better UX, clearer verification status |
+
+### Use Case: Room-Based Attendance Tracking
+
+Example scenario - IL604 classroom, SE101 class (2:30 PM - 5:30 PM):
+
+```
+📍 Set Camera Location: IL604 Classroom
+📅 Check Schedule: SE101 (Professor + Students)
+🚪 Student arrives 5 min early → scans barcode at IL604 camera
+  ✓ Status: "present-in-room"
+  ✓ Logged: "Student entered IL604"
+📍 After class (5 minutes manual test)
+🚪 Student re-scans → exits IL604
+  ✓ Status: Returns to "in-campus"
+  ✓ Logged: "Student exited IL604"
+📊 Attendance automatically tracked for IL604
+```
+
+### Privacy-First Event Logging
+
+**Main Guard Portal:**
+- Shows only last 10 access log entries
+- Displays: Name, ID, Status, Timestamp, Location
+- No detailed scan history
+
+**Separate Access History Tab:**
+- Full event logs with filtering
+- Date range, student, location filters
+- For authorized personnel only (future RBAC)
 
 ---
 
