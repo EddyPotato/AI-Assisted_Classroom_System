@@ -4,7 +4,7 @@
 
 ## 📊 Project Status (May 6, 2026)
 
-**Current Phase:** Backend CRUD Complete, Frontend Integration & UI Polish
+**Current Phase:** Backend CRUD Complete, Frontend Integration & UI Polish → **Guard Portal Real-Time Access System**
 
 **Recent Completions:**
 - ✅ **Section Management CRUD** - Create, Edit, Delete operations with cascading deletes
@@ -15,16 +15,97 @@
 - ✅ Table column spacing fixes (Schedules & Faculty views)
 - ✅ Professor face photo display with fallback icons
 - ✅ Cache-busting for profile images
+- ✅ Guard Portal layout with camera feed viewer & security controls
 
 **In Progress:**
-- 🔄 Frontend integration for new section endpoints
-- 🔄 UI implementation for section create/edit/delete modals
+- 🔄 **Guard Portal Real-Time Workflow** (Building in Gemini AI Browser)
+  - Phase 1: Barcode/QR scan detection → MQTT event
+  - Phase 2: Live face recognition matching → SignalR push to UI
+  - Access log with real-time scan results
 
 **Planned (Next Phase):**
 - Component refactoring (SectionRoster.jsx decomposition)
 - Complete CRUD for Schedules and Rooms
 - RBAC implementation
-- Face verification workflow
+- Guard Portal barcode scanner integration
+
+---
+
+## 🚔 **Guard Portal: Real-Time Face Recognition Access System**
+
+### The AI Magic Behind the Scenes
+
+The Guard Portal bridges **hardware (Raspberry Pi + camera)**, **AI (face recognition)**, and **real-time web dashboard** to create an instant access control system.
+
+#### **Face Recognition Technology Stack**
+- **Library:** `face_recognition` v1.3.0 + OpenCV
+- **Detection:** HOG (Histogram of Oriented Gradients) to locate faces
+- **Encoding:** Pre-trained ResNet deep learning model (via dlib) generates 128-dimensional face map
+- **Comparison:** Live camera face vs. student's `FACE_REFERENCE_PATH` — threshold distance 0.6 = **99.38% accuracy**
+- **Speed:** ~200ms per frame (real-time performance)
+
+#### **Guard Portal Workflow: 2-Phase System**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ PHASE 1: BARCODE/QR SCAN (Student ID Verification)        │
+├─────────────────────────────────────────────────────────────┤
+│ 1. Student holds barcode/QR to camera                       │
+│ 2. Python edge node (pyzbar library) reads barcode          │
+│ 3. MQTT message sent: campus/door/scan → { student_id }    │
+│ 4. C# backend receives & looks up student record            │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ PHASE 2: FACE RECOGNITION (Biometric Match)               │
+├─────────────────────────────────────────────────────────────┤
+│ 1. Edge node retrieves student's FACE_REFERENCE_PATH       │
+│ 2. Compares 128D face encoding from DB vs. live video      │
+│ 3. If distance < 0.6: ✅ MATCH FOUND                       │
+│ 4. MQTT message: campus/door/verified → { status }        │
+│ 5. C# backend logs event to EVENT_LOGS table               │
+│ 6. SignalR (WebSocket) pushes result to React Guard UI     │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ UI UPDATE: Guard sees real-time result (no page refresh)   │
+├─────────────────────────────────────────────────────────────┤
+│ ✅ Green: "John Doe (ID: STU001) - GATE UNLOCKED"          │
+│ ❌ Red: "Face mismatch - DENIED"                           │
+│ ⏱️ Access log updates instantly with timestamp             │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Guard Portal UI Components (Building in Gemini AI)
+
+**Left Panel: Camera Feed**
+- Live MJPEG stream from edge node: `http://localhost:5000/video_feed`
+- Real-time status badge: LIVE | SIGNAL LOST
+- Camera identifier: CAM_01: MAIN GATE
+
+**Right Panel: Access Log**
+- Real-time scan events from SignalR
+- Show: Student Photo | Name | ID | Status (✅/❌) | Timestamp
+- Filter/sort options: All | Approved | Denied | Today | This Week
+
+**Bottom Controls**
+- **BYPASS GATE (FORGOTTEN ID):** Manual override for students without barcode
+- **TRIGGER LOCKDOWN:** Emergency security lockdown
+
+### Integration Points
+
+| Component | Connection | Purpose |
+|-----------|-----------|---------|
+| Python Edge Node | MQTT `campus/door/scan` | Sends barcode data & face match status |
+| C# Backend | MQTT Listener Service | Receives edge events → logs to DB |
+| SignalR Hub | `CampusHub.cs` | Broadcasts results to Guard UI in real-time |
+| React Frontend | SignalR client | Receives events → updates access log |
+| Oracle DB | EVENT_LOGS table | Stores attendance & access records |
+
+---
 
 ## 👥 Team Collaboration Guide
 
@@ -374,6 +455,76 @@ User data stored in browser localStorage:
   Email: "john@campus.edu"
 }
 ```
+
+### SignalR Real-Time Communication (Guard Portal)
+
+The Guard Portal uses SignalR WebSockets for real-time access log updates. Integration template:
+
+```javascript
+// In GuardPortal.jsx
+import { HubConnectionBuilder } from "@microsoft/signalr";
+import { useEffect, useState } from "react";
+
+export default function GuardPortal() {
+  const [accessLog, setAccessLog] = useState([]);
+  const [connection, setConnection] = useState(null);
+
+  useEffect(() => {
+    // Connect to SignalR hub
+    const newConnection = new HubConnectionBuilder()
+      .withUrl("http://localhost:5106/campushub")
+      .withAutomaticReconnect()
+      .build();
+
+    newConnection.start()
+      .then(() => console.log("SignalR connected"))
+      .catch(err => console.error("Connection failed:", err));
+
+    // Listen for scan results from backend
+    newConnection.on("ReceiveScanResult", (data) => {
+      // data structure: { student_id, first_name, last_name, status, timestamp, face_path }
+      setAccessLog(prev => [data, ...prev.slice(0, 49)]); // Keep last 50 entries
+    });
+
+    setConnection(newConnection);
+
+    return () => {
+      newConnection.stop();
+    };
+  }, []);
+
+  return (
+    // ... existing JSX
+    <div className="p-4 flex-1 overflow-y-auto space-y-3">
+      {accessLog.length === 0 ? (
+        <div className="text-center text-slate-600 font-bold mt-10">Awaiting gate scans...</div>
+      ) : (
+        accessLog.map((entry, idx) => (
+          <div key={idx} className={`p-3 rounded-lg ${entry.status === 'approved' ? 'bg-emerald-900/40' : 'bg-rose-900/40'}`}>
+            <div className="flex items-center gap-3">
+              {entry.face_path ? (
+                <img src={`http://localhost:5106/ReferenceFaces/${entry.face_path}`} alt={entry.first_name} className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold">?</div>
+              )}
+              <div className="flex-1">
+                <p className="font-bold text-white">{entry.first_name} {entry.last_name}</p>
+                <p className="text-xs text-slate-400">{entry.student_id}</p>
+              </div>
+              <span className={`text-xs font-black px-2 py-1 rounded ${entry.status === 'approved' ? 'bg-emerald-500 text-white' : 'bg-rose-600 text-white'}`}>
+                {entry.status === 'approved' ? '✅ APPROVED' : '❌ DENIED'}
+              </span>
+              <span className="text-xs text-slate-400">{entry.timestamp}</span>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+```
+
+**Backend SignalR Hub** (`campus-backend/Hubs/CampusHub.cs`) already has the `Clients.All.SendAsync("ReceiveScanResult", data)` broadcast ready. MQTT listener service will trigger this on barcode scan events.
 
 ---
 

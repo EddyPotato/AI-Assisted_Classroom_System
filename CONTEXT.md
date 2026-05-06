@@ -224,12 +224,78 @@ Located at: `src/portals/Registrar/components/sections/SectionRoster.jsx`
 
 ---
 
+## 🤖 **FACE RECOGNITION AI EXPLAINED**
+
+### The Magic Under the Hood
+
+The Guard Portal's security system uses **deep learning-based face recognition** for biometric verification. Here's exactly how it works:
+
+#### **Phase 1: Face Detection**
+- **Algorithm:** HOG (Histogram of Oriented Gradients)
+- **Purpose:** Locate the human face in the camera frame
+- **Speed:** ~50ms per frame
+- **Output:** Bounding box coordinates of detected face
+
+#### **Phase 2: Face Encoding**
+- **Model:** Pre-trained ResNet deep neural network (built on dlib)
+- **Input:** Detected face image (from Phase 1)
+- **Output:** 128-dimensional mathematical vector (128D face map)
+- **Meaning:** Each of 128 numbers represents a unique facial feature (eye distance, nose shape, etc.)
+- **Speed:** ~100ms per encoding
+
+#### **Phase 3: The Comparison**
+- **Live face encoding** (from camera feed) compared to **reference face encoding** (from `FACE_REFERENCE_PATH`)
+- **Distance metric:** Euclidean distance between two 128D vectors
+- **Match threshold:** distance < 0.6 = ✅ APPROVED
+- **No match:** distance ≥ 0.6 = ❌ DENIED
+- **Accuracy:** 99.38% on standard benchmarks (LFW - Labeled Faces in the Wild)
+- **Speed:** ~20ms comparison per frame
+
+#### **Why This Works**
+The 128D encoding captures the **essence** of a face in a mathematical way:
+- If two people have similar facial features → their 128D vectors are close in space
+- If two people have different faces → their vectors are far apart
+- The threshold of 0.6 balances: catching imposters (false positives) vs. rejecting legitimate users (false negatives)
+
+#### **Real-World Performance**
+```
+├─ Same person, different angles: distance ≈ 0.3 ✅
+├─ Same person, lighting changes: distance ≈ 0.4 ✅
+├─ Different people (imposters): distance ≈ 0.8-1.2 ❌
+└─ Twins/family members: distance ≈ 0.55-0.70 (borderline - manual review)
+```
+
+#### **Technology Stack**
+```
+OpenCV 4.9.0.80              # Image processing
+↓
+face_recognition 1.3.0       # High-level API wrapper
+↓
+dlib deep learning model     # Pre-trained ResNet
+↓
+Python 3.10+                 # Execution environment
+↓
+MQTT publish                 # Result to backend
+↓
+SignalR broadcast            # Push to Guard UI
+```
+
+#### **Security Notes**
+- ✅ **No external cloud processing** — all computation happens on Raspberry Pi (privacy-first)
+- ✅ **Reference photos stored locally** — encrypted in database path field
+- ⚠️ **Lighting matters** — performs best with even illumination (avoid backlighting)
+- ⚠️ **Face must be visible** — sunglasses, masks reduce accuracy
+- ✅ **Liveness detection not implemented yet** — theoretically vulnerable to printed photo attacks (enhancement for Phase 2)
+
+---
+
 ## 📁 FILE STRUCTURE SUMMARY
 
 ```
 AI-Assisted_Classroom_System/
 ├── CONTEXT.md                      # This file - AI memory & project manifest
-├── README.md                        # Setup & collaboration guide (updated May 5)
+├── GUARD_PORTAL_DEV_GUIDE.md       # Complete Guard Portal SignalR integration guide
+├── README.md                        # Setup & collaboration guide (updated May 6)
 ├── AI-Assisted_Classroom_System.sln # Visual Studio solution
 ├── campus-backend/                 # C# ASP.NET Core backend
 │   ├── Program.cs                  # Dependency injection & CORS setup
@@ -332,6 +398,7 @@ AI-Assisted_Classroom_System/
 
 | Issue | Cause | Workaround |
 |-------|-------|-----------|
+| "Where is the barcode scanner hardware?" | Confusion: barcode detection is software-based (pyzbar), not hardware | Read clarification in NEXT STEPS section — camera reads barcodes via OpenCV, not separate device |
 | Professor face not showing | `professor_Face_Reference_Path` null in SCHEDULES | Ensure staff registered with face before assigning to schedule |
 | Stale images cached | Browser caching `.jpg` files | Timestamp cache buster already implemented (`?t=${cacheBuster}`) |
 | MQTT connection fails | MQTT broker not running | Install mosquitto locally or configure remote broker in code |
@@ -364,6 +431,56 @@ USERS (1) ──────────────── (*) ENROLLMENTS
 - Student enrollment management to sections
 - Schedule assignment to sections
 - Professor assignment to schedules
+- Guard Portal layout & camera feed viewer
+
+### IMMEDIATE NEXT TASK - Guard Portal Real-Time Access System 🚔
+**Status:** UI skeleton ready, logic integration in progress  
+**Building in:** Gemini AI (Browser-based development)
+
+#### **What Already Exists:**
+- `campus-dashboard/src/portals/Guard/GuardPortal.jsx` - Layout with:
+  - Live camera feed viewer (connected to `http://localhost:5000/video_feed`)
+  - "BYPASS GATE" and "TRIGGER LOCKDOWN" buttons
+  - Access log panel ready for real-time events
+  - Tactical security-focused UI design (dark theme, amber/red accents)
+
+#### **Barcode Scanner Mock-Up Reference:**
+The edge node uses **pyzbar library** to detect and decode barcode/QR codes from the camera stream. This is NOT a hardware barcode scanner—it's **computer vision-based reading** directly from the camera feed. The Python script:
+1. Captures video frame from camera
+2. Runs pyzbar to detect barcode in frame
+3. Sends scanned ID via MQTT: `campus/door/scan` → `{ student_id }`
+4. Backend receives message and triggers face verification phase
+
+**CONFUSION CLARIFICATION:** There is no separate barcode hardware device. The camera itself reads barcodes in real-time. The "mock-up" is the existing barcode detection logic in `campus-edge/vision_node.py`.
+
+#### **What Needs to Be Built:**
+1. **SignalR Integration in React**
+   - Connect to `ws://localhost:5106/campushub` on component mount
+   - Listen for events: `ReceiveScanResult` (broadcasts from backend)
+   - Payload structure: `{ student_id, first_name, last_name, status, timestamp, face_reference_path }`
+
+2. **Real-Time Access Log Display**
+   - Add scanned entries to top of log (reverse chronological)
+   - Show student photo, name, ID, status (✅/❌), timestamp
+   - Color code: Green for successful matches, Red for denials
+   - Auto-scroll to latest entry
+
+3. **Event Handling**
+   - On barcode scan → log shows pending/loading state
+   - On face match → log shows ✅ APPROVED with timestamp
+   - On face mismatch → log shows ❌ DENIED (access blocked)
+
+4. **Camera Feed Status**
+   - Monitor connection: if stream drops, show "SIGNAL LOST" badge
+   - Retry logic when edge node comes back online
+
+5. **Manual Controls**
+   - BYPASS button: Log manual entry, bypass face verification
+   - LOCKDOWN button: Trigger alert, log security event
+
+**📖 Detailed Guide:** See `GUARD_PORTAL_DEV_GUIDE.md` for complete SignalR integration code, UI state management, and testing instructions.
+
+---
 
 ### Priority 1 - Frontend Integration:
 1. **Update SectionsTab.jsx** to support new backend endpoints

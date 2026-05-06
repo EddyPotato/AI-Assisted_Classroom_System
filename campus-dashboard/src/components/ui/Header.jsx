@@ -26,7 +26,7 @@ export default function Header() {
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 z-10 shadow-sm">
       <div className="flex items-center gap-3">
         <Menu className="text-gray-500 cursor-pointer hover:text-blue-600 transition-colors" size={24} />
-        <h1 className="text-xl font-black text-gray-800 tracking-tight">SILAYAN Dashboard</h1>
+        <h1 className="text-xl font-black text-gray-800 tracking-tight">QCU Dashboard</h1>
       </div>
       <div className="flex items-center gap-5">
         
