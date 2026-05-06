@@ -47,48 +47,45 @@ def generate_frames():
             
             for barcode in barcodes:
                 (x, y, w, h) = barcode.rect
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 191, 0), 2) # Amber box for barcode
                 
                 barcode_data = barcode.data.decode("utf-8").strip()
-                cv2.putText(frame, f"Scanned: {barcode_data}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 191, 0), 2)
-
                 print(f"\n[PHASE 1] Barcode Scanned: {barcode_data}")
                 
-                # 1. Send Phase 1 MQTT Message to trigger React UI "Scanning Face..."
+                # 1. Trigger React UI "Scanning Face..."
                 payload = json.dumps({"student_id": barcode_data})
                 publish.single("campus/door/scan", payload=payload, hostname=MQTT_BROKER)
                 
-                # 2. Hunt for the reference image in your Windows folder
-                print(f"[SYSTEM] Searching for reference image in: {REFERENCE_FACES_DIR}")
+                # 2. Hunt for the reference image
                 search_pattern = os.path.join(REFERENCE_FACES_DIR, f"*{barcode_data}*.*")
                 matching_files = glob.glob(search_pattern)
                 
                 if matching_files:
                     ref_image_path = matching_files[0]
-                    print(f"[SYSTEM] Found reference image: {os.path.basename(ref_image_path)}")
-                    
                     try:
-                        # Load image and extract the 128D face map
                         ref_image = face_recognition.load_image_file(ref_image_path)
                         encodings = face_recognition.face_encodings(ref_image)
                         
                         if len(encodings) > 0:
                             target_face_encoding = encodings[0]
                             target_student_id = barcode_data
+                            
+                            print("[PHASE 1] Reference loaded. Giving student 2.5 seconds to look up...")
+                            time.sleep(2.5) # THE BREATHE TIME DELAY
+                            
                             current_state = "VERIFYING_FACE"
                             verification_start_time = time.time()
-                            print("[PHASE 2] AI Face Verification Started. Look at the camera!")
                         else:
-                            print("[ERROR] No face detected in the reference photo!")
+                            print("[ERROR] No face detected in reference photo!")
+                            time.sleep(1.5) # Don't instantly flash
                             publish.single("campus/door/verified", payload=json.dumps({"status": "denied"}), hostname=MQTT_BROKER)
-                            time.sleep(2) # Cooldown
-                            
+                            time.sleep(2)
                     except Exception as e:
-                        print(f"[ERROR] Failed to process image: {e}")
+                        pass
                 else:
-                    print(f"[ERROR] No image found matching ID {barcode_data}!")
+                    print(f"[ERROR] No registered photo found for {barcode_data}! Cannot verify face.")
+                    time.sleep(2.0) # Wait so the Guard sees the "Missing Face" UI
                     publish.single("campus/door/verified", payload=json.dumps({"status": "denied"}), hostname=MQTT_BROKER)
-                    time.sleep(2) # Cooldown
+                    time.sleep(2)
 
         # ==========================================
         # PHASE 2: FACE RECOGNITION MATCHING

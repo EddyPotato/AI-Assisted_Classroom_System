@@ -136,23 +136,37 @@ namespace campus_backend.Services
                 using var connection = new OracleConnection(_connectionString);
                 await connection.OpenAsync();
 
-                // Bulletproof Query 1: Get Name
-                using var nameCmd = new OracleCommand("SELECT FIRST_NAME, LAST_NAME FROM CAMPUS_ADMIN.USERS WHERE USER_ID = :id", connection);
-                nameCmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
-                using var nameReader = await nameCmd.ExecuteReaderAsync();
-                if (await nameReader.ReadAsync())
-                {
-                    _pendingFirstName = nameReader["FIRST_NAME"]?.ToString() ?? "Unknown";
-                    _pendingLastName = nameReader["LAST_NAME"]?.ToString() ?? "";
-                }
+                // UPDATED QUERY: Look in STUDENTS table and grab First, Middle, Last Name, and Photo
+                var query = @"
+                    SELECT FIRST_NAME, MIDDLE_NAME, LAST_NAME, FACE_REFERENCE_PATH 
+                    FROM CAMPUS_ADMIN.STUDENTS 
+                    WHERE STUDENT_ID = :id";
 
-                // Bulletproof Query 2: Get Face Photo
-                using var faceCmd = new OracleCommand("SELECT FACE_REFERENCE_PATH FROM CAMPUS_ADMIN.STUDENTS WHERE STUDENT_ID = :id", connection);
-                faceCmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
-                using var faceReader = await faceCmd.ExecuteReaderAsync();
-                if (await faceReader.ReadAsync())
+                using var cmd = new OracleCommand(query, connection);
+                cmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
+                
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
                 {
-                    _pendingFacePath = faceReader["FACE_REFERENCE_PATH"] != DBNull.Value ? faceReader["FACE_REFERENCE_PATH"]?.ToString() : null;
+                    _pendingFirstName = reader["FIRST_NAME"]?.ToString() ?? "Unknown";
+                    
+                    // Handle Middle Name gracefully
+                    string middleName = reader["MIDDLE_NAME"] != DBNull.Value ? reader["MIDDLE_NAME"]?.ToString() + " " : "";
+                    _pendingLastName = middleName + (reader["LAST_NAME"]?.ToString() ?? "");
+                    
+                    _pendingFacePath = reader["FACE_REFERENCE_PATH"] != DBNull.Value ? reader["FACE_REFERENCE_PATH"]?.ToString() : null;
+                }
+                else
+                {
+                    // Fallback if not found in STUDENTS (maybe they are in USERS)
+                    using var userCmd = new OracleCommand("SELECT FIRST_NAME, LAST_NAME FROM CAMPUS_ADMIN.USERS WHERE USER_ID = :id", connection);
+                    userCmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
+                    using var userReader = await userCmd.ExecuteReaderAsync();
+                    if (await userReader.ReadAsync())
+                    {
+                        _pendingFirstName = userReader["FIRST_NAME"]?.ToString() ?? "Unknown";
+                        _pendingLastName = userReader["LAST_NAME"]?.ToString() ?? "";
+                    }
                 }
 
                 // Broadcast to React UI: "Barcode received, scanning face now..."
@@ -162,7 +176,7 @@ namespace campus_backend.Services
                     first_name = _pendingFirstName,
                     last_name = _pendingLastName,
                     face_reference_path = _pendingFacePath,
-                    status = "scanning" // This triggers the UI animation!
+                    status = _pendingFacePath != null ? "scanning" : "missing_face" // Tell UI if photo is missing!
                 });
             }
             catch (Exception ex)
