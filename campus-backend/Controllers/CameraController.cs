@@ -37,8 +37,6 @@ namespace campus_backend.Controllers
                 ?? throw new InvalidOperationException("Connection string not found.");
         }
 
-        // --- LOCATION MANAGEMENT ENDPOINTS ---
-
         [HttpGet("locations")]
         public async Task<IActionResult> GetLocations()
         {
@@ -62,16 +60,12 @@ namespace campus_backend.Controllers
             return NotFound("Camera location not found.");
         }
 
-        // --- HARDWARE CONTROL ENDPOINTS (Proxies to Python Edge Node) ---
-
         [HttpPost("start")]
         public async Task<IActionResult> StartCamera([FromBody] CameraStateRequest request)
         {
             try
             {
                 var client = _httpClientFactory.CreateClient();
-                
-                // Forward the location ID to the Python edge node
                 var payload = JsonSerializer.Serialize(new { location_id = request.Camera_Location_Id });
                 var content = new StringContent(payload, Encoding.UTF8, "application/json");
 
@@ -102,13 +96,13 @@ namespace campus_backend.Controllers
             }
         }
 
-        // --- MANUAL SCAN / BYPASS ENDPOINT ---
-
+        // --- MANUAL SCAN & BYPASS LOGIC ---
         [HttpPost("manual-scan")]
         public async Task<IActionResult> ManualScan([FromBody] ManualScanRequest request)
         {
-            if (string.IsNullOrEmpty(request.Student_Id)) return BadRequest("Student ID is required.");
+            if (string.IsNullOrWhiteSpace(request.Student_Id)) return BadRequest("Student ID is required.");
 
+            string studentId = request.Student_Id.Trim();
             string firstName = "Unknown";
             string lastName = "Identity";
             string facePath = null;
@@ -118,7 +112,10 @@ namespace campus_backend.Controllers
 
             var query = "SELECT FIRST_NAME, MIDDLE_NAME, LAST_NAME, FACE_REFERENCE_PATH FROM CAMPUS_ADMIN.STUDENTS WHERE STUDENT_ID = :id";
             using var cmd = new OracleCommand(query, connection);
-            cmd.Parameters.Add(new OracleParameter("id", request.Student_Id));
+            
+            // THE FIX: Oracle requires this flag to map variables correctly when using named parameters!
+            cmd.BindByName = true; 
+            cmd.Parameters.Add(new OracleParameter("id", studentId));
             
             using var reader = await cmd.ExecuteReaderAsync();
             if (await reader.ReadAsync())
@@ -130,26 +127,25 @@ namespace campus_backend.Controllers
             }
             else
             {
-                return NotFound("Student ID not found in database.");
+                return NotFound(new { message = "Student ID not found in database." });
             }
 
-            // If it's a bypass, log it immediately without waiting for face scan
-            if (!string.IsNullOrEmpty(request.Bypass_Reason))
+            // A. If it's a bypass, log it immediately and approve it without Face Scan
+            if (!string.IsNullOrWhiteSpace(request.Bypass_Reason))
             {
-                // NORMALIZED STATUS: 'approved' instead of 'Access Granted'
                 var logQuery = @"INSERT INTO CAMPUS_ADMIN.EVENT_LOGS (STUDENT_ID, STATUS, TIMESTAMP, LOCATION_ID, BYPASS_REASON)
                                   VALUES (:id, 'approved', SYSDATE, :loc, :reason)";
                 using var logCmd = new OracleCommand(logQuery, connection);
-                logCmd.Parameters.Add(new OracleParameter("id", request.Student_Id));
+                logCmd.BindByName = true;
+                logCmd.Parameters.Add(new OracleParameter("id", studentId));
                 logCmd.Parameters.Add(new OracleParameter("loc", request.Camera_Location_Id ?? "CAM-001"));
                 logCmd.Parameters.Add(new OracleParameter("reason", request.Bypass_Reason));
                 
                 await logCmd.ExecuteNonQueryAsync();
 
-                // Broadcast the bypass to the UI
                 await _hubContext.Clients.All.SendAsync("ReceiveScanResult", new
                 {
-                    student_id = request.Student_Id,
+                    student_id = studentId,
                     first_name = firstName,
                     last_name = lastName,
                     status = "approved",
@@ -161,15 +157,28 @@ namespace campus_backend.Controllers
                 return Ok(new { message = "Manual bypass logged successfully." });
             }
 
-            // If it's just a manual ID entry (no barcode), trigger Phase 1 in the UI
+            // B. If it's just a manual ID entry, trigger Face Recognition sequence
             await _hubContext.Clients.All.SendAsync("ReceiveBarcode", new
             {
-                student_id = request.Student_Id,
+                student_id = studentId,
                 first_name = firstName,
                 last_name = lastName,
                 face_reference_path = facePath,
                 status = facePath != null ? "scanning" : "missing_face"
             });
+
+            // Tell Python to start compiling the 128D map for verification
+            try
+            {
+                var client = _httpClientFactory.CreateClient();
+                var payload = JsonSerializer.Serialize(new { student_id = studentId });
+                var content = new StringContent(payload, Encoding.UTF8, "application/json");
+                await client.PostAsync("http://localhost:5000/manual_scan", content);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to notify edge node: {ex.Message}");
+            }
 
             return Ok(new { message = "Manual scan initiated. Awaiting face verification." });
         }

@@ -65,22 +65,18 @@ export default function GuardPortal() {
       .then(() => isMounted && setConnectionStatus('connected'))
       .catch(() => isMounted && setConnectionStatus('disconnected'));
 
-    // Listen for Phase 1 (Barcode Scanned)
     const handleBarcode = (data) => {
       if (!isMounted) return;
-      // Only show scans for the currently monitored camera
       if (data.location_id === currentLocationId) {
         setAccessLog(prev => [data, ...prev.filter(log => log.status !== 'scanning' && log.status !== 'missing_face')]);
       }
     };
 
-    // Listen for Phase 2 (Face Verified)
     const handleResult = (data) => {
       if (!isMounted) return;
-      // Accept results for this location, or if it's a global manual bypass
       if (data.location_id === currentLocationId || data.bypass_reason) {
         setAccessLog(prev => [data, ...prev.filter(log => log.status !== 'scanning' && log.status !== 'missing_face')]);
-        setIsProcessingManual(false); // Reset manual loading state if it was active
+        setIsProcessingManual(false); 
       }
     };
 
@@ -90,7 +86,7 @@ export default function GuardPortal() {
     newConnection.on("receivescanresult", handleResult); 
 
     return () => { isMounted = false; newConnection.stop(); };
-  }, [currentLocationId]); // Re-bind when location changes
+  }, [currentLocationId]); 
 
   // --- Handlers ---
   const handleStartCamera = async () => {
@@ -105,7 +101,7 @@ export default function GuardPortal() {
         setTimeout(() => {
           setStreamToken(Date.now());
           setStreamStatus("active");
-        }, 1500); // Wait for hardware wakeup
+        }, 1500); 
       } else {
         setStreamStatus("error");
       }
@@ -136,7 +132,8 @@ export default function GuardPortal() {
         body: JSON.stringify({ Student_Id: studentId, Camera_Location_Id: currentLocationId })
       });
       if (!res.ok) {
-        alert("Student ID not found in database.");
+        const errorData = await res.json();
+        alert(errorData.message || "Student ID not found in database.");
         setIsProcessingManual(false);
       }
     } catch {
@@ -206,7 +203,7 @@ export default function GuardPortal() {
           </div>
           <button 
             onClick={() => {
-              if (streamStatus === 'active') handleStopCamera(); // Safety cleanup
+              if (streamStatus === 'active') handleStopCamera(); 
               navigate('/login', { replace: true });
             }} 
             className="bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 p-2.5 rounded-lg transition-colors border border-slate-200 shadow-sm active:scale-95"

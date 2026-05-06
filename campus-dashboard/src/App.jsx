@@ -5,7 +5,6 @@ import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 // Layout & UI Components
 import Header from './components/ui/Header';
 import Sidebar from './components/ui/Sidebar';
-import SimulationPanel from './components/ui/SimulationPanel';
 import Login from './components/auth/Login';
 
 // Functional Pages (Faculty/Admin Shared)
@@ -32,11 +31,11 @@ function CampusLayout() {
   const [occupancy, setOccupancy] = useState(0);
   const [lastScanned, setLastScanned] = useState(null);
   const [presentStudents, setPresentStudents] = useState([]); 
+
   const [eventLogs, setEventLogs] = useState([
     { time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), message: 'System Initialized. Awaiting Events.', type: 'system' }
   ]);
 
-  const API_BASE_URL = 'http://localhost:5106/api';
   const HUB_URL = 'http://localhost:5106/campushub';
 
   // Real-Time SignalR Connection
@@ -69,7 +68,7 @@ function CampusLayout() {
       try {
         if (connection.state === 'Disconnected') {
           await connection.start();
-          if (isMounted) console.log("Connected to SignalR Hub successfully! 🚀");
+          if (isMounted) console.log("Connected to SignalR Hub successfully!");
         }
       } catch (err) {
         if (isMounted) console.error("SignalR Connection Error: ", err);
@@ -84,34 +83,6 @@ function CampusLayout() {
     };
   }, []);
 
-  const triggerEvent = async (actionType) => {
-    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    let newMessage = '';
-    let newType = 'info';
-
-    if (actionType === 'STUDENT_SCAN') {
-      try {
-        const response = await fetch(`${API_BASE_URL}/student/24-1507`);
-        if (response.ok) {
-          const student = await response.json();
-          setOccupancy(prev => prev + 1);
-          setLastScanned(student);
-          
-          setPresentStudents(prev => 
-            !prev.includes(student.student_ID) ? [...prev, student.student_ID] : prev
-          );
-
-          newMessage = `Manual Override: Access Granted for ${student.first_Name}.`;
-          newType = 'success';
-        }
-      } catch {
-        newMessage = 'Network Error: Cannot connect to API.';
-        newType = 'error';
-      }
-    }
-    setEventLogs(prev => [{ time: now, message: newMessage, type: newType }, ...prev]);
-  };
-
   return (
     <div className="h-screen flex flex-col bg-slate-50 font-sans overflow-hidden">
       <Header />
@@ -125,8 +96,6 @@ function CampusLayout() {
           <Route path="/logs" element={<AttendanceLogs eventLogs={eventLogs} />} />
           <Route path="/settings" element={<SystemSettings />} />
         </Routes>
-
-        <SimulationPanel triggerEvent={triggerEvent} eventLogs={eventLogs} />
       </div>
     </div>
   );
@@ -140,7 +109,6 @@ function RoleDispatcher() {
   if (!user) return <Navigate to="/login" replace />;
 
   const userRole = user.role || user.Role; 
-
   switch (userRole) {
     case 'Faculty':
       return <CampusLayout />;

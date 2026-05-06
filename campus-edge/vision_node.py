@@ -49,6 +49,46 @@ def stop_camera():
     print("\n[SYSTEM] Guard Portal Closed. Camera put to sleep.")
     return jsonify({"status": "success"})
 
+@app.route('/manual_scan', methods=['POST'])
+def manual_scan():
+    """Triggered by the C# Backend when the Guard types a student ID manually."""
+    global current_state, target_student_id, target_face_encoding, verification_start_time, current_location_id
+    
+    data = request.get_json(silent=True) or {}
+    student_id = data.get("student_id")
+    
+    if not student_id:
+        return jsonify({"status": "error", "message": "No student ID provided"}), 400
+        
+    print(f"\n[PHASE 1] Manual Scan Triggered from Backend for: {student_id}")
+    
+    # Load encoding
+    search_pattern = os.path.join(REFERENCE_FACES_DIR, f"*{student_id}*.*")
+    matching_files = glob.glob(search_pattern)
+    
+    if matching_files:
+        ref_image_path = matching_files[0]
+        try:
+            print(f"[SYSTEM] Compiling 128D map from photo for {student_id}...")
+            ref_image = face_recognition.load_image_file(ref_image_path)
+            encodings = face_recognition.face_encodings(ref_image, num_jitters=10)
+            
+            if len(encodings) > 0:
+                target_face_encoding = encodings[0]
+                target_student_id = student_id
+                current_state = "VERIFYING_FACE"
+                verification_start_time = time.time()
+                print("[PHASE 1] Ready for Manual Verification.")
+                return jsonify({"status": "success"})
+        except Exception as e:
+            print(f"[ERROR] Could not encode face: {e}")
+            pass
+            
+    print(f"[PHASE 1] Face data not found for {student_id}. Emitting denied.")
+    # If no face is found, emit denied so the UI resets
+    publish.single("campus/door/verified", payload=json.dumps({"status": "denied", "camera_location_id": current_location_id}), hostname=MQTT_BROKER)
+    return jsonify({"status": "error", "message": "Face data not found"})
+
 # === CORE VISION LOOP ===
 def generate_frames():
     global camera_active, current_state, target_student_id, target_face_encoding, verification_start_time, current_location_id
