@@ -1,0 +1,156 @@
+import { useState } from 'react';
+import { Search, Plus, Loader2, BookOpen, Edit2, Trash2, X, CheckCircle2 } from 'lucide-react';
+import ConfirmModal from '../../../../components/ui/ConfirmModal';
+import SubjectForm from './SubjectForm';
+import { useSubjectsLogic } from './hooks/useSubjectsLogic';
+
+export default function SubjectsTab() {
+  const [showForm, setShowForm] = useState(false);
+  const [editingSubject, setEditingSubject] = useState(null);
+
+  const {
+    filteredSubjects, isLoading,
+    searchQuery, setSearchQuery,
+    unitsFilter, setUnitsFilter, uniqueUnits,
+    modal, setModal, toastMessage, triggerToast,
+    confirmDelete, fetchSubjects
+  } = useSubjectsLogic();
+
+  if (showForm) {
+    return (
+       <SubjectForm 
+          subject={editingSubject} 
+          onBack={() => { setShowForm(false); setEditingSubject(null); }} 
+          onSuccess={() => { setShowForm(false); setEditingSubject(null); fetchSubjects(); }}
+          onShowToast={triggerToast}
+       />
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-300 relative">
+      
+      {toastMessage && (
+        // THE FIX: Changed z-[100] to z-100 for Tailwind v4 compatibility
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-100 bg-slate-800 text-white px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 fade-in duration-300">
+          <CheckCircle2 className="text-emerald-400" size={20} />
+          <span className="font-bold text-sm">{toastMessage}</span>
+        </div>
+      )}
+
+      <ConfirmModal 
+         isOpen={modal.isOpen} type={modal.type} title={modal.title} 
+         message={modal.message} onConfirm={modal.onConfirm} 
+         onCancel={() => setModal({ ...modal, isOpen: false })} 
+      />
+
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+        <div>
+          <h2 className="text-3xl font-black text-slate-800 tracking-tight">Academic Subjects</h2>
+          <p className="text-slate-500 mt-1 font-medium">Manage course curriculum, credit units, and prerequisites.</p>
+        </div>
+        <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl border border-blue-100 font-bold text-sm flex items-center gap-2 shadow-sm">
+          <BookOpen size={18} /> {filteredSubjects.length} Total Subjects
+        </div>
+      </div>
+      
+      <div className="p-5 border border-slate-200 bg-white rounded-2xl shadow-sm flex flex-col gap-4">
+        <div className="flex flex-col lg:flex-row justify-between gap-4">
+           
+           <div className="relative w-full lg:w-96 shrink-0">
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+             <input
+               type="text" placeholder="Search by Subject Code or Title..."
+               value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+               className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-sm"
+             />
+             {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 transition-colors p-1 rounded-md hover:bg-rose-50 bg-slate-50">
+                  <X size={16} strokeWidth={2.5} />
+                </button>
+             )}
+           </div>
+
+           <button onClick={() => { setEditingSubject(null); setShowForm(true); }} className="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0">
+             <Plus size={18} /> Add Subject
+           </button>
+        </div>
+
+        <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-hide border-t border-slate-100 pt-4">
+           <span className="text-xs font-bold text-slate-400 uppercase whitespace-nowrap mr-2">Credit Units:</span>
+           <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner shrink-0">
+              {uniqueUnits.map(unit => (
+                 <button
+                    key={unit} onClick={() => setUnitsFilter(unit)}
+                    className={`px-5 py-1.5 rounded-lg font-black text-sm transition-all whitespace-nowrap ${
+                       unitsFilter.toString() === unit.toString() ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                 >
+                    {unit === 'All' ? 'All Units' : String(unit) + ' Units'}
+                 </button>
+              ))}
+           </div>
+        </div>
+      </div>
+      
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {isLoading ? (
+           <div className="p-16 text-center flex flex-col items-center justify-center text-blue-600 font-bold animate-pulse">
+             <Loader2 size={32} className="mb-4 opacity-50 animate-spin" />
+             Loading subjects database...
+           </div>
+        ) : filteredSubjects.length === 0 ? (
+          <div className="p-16 flex flex-col items-center justify-center text-center bg-slate-50/50">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><BookOpen size={24} className="text-slate-400" /></div>
+            <h3 className="text-lg font-black text-slate-700">No subjects found</h3>
+            <p className="text-slate-500 font-medium mt-1">Try adjusting your search or filters.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="py-4 px-6 text-xs font-black text-slate-400 uppercase tracking-widest">Code</th>
+                  <th className="py-4 px-6 text-xs font-black text-slate-400 uppercase tracking-widest">Subject Title</th>
+                  <th className="py-4 px-6 text-xs font-black text-slate-400 uppercase tracking-widest">Units</th>
+                  <th className="py-4 px-6 text-xs font-black text-slate-400 uppercase tracking-widest">Prerequisites</th>
+                  <th className="py-4 px-6 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredSubjects.map(sub => (
+                  <tr key={sub.subject_Code} className="hover:bg-slate-50/80 transition-colors group">
+                    <td className="py-4 px-6">
+                      <span className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-black text-sm border border-blue-200 whitespace-nowrap">
+                        {sub.subject_Code}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 font-bold text-slate-800">{sub.title}</td>
+                    <td className="py-4 px-6 font-black text-slate-600">{sub.units}</td>
+                    <td className="py-4 px-6">
+                      {sub.prerequisites ? (
+                        <span className="text-sm font-bold text-slate-600">{sub.prerequisites}</span>
+                      ) : (
+                        <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">None</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => { setEditingSubject(sub); setShowForm(true); }} className="p-2 bg-white text-amber-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Edit Subject">
+                          <Edit2 size={16} />
+                        </button>
+                        <button onClick={() => confirmDelete(sub)} className="p-2 bg-white text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Delete Subject">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -2,23 +2,27 @@
 
 ---
 
-## 📊 Project Status (May 5, 2026)
+## 📊 Project Status (May 6, 2026)
 
-**Current Phase:** UI/UX Polish & Refactoring Planning
+**Current Phase:** Backend CRUD Complete, Frontend Integration & UI Polish
 
 **Recent Completions:**
-- ✅ Renamed section roster tabs for clarity ("Student List" & "Schedules")
-- ✅ Fixed table column spacing and alignment in schedule views
-- ✅ Enhanced professor face photo display with fallback icons
-- ✅ Implemented sorting functionality in schedules table
-- ✅ Added cache-busting for profile images
+- ✅ **Section Management CRUD** - Create, Edit, Delete operations with cascading deletes
+  - `POST /api/sections` - Create new section
+  - `PUT /api/sections/{id}` - Update section details
+  - `DELETE /api/sections/{id}` - Delete section (removes enrollments, schedules, section)
+- ✅ Enhanced `SectionDTO` with Campus and Section_Letter fields
+- ✅ Table column spacing fixes (Schedules & Faculty views)
+- ✅ Professor face photo display with fallback icons
+- ✅ Cache-busting for profile images
 
 **In Progress:**
-- 📋 Documentation updates (CONTEXT.md & README.md)
-- 🔍 Code quality review for decomposition opportunities
+- 🔄 Frontend integration for new section endpoints
+- 🔄 UI implementation for section create/edit/delete modals
 
 **Planned (Next Phase):**
-- Component refactoring (see CONTEXT.md for SectionRoster.jsx decomposition plan)
+- Component refactoring (SectionRoster.jsx decomposition)
+- Complete CRUD for Schedules and Rooms
 - RBAC implementation
 - Face verification workflow
 
@@ -306,14 +310,56 @@ Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521))(CON
 
 Configured in: `campus-backend/appsettings.json`
 
-### API Base URL
+### API Base URL & Endpoints
 
 All API calls use: `http://localhost:5106/api/`
 
-Examples:
-- Get all students: `GET /api/student`
-- Get schedule: `GET /api/schedules`
-- Create enrollment: `POST /api/enrollments`
+#### **Section Management** (Fully Implemented)
+```
+GET    /api/sections                 # Get all sections
+POST   /api/sections                 # Create new section
+PUT    /api/sections/{id}            # Update section details
+DELETE /api/sections/{id}            # Delete section (cascades cleanup)
+GET    /api/sections/{id}/students   # Get students in section
+POST   /api/sections/{id}/students   # Add students to section
+DELETE /api/sections/{id}/students/{studentId}  # Remove student
+GET    /api/sections/{id}/schedule   # Get section schedule
+```
+
+#### **Other Endpoints**
+```
+GET    /api/student                  # Get all students
+GET    /api/schedules                # Get all schedules
+POST   /api/enrollments              # Create enrollment
+GET    /api/staff                    # Get all staff
+GET    /api/rooms                    # Get all rooms
+```
+
+**Request/Response Examples:**
+
+Create Section:
+```json
+POST /api/sections
+{
+  "section_Name": "SBIT2A",
+  "course": "IT",
+  "year_Level": 2,
+  "campus": "SB",
+  "section_Letter": "A"
+}
+```
+
+Update Section:
+```json
+PUT /api/sections/SEC-001
+{
+  "section_Name": "SBIT2A",
+  "course": "IT",
+  "year_Level": 2,
+  "campus": "SB",
+  "section_Letter": "A"
+}
+```
 
 ### Frontend Authentication
 

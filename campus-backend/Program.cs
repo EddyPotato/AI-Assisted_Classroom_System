@@ -15,6 +15,8 @@ builder.Services.AddScoped<campus_backend.Repositories.IScheduleRepository, camp
 builder.Services.AddScoped<campus_backend.Repositories.ISectionRepository, campus_backend.Repositories.SectionRepository>();
 builder.Services.AddScoped<campus_backend.Repositories.IEnrollmentRepository, campus_backend.Repositories.EnrollmentRepository>();
 
+builder.Services.AddScoped<campus_backend.Repositories.ISubjectRepository, campus_backend.Repositories.SubjectRepository>();
+
 builder.Services.AddControllers();
 
 builder.Services.AddCors(options => {
