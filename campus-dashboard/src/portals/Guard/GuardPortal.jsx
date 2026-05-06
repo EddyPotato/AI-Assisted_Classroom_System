@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, LogOut, LayoutDashboard, History, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, LogOut, LayoutDashboard, History } from 'lucide-react';
 import { HubConnectionBuilder } from "@microsoft/signalr";
 
 // --- Imported Modular Components ---
 import CameraControls from './components/CameraControls';
-import ManualIDInput from './components/ManualIDInput';
 import VerificationPanel from './components/VerificationPanel';
 import AccessHistory from './components/AccessHistory';
 import LiveCameraFeed from './components/LiveCameraFeed';
-import BypassModal from './components/BypassModal';
 
 export default function GuardPortal() {
   const navigate = useNavigate();
@@ -26,11 +24,6 @@ export default function GuardPortal() {
   const [currentLocationId, setCurrentLocationId] = useState("");
   const [streamStatus, setStreamStatus] = useState("offline"); // offline, loading, active, error
   const [streamToken, setStreamToken] = useState(() => Date.now());
-  const [isProcessingManual, setIsProcessingManual] = useState(false);
-
-  // --- Modals ---
-  const [bypassModalOpen, setBypassModalOpen] = useState(false);
-  const [bypassForm, setBypassForm] = useState({ student_id: '', reason: '' });
 
   // 1. Fetch Camera Locations on Mount
   useEffect(() => {
@@ -65,6 +58,7 @@ export default function GuardPortal() {
       .then(() => isMounted && setConnectionStatus('connected'))
       .catch(() => isMounted && setConnectionStatus('disconnected'));
 
+    // Listen for Phase 1 (Barcode Scanned)
     const handleBarcode = (data) => {
       if (!isMounted) return;
       if (data.location_id === currentLocationId) {
@@ -72,11 +66,11 @@ export default function GuardPortal() {
       }
     };
 
+    // Listen for Phase 2 (Face Verified)
     const handleResult = (data) => {
       if (!isMounted) return;
-      if (data.location_id === currentLocationId || data.bypass_reason) {
+      if (data.location_id === currentLocationId) {
         setAccessLog(prev => [data, ...prev.filter(log => log.status !== 'scanning' && log.status !== 'missing_face')]);
-        setIsProcessingManual(false); 
       }
     };
 
@@ -86,7 +80,7 @@ export default function GuardPortal() {
     newConnection.on("receivescanresult", handleResult); 
 
     return () => { isMounted = false; newConnection.stop(); };
-  }, [currentLocationId]); 
+  }, [currentLocationId]); // Re-bind when location changes
 
   // --- Handlers ---
   const handleStartCamera = async () => {
@@ -101,7 +95,7 @@ export default function GuardPortal() {
         setTimeout(() => {
           setStreamToken(Date.now());
           setStreamStatus("active");
-        }, 1500); 
+        }, 1500); // Wait for hardware wakeup
       } else {
         setStreamStatus("error");
       }
@@ -120,47 +114,6 @@ export default function GuardPortal() {
       setStreamStatus("offline");
     } catch {
       console.error("Failed to stop camera properly.");
-    }
-  };
-
-  const handleManualIdSubmit = async (studentId) => {
-    setIsProcessingManual(true);
-    try {
-      const res = await fetch("http://localhost:5106/api/camera/manual-scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Student_Id: studentId, Camera_Location_Id: currentLocationId })
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        alert(errorData.message || "Student ID not found in database.");
-        setIsProcessingManual(false);
-      }
-    } catch {
-      alert("Network error processing manual scan.");
-      setIsProcessingManual(false);
-    }
-  };
-
-  const handleBypassSubmit = async () => {
-    try {
-      const res = await fetch("http://localhost:5106/api/camera/manual-scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-           Student_Id: bypassForm.student_id, 
-           Bypass_Reason: bypassForm.reason,
-           Camera_Location_Id: currentLocationId 
-         })
-      });
-      if (res.ok) {
-        setBypassModalOpen(false);
-        setBypassForm({ student_id: '', reason: '' });
-      } else {
-        alert("Failed to log bypass. Verify Student ID.");
-      }
-    } catch {
-      alert("Network error processing bypass.");
     }
   };
 
@@ -203,7 +156,7 @@ export default function GuardPortal() {
           </div>
           <button 
             onClick={() => {
-              if (streamStatus === 'active') handleStopCamera(); 
+              if (streamStatus === 'active') handleStopCamera(); // Safety cleanup
               navigate('/login', { replace: true });
             }} 
             className="bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 p-2.5 rounded-lg transition-colors border border-slate-200 shadow-sm active:scale-95"
@@ -218,7 +171,7 @@ export default function GuardPortal() {
         
         {/* VIEW 1: LIVE MONITOR */}
         {activeTab === 'live' && (
-          <div className="h-full flex flex-col gap-6 max-w-400 mx-auto animate-in fade-in duration-300">
+          <div className="h-full flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-300">
             
             {/* Top Bar: Controls */}
             <CameraControls 
@@ -230,11 +183,11 @@ export default function GuardPortal() {
               onLocationChange={setCurrentLocationId}
             />
 
-            {/* Middle Section: Camera & Verification */}
-            <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
+            {/* Centered, Balanced 50/50 Layout for maximum visibility */}
+            <div className="flex-1 flex flex-col lg:flex-row items-center justify-center gap-8 min-h-0 w-full">
               
-              {/* Massive Camera Feed (Left) */}
-              <div className="flex-[2.5] flex flex-col">
+              {/* Massive Square Camera Feed (Left) */}
+              <div className="w-full lg:w-1/2 flex justify-center items-center h-full">
                 <LiveCameraFeed 
                   latestScan={latestScan} 
                   streamStatus={streamStatus}
@@ -243,25 +196,9 @@ export default function GuardPortal() {
                 />
               </div>
 
-              {/* Verification Panel & Manual Controls (Right) */}
-              <div className="flex-1 min-w-80 flex flex-col gap-4">
-                
-                {/* Result / Display / Reference Tab */}
-                <div className="flex-1 flex flex-col min-h-0">
-                    <VerificationPanel latestScan={latestScan} cacheBuster={cacheBuster} />
-                </div>
-
-                {/* Manual ID Input Component */}
-                <ManualIDInput onSubmit={handleManualIdSubmit} isLoading={isProcessingManual} />
-                
-                {/* Force Manual Bypass Button */}
-                <button 
-                  onClick={() => setBypassModalOpen(true)}
-                  className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-black py-4 px-4 rounded-2xl flex items-center justify-center gap-3 border border-amber-200 shadow-sm transition-all active:scale-95 shrink-0"
-                >
-                  <AlertTriangle size={20} /> 
-                  <span className="uppercase tracking-widest text-sm">Force Manual Bypass</span>
-                </button>
+              {/* Massive Square Verification Panel (Right) */}
+              <div className="w-full lg:w-1/2 flex justify-center items-center h-full">
+                <VerificationPanel latestScan={latestScan} cacheBuster={cacheBuster} />
               </div>
 
             </div>
@@ -270,21 +207,12 @@ export default function GuardPortal() {
 
         {/* VIEW 2: ACCESS HISTORY (Privacy-First Full Logs) */}
         {activeTab === 'history' && (
-          <div className="h-full max-w-300 mx-auto">
+          <div className="h-full max-w-3xl mx-auto">
             <AccessHistory logs={accessLog.filter(log => log.status !== 'scanning')} />
           </div>
         )}
 
       </main>
-
-      {/* Manual Bypass Modal */}
-      <BypassModal 
-        isOpen={bypassModalOpen} 
-        onClose={() => { setBypassModalOpen(false); setBypassForm({ student_id: '', reason: '' }); }} 
-        onSubmit={handleBypassSubmit}
-        bypassForm={bypassForm}
-        setBypassForm={setBypassForm}
-      />      
     </div>
   );
 }
