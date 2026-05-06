@@ -1,18 +1,7 @@
-import { useState, useEffect } from 'react';
 import { Video, ScanLine, Power, RefreshCw } from 'lucide-react';
 
-export default function LiveCameraFeed({ latestScan, streamStatus, onRetry }) {
-  // Store the timestamp in state so it remains stable during re-renders
-  const [timestamp, setTimestamp] = useState(() => Date.now());
-
-  // Only generate a new cache-busting timestamp when the camera actually turns on
-  useEffect(() => {
-    if (streamStatus === "active") {
-      setTimestamp(Date.now());
-    }
-  }, [streamStatus]);
-
-  const streamUrl = `http://localhost:5000/video_feed?t=${timestamp}`;
+export default function LiveCameraFeed({ latestScan, streamStatus, streamToken, onRetry }) {
+  const streamUrl = `http://localhost:5000/video_feed?t=${streamToken}`;
 
   return (
     // FIX: Replaced min-h-[400px] with canonical min-h-100

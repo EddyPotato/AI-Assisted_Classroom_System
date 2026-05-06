@@ -39,7 +39,10 @@ namespace campus_backend.Services
         {
             _logger = logger;
             _hubContext = hubContext;
-            _connectionString = configuration.GetConnectionString("DefaultConnection");
+            _connectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? configuration.GetConnectionString("OracleConnection")
+                ?? configuration.GetConnectionString("OracleDb")
+                ?? throw new InvalidOperationException("Connection string not found.");
             _scopeFactory = scopeFactory;
         }
 

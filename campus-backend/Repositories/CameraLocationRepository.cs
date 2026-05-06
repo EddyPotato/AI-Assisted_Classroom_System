@@ -13,7 +13,10 @@ namespace campus_backend.Repositories
 
         public CameraLocationRepository(IConfiguration configuration)
         {
-            _connectionString = configuration.GetConnectionString("DefaultConnection");
+            _connectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? configuration.GetConnectionString("OracleConnection")
+                ?? configuration.GetConnectionString("OracleDb")
+                ?? throw new InvalidOperationException("Connection string not found.");
         }
 
         public async Task<IEnumerable<CameraLocation>> GetAllActiveLocationsAsync()

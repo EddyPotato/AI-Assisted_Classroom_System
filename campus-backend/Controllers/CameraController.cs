@@ -31,7 +31,10 @@ namespace campus_backend.Controllers
             _locationRepo = locationRepo;
             _httpClientFactory = httpClientFactory;
             _hubContext = hubContext;
-            _connectionString = configuration.GetConnectionString("DefaultConnection");
+            _connectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? configuration.GetConnectionString("OracleConnection")
+                ?? configuration.GetConnectionString("OracleDb")
+                ?? throw new InvalidOperationException("Connection string not found.");
         }
 
         // --- LOCATION MANAGEMENT ENDPOINTS ---

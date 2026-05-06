@@ -26,6 +26,7 @@ export default function GuardPortal() {
   const [locations, setLocations] = useState([]);
   const [currentLocationId, setCurrentLocationId] = useState("");
   const [streamStatus, setStreamStatus] = useState("offline"); // offline, loading, active, error
+  const [streamToken, setStreamToken] = useState(() => Date.now());
   const [isProcessingManual, setIsProcessingManual] = useState(false);
 
   // --- Modals ---
@@ -103,7 +104,10 @@ export default function GuardPortal() {
         body: JSON.stringify({ Camera_Location_Id: currentLocationId })
       });
       if (res.ok) {
-        setTimeout(() => setStreamStatus("active"), 1500); // Wait for hardware wakeup
+        setTimeout(() => {
+          setStreamToken(Date.now());
+          setStreamStatus("active");
+        }, 1500); // Wait for hardware wakeup
       } else {
         setStreamStatus("error");
       }
@@ -241,6 +245,7 @@ export default function GuardPortal() {
                 <LiveCameraFeed 
                   latestScan={latestScan} 
                   streamStatus={streamStatus}
+                  streamToken={streamToken}
                   onRetry={handleStartCamera} 
                 />
               </div>
