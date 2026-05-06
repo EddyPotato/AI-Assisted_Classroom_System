@@ -20,7 +20,13 @@ builder.Services.AddScoped<campus_backend.Repositories.ISubjectRepository, campu
 // ADD THIS EXACT LINE FOR COURSES:
 builder.Services.AddScoped<campus_backend.Repositories.ICourseRepository, campus_backend.Repositories.CourseRepository>();
 
+builder.Services.AddScoped<campus_backend.Repositories.ICameraLocationRepository, campus_backend.Repositories.CameraLocationRepository>();
+
+builder.Services.AddSingleton<IAccessVerificationService, AccessVerificationService>();
+
 builder.Services.AddControllers();
+
+builder.Services.AddHttpClient();
 
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowReactApp", policy => {
