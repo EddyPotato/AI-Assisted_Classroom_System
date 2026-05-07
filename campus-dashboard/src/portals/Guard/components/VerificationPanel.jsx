@@ -1,12 +1,12 @@
-import { ImageOff, ScanLine, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ImageOff, ScanLine, AlertCircle, CheckCircle2, BadgeCheck } from 'lucide-react';
 
 export default function VerificationPanel({ latestScan, cacheBuster }) {
   if (!latestScan) {
     return (
       <div className="w-full max-w-xl aspect-square lg:h-full lg:w-auto lg:max-h-full lg:max-w-full mx-auto bg-white border border-slate-200 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-8 text-center text-slate-400 flex flex-col items-center justify-center shadow-sm">
         <ScanLine className="mb-5 sm:mb-6 opacity-30 w-14 h-14 lg:w-20 lg:h-20" />
-        <p className="font-black text-xl sm:text-2xl text-slate-500 tracking-tight">System Ready</p>
-        <p className="text-sm sm:text-base mt-2 font-medium text-slate-400">Awaiting barcode scan...</p>
+        <p className="font-black text-2xl sm:text-3xl text-slate-500 tracking-tight">System Ready</p>
+        <p className="text-base sm:text-lg mt-2 font-medium text-slate-400">Awaiting biometric scan...</p>
       </div>
     );
   }
@@ -18,45 +18,65 @@ export default function VerificationPanel({ latestScan, cacheBuster }) {
   const isCutting = latestScan.status === 'cutting';
 
   return (
-    <div className={`w-full max-w-xl aspect-square lg:h-full lg:w-auto lg:max-h-full lg:max-w-full mx-auto border rounded-3xl sm:rounded-[2.5rem] p-4 sm:p-5 lg:p-7 shadow-sm transition-all duration-300 flex flex-col justify-between overflow-y-auto overflow-x-hidden ${isScanning ? 'bg-blue-50 border-blue-300 ring-4 ring-blue-500/20' : isMissing ? 'bg-amber-50 border-amber-300 ring-4 ring-amber-500/20' : isNoProfessor ? 'bg-amber-50 border-amber-400 ring-4 ring-amber-500/30' : isApproved ? 'bg-emerald-50 border-emerald-300 ring-4 ring-emerald-500/20' : 'bg-rose-50 border-rose-300 ring-4 ring-rose-500/20'}`}>
+    <div className={`w-full max-w-xl aspect-square lg:h-full lg:w-auto lg:max-h-full lg:max-w-full mx-auto border rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-6 lg:p-8 shadow-sm transition-all duration-300 flex flex-col justify-between overflow-hidden ${isScanning ? 'bg-blue-50 border-blue-300 ring-4 ring-blue-500/20' : isMissing ? 'bg-amber-50 border-amber-300 ring-4 ring-amber-500/20' : isNoProfessor ? 'bg-amber-50 border-amber-400 ring-4 ring-amber-500/30' : isApproved ? 'bg-emerald-50 border-emerald-300 ring-4 ring-emerald-500/20' : 'bg-rose-50 border-rose-300 ring-4 ring-rose-500/20'}`}>
       
-      <h2 className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-widest text-center mt-0 lg:mt-2 shrink-0">
+      {/* Top Header */}
+      <h2 className="text-xs sm:text-sm font-black text-slate-500 uppercase tracking-widest text-center shrink-0">
          {isScanning ? 'Analyzing Biometrics...' : isMissing ? 'Error: Missing Data' : isNoProfessor ? 'Access Paused' : 'Verification Result'}
       </h2>
       
-      {/* Massive Profile Picture */}
-      <div className="w-[clamp(7rem,28vh,16rem)] h-[clamp(7rem,28vh,16rem)] mx-auto bg-white rounded-2xl sm:rounded-3xl border-4 sm:border-8 border-white shadow-lg flex items-center justify-center overflow-hidden relative my-3 lg:my-5 shrink-0">
+      {/* PERFECT SQUARE Profile Picture Area */}
+      <div className="w-full max-w-[14rem] sm:max-w-[18rem] lg:max-w-[22rem] aspect-square mx-auto bg-white rounded-2xl sm:rounded-3xl border-8 border-white shadow-md flex items-center justify-center overflow-hidden relative my-4 sm:my-6 shrink-0">
         {latestScan.face_reference_path ? (
           <img 
             src={`http://localhost:5106/ReferenceFaces/${latestScan.face_reference_path}?t=${cacheBuster}`} 
-            className={`w-full h-full object-cover ${isScanning ? 'opacity-40 grayscale blur-md' : ''}`}
-            alt="Student" 
+            className="w-full h-full object-contain bg-slate-100"
+            alt="Reference" 
           />
         ) : (
-          <ImageOff className="text-slate-300 w-10 h-10 sm:w-14 sm:h-14" />
+          <ImageOff className="text-slate-300 w-16 h-16 sm:w-24 sm:h-24" />
         )}
         
-        {isScanning && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-blue-500/10 backdrop-blur-[2px]">
-             <ScanLine className="text-blue-600 animate-ping mb-2 w-10 h-10 sm:w-14 sm:h-14" />
+        {/* Sleek Scanning Line */}
+        {isScanning && latestScan.face_reference_path && (
+          <div className="absolute inset-0 pointer-events-none">
+             <div className="w-full h-1 bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-[scan_1.5s_ease-in-out_infinite_alternate] absolute top-0 left-0"></div>
           </div>
         )}
       </div>
 
-      {/* Details */}
-      <div className="text-center mb-3 lg:mb-5 shrink-0 min-w-0">
-        <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-black text-slate-900 leading-tight tracking-tight truncate">{latestScan.first_name} {latestScan.last_name}</h3>
-        <p className="text-slate-500 font-bold text-sm lg:text-base xl:text-lg mt-1 sm:mt-2 tracking-widest uppercase truncate">{latestScan.student_id}</p>
+      {/* Details Section */}
+      <div className="text-center mb-4 lg:mb-6 shrink-0 min-w-0 flex flex-col items-center justify-center">
+        <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 leading-none tracking-tighter w-full truncate pb-2">
+          {latestScan.first_name} {latestScan.last_name}
+        </h3>
+        
+        <div className="flex items-center justify-center gap-2 sm:gap-3 mt-1 sm:mt-2 bg-slate-100/70 px-4 py-2 rounded-xl border border-slate-200">
+          <BadgeCheck className="text-blue-500 w-6 h-6 lg:w-8 lg:h-8 shrink-0" />
+          <p className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-700 font-mono tracking-wider truncate">
+            {latestScan.student_id}
+          </p>
+        </div>
+
         {latestScan.hint && (
-          <p className="text-amber-600 font-bold text-xs sm:text-sm mt-3 px-3 py-1.5 bg-amber-100 rounded-lg inline-block">{latestScan.hint}</p>
+          <p className="text-amber-700 font-black text-sm sm:text-base mt-4 px-4 py-2 bg-amber-100 border border-amber-200 rounded-xl inline-block w-full truncate">
+            {latestScan.hint}
+          </p>
         )}
       </div>
       
       {/* Status Badge */}
-      <div className={`p-3 lg:p-4 rounded-xl sm:rounded-2xl font-black text-sm lg:text-base xl:text-lg flex items-center justify-center gap-2 sm:gap-3 w-full text-white shadow-md mt-auto tracking-widest shrink-0 ${isScanning ? 'bg-blue-600 animate-pulse' : (isMissing || isNoProfessor) ? 'bg-amber-500' : isApproved ? 'bg-emerald-600' : 'bg-rose-600'}`}>
-        {isScanning ? <ScanLine className="animate-spin w-5 h-5 lg:w-6 lg:h-6 shrink-0" /> : (isMissing || isNoProfessor) ? <AlertCircle className="w-5 h-5 lg:w-6 lg:h-6 shrink-0" /> : isApproved ? <CheckCircle2 className="w-5 h-5 lg:w-6 lg:h-6 shrink-0" /> : <AlertCircle className="w-5 h-5 lg:w-6 lg:h-6 shrink-0" />}
+      <div className={`p-4 lg:p-5 rounded-2xl font-black text-base lg:text-xl flex items-center justify-center gap-3 w-full text-white shadow-lg mt-auto tracking-widest shrink-0 ${isScanning ? 'bg-blue-600 shadow-blue-500/30' : (isMissing || isNoProfessor) ? 'bg-amber-500 shadow-amber-500/30' : isApproved ? 'bg-emerald-600 shadow-emerald-500/30' : 'bg-rose-600 shadow-rose-500/30'}`}>
+        {isScanning ? <ScanLine className="animate-spin w-6 h-6 lg:w-8 lg:h-8 shrink-0" /> : (isMissing || isNoProfessor) ? <AlertCircle className="w-6 h-6 lg:w-8 lg:h-8 shrink-0" /> : isApproved ? <CheckCircle2 className="w-6 h-6 lg:w-8 lg:h-8 shrink-0" /> : <AlertCircle className="w-6 h-6 lg:w-8 lg:h-8 shrink-0" />}
         {isScanning ? 'ANALYZING...' : isMissing ? 'NO REGISTERED PHOTO' : isNoProfessor ? 'WAITING FOR PROFESSOR' : isCutting ? 'EARLY EXIT FLAG' : isApproved ? 'ACCESS GRANTED' : 'ACCESS DENIED'}
       </div>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes scan {
+          0% { top: 0%; }
+          100% { top: 100%; }
+        }
+      `}} />
     </div>
   );
 }
