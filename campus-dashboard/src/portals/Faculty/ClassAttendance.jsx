@@ -62,6 +62,23 @@ export default function ClassAttendance() {
   const filteredRoster = roster.filter(s => filter === 'All' || s.status === filter);
   
   const sortedRoster = [...filteredRoster].sort((a, b) => {
+    // Custom handling for arrival time (e.g. 08:30 AM, 12:00 PM, --:--)
+    if (sortConfig.key === 'arrival_Time') {
+      const parseTime = (timeStr) => {
+        if (!timeStr || timeStr === '--:--') return 9999;
+        const [time, modifier] = timeStr.split(' ');
+        let [hours, minutes] = time.split(':').map(Number);
+        if (hours === 12) hours = 0;
+        if (modifier === 'PM') hours += 12;
+        return hours * 60 + minutes;
+      };
+      const timeA = parseTime(a.arrival_Time);
+      const timeB = parseTime(b.arrival_Time);
+      if (timeA < timeB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (timeA > timeB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    }
+
     const aValue = a[sortConfig.key] || '';
     const bValue = b[sortConfig.key] || '';
     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -142,7 +159,9 @@ export default function ClassAttendance() {
                 <th className="p-4 cursor-pointer hover:bg-slate-100 transition-colors text-center w-40" onClick={() => handleSort('status')}>
                   <div className="flex items-center justify-center gap-1">Status {renderSortIcon('status')}</div>
                 </th>
-                <th className="p-4 w-40 text-center">Arrival Time</th>
+                <th className="p-4 cursor-pointer hover:bg-slate-100 transition-colors text-center w-40" onClick={() => handleSort('arrival_Time')}>
+                  <div className="flex items-center justify-center gap-1">Arrival Time {renderSortIcon('arrival_Time')}</div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
