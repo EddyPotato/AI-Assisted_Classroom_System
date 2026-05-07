@@ -1,14 +1,19 @@
 # Camera and Image Processing
-opencv-python==4.9.0.80
-numpy==1.26.4
+opencv-python>=4.9.0
+numpy>=1.26.4
 
-# AI Facial Recognition (Requires CMake and Dlib)
-face_recognition==1.3.0
+# AI Facial Recognition
+face_recognition>=1.3.0
+dlib>=19.24.2
 
 # Barcode / QR Code Scanning
-pyzbar==0.1.9
+pyzbar>=0.1.9
 
-# Communication to C# Backend
-paho-mqtt==1.6.1
-requests==2.31.0
-python-dotenv==1.0.1
+# Edge Node Web Server (ADDED THESE)
+Flask>=3.0.3
+Flask-Cors>=4.0.1
+
+# Communication
+paho-mqtt>=1.6.1
+requests>=2.31.0
+python-dotenv>=1.0.1

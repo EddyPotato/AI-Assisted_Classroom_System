@@ -9,7 +9,7 @@ export default function LiveMonitorView({
   handleStartCamera, handleStopCamera,
   locations, currentLocationId, setCurrentLocationId,
   hardwareIndex, setHardwareIndex, videoDevices,
-  latestScan, cacheBuster
+  latestScan, cacheBuster, retryCount
 }) {
   return (
     <div className={`min-h-full lg:h-full flex flex-col gap-4 mx-auto animate-in fade-in duration-300 ${isFullscreen ? 'max-w-[100rem]' : 'max-w-7xl sm:gap-6'}`}>
@@ -35,6 +35,7 @@ export default function LiveMonitorView({
             streamToken={streamToken}
             onRetry={handleStartCamera} 
             onStreamDrop={() => setStreamStatus("error")}
+            retryCount={retryCount}
           />
         </div>
 

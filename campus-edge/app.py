@@ -4,6 +4,7 @@ import json
 import os
 import glob
 import threading
+import numpy as np
 import paho.mqtt.publish as publish
 from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
@@ -121,10 +122,7 @@ def vision_processing_loop():
                     print(f"[SUCCESS] Identity Confirmed for {state.target_student_id}")
                     publish_verification("approved")
                     
-                    # Update State
                     state.current_state = "SCANNING_BARCODE"
-                    
-                    # Wait 2 seconds so the user can see the green box, THEN clear it
                     time.sleep(2) 
                     draw_rects.clear()
                     draw_texts.clear()
@@ -137,7 +135,6 @@ def vision_processing_loop():
                 print(f"[FAILED] Match timeout for {state.target_student_id}")
                 publish_verification("denied")
                 
-                # Update State and clear arrays on timeout
                 state.current_state = "SCANNING_BARCODE"
                 time.sleep(2)
                 draw_rects.clear()
@@ -152,7 +149,6 @@ def vision_processing_loop():
         for (text, pt, color) in draw_texts:
             cv2.putText(frame, text, pt, cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-        # Encode and push to Global Memory
         ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), config.JPEG_QUALITY])
         if ret:
             with state.frame_lock:
@@ -160,15 +156,17 @@ def vision_processing_loop():
 
         time.sleep(0.01)
 
-# Start Background AI Worker
 threading.Thread(target=vision_processing_loop, daemon=True).start()
 
 # --- FLASK ROUTES ---
 @app.route('/start_camera', methods=['POST'])
 def start_camera():
     data = request.get_json(silent=True) or {}
-    if "location_id" in data and data["location_id"]:
-        state.current_location_id = data["location_id"]
+    
+    # Check for both C# casing and React casing
+    loc_id = data.get("Camera_Location_Id") or data.get("location_id")
+    if loc_id:
+        state.current_location_id = loc_id
     
     state.camera_active = True
     cam_stream.start()
@@ -181,20 +179,28 @@ def stop_camera():
     return jsonify({"status": "success"})
 
 def stream_generator():
-    """Serves frames to React instantly without blocking."""
+    """Serves frames to React instantly, with a fallback screen to prevent React crash."""
+    
+    # Create a standby frame so the browser <img> tag never starves and crashes
+    blank_frame = np.zeros((config.CAMERA_HEIGHT, config.CAMERA_WIDTH, 3), dtype=np.uint8)
+    cv2.putText(blank_frame, "WARMING UP OPTICAL SENSORS...", (50, int(config.CAMERA_HEIGHT/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    _, blank_buffer = cv2.imencode('.jpg', blank_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+    blank_bytes = blank_buffer.tobytes()
+
     while True:
-        if not state.camera_active:
-            time.sleep(0.5)
-            continue
-            
         with state.frame_lock:
             frame_bytes = state.latest_rendered_frame
             
-        if frame_bytes is not None:
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        # If camera is off, or no frame has been captured yet, send the standby frame!
+        if not state.camera_active or frame_bytes is None:
+            out_bytes = blank_bytes
+        else:
+            out_bytes = frame_bytes
+            
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + out_bytes + b'\r\n')
         
-        time.sleep(0.03) # Cap stream at ~30 FPS
+        time.sleep(0.03)
 
 @app.route('/video_feed')
 def video_feed():

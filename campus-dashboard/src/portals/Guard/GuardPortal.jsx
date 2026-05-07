@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HubConnectionBuilder } from "@microsoft/signalr";
 
@@ -24,8 +24,15 @@ export default function GuardPortal() {
   const [streamToken, setStreamToken] = useState(() => Date.now());
   const [hardwareIndex, setHardwareIndex] = useState(0);
   const [videoDevices, setVideoDevices] = useState([{ index: 0, label: 'System Default Camera' }]);
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Fetch Locations
+  // USE REF: This allows SignalR to read the current location without restarting the socket!
+  const currentLocationRef = useRef(currentLocationId);
+  useEffect(() => {
+    currentLocationRef.current = currentLocationId;
+  }, [currentLocationId]);
+
+  // Fetch Locations (From C# Backend)
   useEffect(() => {
     let isMounted = true;
     const fetchLocations = async () => {
@@ -44,7 +51,7 @@ export default function GuardPortal() {
     return () => { isMounted = false; };
   }, []);
 
-  // Fetch Hardware Devices
+  // Fetch Hardware Devices (Local Browser)
   useEffect(() => {
     let isMounted = true;
     const getCameras = async () => {
@@ -61,7 +68,7 @@ export default function GuardPortal() {
     return () => { isMounted = false; };
   }, []);
 
-  // SignalR Websocket Connection
+  // SignalR Websocket Connection (Runs exactly ONCE on mount)
   useEffect(() => {
     let isMounted = true;
     const newConnection = new HubConnectionBuilder()
@@ -69,13 +76,14 @@ export default function GuardPortal() {
       .withAutomaticReconnect()
       .build();
 
-    newConnection.start()
+    let startPromise = newConnection.start()
       .then(() => isMounted && setConnectionStatus('connected'))
       .catch(() => isMounted && setConnectionStatus('disconnected'));
 
     const handleLog = (data) => {
       if (!isMounted) return;
-      if (data.location_id === currentLocationId) {
+      // Use the REF here instead of the state variable to prevent socket drops
+      if (data.location_id === currentLocationRef.current) {
         setAccessLog(prev => [data, ...prev.filter(log => log.status !== 'scanning' && log.status !== 'missing_face')]);
       }
     };
@@ -85,37 +93,63 @@ export default function GuardPortal() {
     newConnection.on("ReceiveScanResult", handleLog);
     newConnection.on("receivescanresult", handleLog); 
 
-    return () => { isMounted = false; newConnection.stop(); };
-  }, [currentLocationId]);
+    return () => { 
+      isMounted = false; 
+      startPromise.then(() => newConnection.stop()); 
+    };
+  }, []); // <--- Empty dependency array stops the console errors!
 
-  // Camera API Handlers
-  const handleStartCamera = async (locId = currentLocationId, hwIndex = hardwareIndex) => {
+  // Camera API Handlers (Pointing directly to Python Edge Node on Port 5000!)
+  // Using useCallback to prevent stale closures on retry
+  const handleStartCamera = useCallback(async (locId, hwIndex) => {
+    // Use provided values or current state values
+    const location = locId || currentLocationId;
+    const hardware = hwIndex !== undefined ? hwIndex : hardwareIndex;
+    
+    if (!location) {
+      console.warn("No location selected");
+      setStreamStatus("error");
+      return;
+    }
+    
     setStreamStatus("loading");
+    setRetryCount(prev => prev + 1);
+    
     try {
-      const res = await fetch("http://localhost:5106/api/camera/start", {
+      const res = await fetch("http://localhost:5000/start_camera", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Camera_Location_Id: locId, Hardware_Index: hwIndex })
+        body: JSON.stringify({ location_id: location, Hardware_Index: hardware })
       });
+      
       if (res.ok) {
         setTimeout(() => {
           setStreamToken(Date.now());
           setStreamStatus("active");
+          setRetryCount(0); // Reset retry count on success
         }, 1500); 
-      } else setStreamStatus("error");
-    } catch { setStreamStatus("error"); }
-  };
+      } else {
+        console.error(`Start camera failed with status: ${res.status}`);
+        setStreamStatus("error");
+      }
+    } catch (err) {
+      console.error("Failed to connect to edge node:", err);
+      setStreamStatus("error");
+    }
+  }, [currentLocationId, hardwareIndex]);
 
-  const handleStopCamera = async () => {
+  const handleStopCamera = useCallback(async () => {
     try {
-      await fetch("http://localhost:5106/api/camera/stop", {
+      await fetch("http://localhost:5000/stop_camera", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Camera_Location_Id: currentLocationId })
+        headers: { "Content-Type": "application/json" }
       });
       setStreamStatus("offline");
-    } catch { console.error("Failed to stop camera."); }
-  };
+    } catch (err) {
+      console.error("Failed to stop camera:", err);
+      setStreamStatus("offline");
+    }
+  }, []);
 
   const handleLogout = () => {
     if (streamStatus === 'active') handleStopCamera(); 
@@ -146,7 +180,7 @@ export default function GuardPortal() {
             handleStartCamera={handleStartCamera} handleStopCamera={handleStopCamera}
             locations={locations} currentLocationId={currentLocationId} setCurrentLocationId={setCurrentLocationId}
             hardwareIndex={hardwareIndex} setHardwareIndex={setHardwareIndex} videoDevices={videoDevices}
-            latestScan={latestScan} cacheBuster={cacheBuster}
+            latestScan={latestScan} cacheBuster={cacheBuster} retryCount={retryCount}
           />
         )}
 

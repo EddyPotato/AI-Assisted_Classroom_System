@@ -1,6 +1,6 @@
 import { Video, ScanLine, Power, RefreshCw } from 'lucide-react';
 
-export default function LiveCameraFeed({ streamStatus, streamToken, onRetry, onStreamDrop }) {
+export default function LiveCameraFeed({ streamStatus, streamToken, onRetry, onStreamDrop, retryCount = 0 }) {
   const streamUrl = `http://localhost:5000/video_feed?t=${streamToken}`;
 
   return (
@@ -12,6 +12,7 @@ export default function LiveCameraFeed({ streamStatus, streamToken, onRetry, onS
           alt="Live Feed" 
           className="w-full h-full object-cover animate-in fade-in duration-500" 
           onError={onStreamDrop}
+          onLoad={() => console.log("[LiveCameraFeed] Stream loaded successfully")}
         />
       )}
 
@@ -39,6 +40,9 @@ export default function LiveCameraFeed({ streamStatus, streamToken, onRetry, onS
               <ScanLine className="mb-4 opacity-50 text-rose-500 w-14 h-14 lg:w-20 lg:h-20" />
               <p className="font-black text-xl sm:text-2xl lg:text-3xl tracking-widest uppercase text-slate-800">Connection Failed</p>
               <p className="text-sm sm:text-base lg:text-lg mt-2 font-medium text-slate-500 mb-5 lg:mb-8">Cannot reach edge node on port 5000.</p>
+              {retryCount > 0 && (
+                <p className="text-xs text-slate-400 mb-3">Retry attempt {retryCount}</p>
+              )}
               <button 
                 onClick={onRetry}
                 className="flex items-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black tracking-widest uppercase transition-colors shadow-sm active:scale-95 text-sm sm:text-base"
