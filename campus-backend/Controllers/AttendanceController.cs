@@ -67,8 +67,8 @@ namespace campus_backend.Controllers
             await connection.OpenAsync();
 
             // A. Get Schedule Details
-            string sectionId = "", roomId = "", timeStartStr = "";
-            var schedQuery = "SELECT SECTION_ID, ROOM_ID, TIME_START FROM CAMPUS_ADMIN.SCHEDULES WHERE SCHEDULE_ID = :id";
+            string sectionId = "", roomId = "", timeStartStr = "", timeEndStr = "";
+            var schedQuery = "SELECT SECTION_ID, ROOM_ID, TIME_START, TIME_END FROM CAMPUS_ADMIN.SCHEDULES WHERE SCHEDULE_ID = :id";
             using var schedCmd = new OracleCommand(schedQuery, connection);
             schedCmd.BindByName = true;
             schedCmd.Parameters.Add(new OracleParameter("id", scheduleId));
@@ -78,6 +78,7 @@ namespace campus_backend.Controllers
                 sectionId = schedReader["SECTION_ID"].ToString();
                 roomId = schedReader["ROOM_ID"].ToString();
                 timeStartStr = schedReader["TIME_START"].ToString();
+                timeEndStr = schedReader["TIME_END"]?.ToString() ?? "";
             }
             else return NotFound("Schedule not found.");
 
@@ -109,6 +110,9 @@ namespace campus_backend.Controllers
             {
                 classStartTime = parsedTime;
             }
+            
+            DateTime classEndTime = DateTime.Today.AddHours(23).AddMinutes(59);
+            if (DateTime.TryParse(timeEndStr, out DateTime parsedEnd)) classEndTime = parsedEnd;
 
             while (await rosterReader.ReadAsync())
             {

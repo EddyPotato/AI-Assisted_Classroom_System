@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using Oracle.ManagedDataAccess.Client;
 using campus_backend.Models;
 using campus_backend.Repositories;
+using System.Collections.Generic;
+using System;
 
 namespace campus_backend.Controllers
 {
@@ -96,6 +98,25 @@ namespace campus_backend.Controllers
             {
                 using var connection = new OracleConnection(_connectionString);
                 await connection.OpenAsync();
+
+                // Pre-fetch existing schedules to memory for conflict detection
+                var existingSchedules = new List<BulkScheduleDto>();
+                var allQuery = "SELECT PROFESSOR_ID, ROOM_ID, TIME_START, TIME_END, CLASS_DAYS FROM CAMPUS_ADMIN.SCHEDULES";
+                using (var cmdAll = new OracleCommand(allQuery, connection))
+                using (var readerAll = await cmdAll.ExecuteReaderAsync())
+                {
+                    while (await readerAll.ReadAsync())
+                    {
+                        existingSchedules.Add(new BulkScheduleDto {
+                            Professor_Id = readerAll["PROFESSOR_ID"]?.ToString(),
+                            Room_Id = readerAll["ROOM_ID"]?.ToString(),
+                            Time_Start = readerAll["TIME_START"]?.ToString(),
+                            Time_End = readerAll["TIME_END"]?.ToString(),
+                            Class_Days = readerAll["CLASS_DAYS"]?.ToString()
+                        });
+                    }
+                }
+
                 using var transaction = connection.BeginTransaction();
 
                 var query = @"INSERT INTO CAMPUS_ADMIN.SCHEDULES
@@ -112,6 +133,39 @@ namespace campus_backend.Controllers
                     {
                         return BadRequest("Each schedule must include Subject_Code, Section_Id, Time_Start, Time_End, and Class_Days.");
                     }
+                    
+                    if (!DateTime.TryParse(s.Time_Start, out DateTime newStart) || !DateTime.TryParse(s.Time_End, out DateTime newEnd))
+                    {
+                        return BadRequest($"Invalid time format for {s.Subject_Code}. Expected format like '02:30 PM'.");
+                    }
+
+                    // Conflict Detection Engine
+                    foreach (var existing in existingSchedules)
+                    {
+                        if (existing.Class_Days == s.Class_Days)
+                        {
+                            if (DateTime.TryParse(existing.Time_Start, out DateTime exStart) && DateTime.TryParse(existing.Time_End, out DateTime exEnd))
+                            {
+                                // Check for overlapping time spans (Start A < End B && Start B < End A)
+                                if (newStart.TimeOfDay < exEnd.TimeOfDay && exStart.TimeOfDay < newEnd.TimeOfDay)
+                                {
+                                    if (!string.IsNullOrEmpty(s.Room_Id) && s.Room_Id == existing.Room_Id)
+                                    {
+                                        await transaction.RollbackAsync();
+                                        return BadRequest($"Double Booking Conflict: Room {s.Room_Id} is already scheduled on {s.Class_Days} between {exStart:hh:mm tt} and {exEnd:hh:mm tt}.");
+                                    }
+                                    
+                                    if (!string.IsNullOrEmpty(s.Professor_Id) && s.Professor_Id == existing.Professor_Id)
+                                    {
+                                        await transaction.RollbackAsync();
+                                        return BadRequest($"Double Booking Conflict: Professor {s.Professor_Id} is already scheduled on {s.Class_Days} between {exStart:hh:mm tt} and {exEnd:hh:mm tt}.");
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    existingSchedules.Add(s); // Add valid new schedule so subsequent rows check against it too
 
                     string newSchedId = "SCH-" + Guid.NewGuid().ToString().Substring(0, 4).ToUpper() + random.Next(10, 99);
 

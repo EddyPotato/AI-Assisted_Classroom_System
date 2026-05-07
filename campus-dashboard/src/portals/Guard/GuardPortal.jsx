@@ -24,6 +24,7 @@ export default function GuardPortal() {
   const [currentLocationId, setCurrentLocationId] = useState("");
   const [streamStatus, setStreamStatus] = useState("offline"); // offline, loading, active, error
   const [streamToken, setStreamToken] = useState(() => Date.now());
+  const [hardwareIndex, setHardwareIndex] = useState(0);
 
   // 1. Fetch Camera Locations on Mount
   useEffect(() => {
@@ -89,7 +90,7 @@ export default function GuardPortal() {
       const res = await fetch("http://localhost:5106/api/camera/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Camera_Location_Id: currentLocationId })
+        body: JSON.stringify({ Camera_Location_Id: currentLocationId, Hardware_Index: hardwareIndex })
       });
       if (res.ok) {
         setTimeout(() => {
@@ -181,6 +182,8 @@ export default function GuardPortal() {
               locations={locations}
               currentLocationId={currentLocationId}
               onLocationChange={setCurrentLocationId}
+              hardwareIndex={hardwareIndex}
+              onHardwareIndexChange={setHardwareIndex}
             />
 
             {/* Height-aware 50/50 layout that shrinks cleanly on lower resolutions. */}
@@ -193,6 +196,7 @@ export default function GuardPortal() {
                   streamStatus={streamStatus}
                   streamToken={streamToken}
                   onRetry={handleStartCamera} 
+                  onStreamDrop={() => setStreamStatus("error")}
                 />
               </div>
 

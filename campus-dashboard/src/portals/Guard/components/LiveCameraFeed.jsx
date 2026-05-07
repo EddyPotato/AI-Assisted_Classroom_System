@@ -1,6 +1,6 @@
 import { Video, ScanLine, Power, RefreshCw } from 'lucide-react';
 
-export default function LiveCameraFeed({ latestScan, streamStatus, streamToken, onRetry }) {
+export default function LiveCameraFeed({ latestScan, streamStatus, streamToken, onRetry, onStreamDrop }) {
   const streamUrl = `http://localhost:5000/video_feed?t=${streamToken}`;
 
   return (
@@ -11,6 +11,7 @@ export default function LiveCameraFeed({ latestScan, streamStatus, streamToken, 
           src={streamUrl} 
           alt="Live Feed" 
           className="w-full h-full object-cover transform scale-x-[-1] animate-in fade-in duration-500" 
+          onError={onStreamDrop}
         />
       )}
 

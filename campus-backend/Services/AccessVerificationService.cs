@@ -28,7 +28,7 @@ namespace campus_backend.Services
         private string _pendingStudentId = "";
         private string _pendingFirstName = "";
         private string _pendingLastName = "";
-        private string _pendingFacePath = null;
+        private string? _pendingFacePath = null;
         private string _currentLocationId = "CAM-001"; // Default fallback
 
         public AccessVerificationService(
@@ -92,6 +92,24 @@ namespace campus_backend.Services
                     _pendingLastName = middleName + (reader["LAST_NAME"]?.ToString() ?? "");
                     _pendingFacePath = reader["FACE_REFERENCE_PATH"] != DBNull.Value ? reader["FACE_REFERENCE_PATH"]?.ToString() : null;
                 }
+                else
+                {
+                    // Try Staff/Professors Table
+                    var userQuery = @"SELECT FIRST_NAME, MIDDLE_NAME, LAST_NAME, FACE_REFERENCE_PATH
+                                       FROM CAMPUS_ADMIN.USERS WHERE USER_ID = :id";
+                    using var userCmd = new OracleCommand(userQuery, connection);
+                    userCmd.BindByName = true;
+                    userCmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
+                    
+                    using var userReader = await userCmd.ExecuteReaderAsync();
+                    if (await userReader.ReadAsync())
+                    {
+                        _pendingFirstName = userReader["FIRST_NAME"]?.ToString() ?? "Unknown";
+                        string middleName = userReader["MIDDLE_NAME"] != DBNull.Value ? userReader["MIDDLE_NAME"]?.ToString() + " " : "";
+                        _pendingLastName = middleName + (userReader["LAST_NAME"]?.ToString() ?? "");
+                        _pendingFacePath = userReader["FACE_REFERENCE_PATH"] != DBNull.Value ? userReader["FACE_REFERENCE_PATH"]?.ToString() : null;
+                    }
+                }
 
                 await _hubContext.Clients.All.SendAsync("ReceiveBarcode", new
                 {
@@ -135,6 +153,8 @@ namespace campus_backend.Services
                 string locationName = "Unknown Location";
                 string logicType = "gate";
                 string locationType = "entrance";
+                string? associatedRoomId = null;
+                string scanHint = "";
 
                 // 1. Resolve Camera Attributes
                 using (var scope = _scopeFactory.CreateScope())
@@ -146,6 +166,7 @@ namespace campus_backend.Services
                         locationName = locData.Camera_Name;
                         logicType = locData.Logic_Type?.ToLower() ?? "gate";
                         locationType = locData.Location_Type?.ToLower() ?? "entrance";
+                        associatedRoomId = locData.Associated_Room_ID;
                     }
                 }
 
@@ -154,6 +175,9 @@ namespace campus_backend.Services
                 {
                     // Get current presence
                     string currentPresence = "offline";
+                    string tableToUpdate = "STUDENTS";
+                    string idColumn = "STUDENT_ID";
+
                     var presQuery = "SELECT CAMPUS_PRESENCE FROM CAMPUS_ADMIN.STUDENTS WHERE STUDENT_ID = :id";
                     using var presCmd = new OracleCommand(presQuery, connection);
                     presCmd.BindByName = true;
@@ -162,6 +186,21 @@ namespace campus_backend.Services
                     if (await presReader.ReadAsync())
                     {
                         currentPresence = presReader["CAMPUS_PRESENCE"]?.ToString() ?? "offline";
+                    }
+                    else 
+                    {
+                        // Check Staff/Professor presence
+                        var userPresQuery = "SELECT CAMPUS_PRESENCE FROM CAMPUS_ADMIN.USERS WHERE USER_ID = :id";
+                        using var userPresCmd = new OracleCommand(userPresQuery, connection);
+                        userPresCmd.BindByName = true;
+                        userPresCmd.Parameters.Add(new OracleParameter("id", _pendingStudentId));
+                        using var userPresReader = await userPresCmd.ExecuteReaderAsync();
+                        if (await userPresReader.ReadAsync())
+                        {
+                            currentPresence = userPresReader["CAMPUS_PRESENCE"]?.ToString() ?? "offline";
+                            tableToUpdate = "USERS";
+                            idColumn = "USER_ID";
+                        }
                     }
 
                     string newPresence = currentPresence;
@@ -189,13 +228,68 @@ namespace campus_backend.Services
                     {
                         if (locationType == "entrance")
                         {
-                            newPresence = "in-class";
+                            if (tableToUpdate == "USERS")
+                            {
+                                // It's a Professor. They can always enter the class.
+                                newPresence = "in-class";
+                            }
+                            else
+                            {
+                                // It's a Student. We must check if the Professor has scanned in yet.
+                                bool professorPresent = false;
+                                string upcomingSubject = "";
+                                string upcomingTime = "";
+
+                                var schedCmd = new OracleCommand("SELECT PROFESSOR_ID, SUBJECT_CODE, TIME_START FROM CAMPUS_ADMIN.SCHEDULES WHERE ROOM_ID = :room", connection);
+                                schedCmd.BindByName = true;
+                                schedCmd.Parameters.Add(new OracleParameter("room", associatedRoomId));
+                                using var schedReader = await schedCmd.ExecuteReaderAsync();
+                                
+                                string? assignedProfId = null;
+                                while (await schedReader.ReadAsync())
+                                {
+                                    string timeStartStr = schedReader["TIME_START"].ToString();
+                                    if (DateTime.TryParse(timeStartStr, out DateTime startTime))
+                                    {
+                                        var timeDiff = DateTime.Now.TimeOfDay - startTime.TimeOfDay;
+                                        // Match class running from 45 min before start to 3 hours after start
+                                        if (timeDiff.TotalMinutes >= -45 && timeDiff.TotalMinutes <= 180)
+                                        {
+                                            assignedProfId = schedReader["PROFESSOR_ID"].ToString();
+                                            upcomingSubject = schedReader["SUBJECT_CODE"].ToString();
+                                            upcomingTime = timeStartStr;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (!string.IsNullOrEmpty(assignedProfId))
+                                {
+                                    // Did the professor scan into this exact room camera today?
+                                    var profLogCmd = new OracleCommand("SELECT 1 FROM CAMPUS_ADMIN.EVENT_LOGS WHERE STUDENT_ID = :profId AND LOCATION_ID = :loc AND STATUS = 'approved' AND TRUNC(TIMESTAMP) = TRUNC(SYSDATE)", connection);
+                                    profLogCmd.BindByName = true;
+                                    profLogCmd.Parameters.Add(new OracleParameter("profId", assignedProfId));
+                                    profLogCmd.Parameters.Add(new OracleParameter("loc", _currentLocationId));
+                                    using var profLogReader = await profLogCmd.ExecuteReaderAsync();
+                                    if (await profLogReader.ReadAsync()) professorPresent = true;
+                                }
+                                else { professorPresent = true; } // No schedule right now
+
+                                if (professorPresent) { newPresence = "in-class"; }
+                                else
+                                {
+                                    status = "no_professor_yet";
+                                    eventLogStatus = "Waiting for Professor";
+                                    scanHint = $"No professor yet... {upcomingSubject} at {upcomingTime}";
+                                    newPresence = currentPresence; // Do not mark them 'in-class' yet
+                                }
+                            }
                         }
                         // Note: We ignore room exits natively. Schedule sweeps handle resetting 'in-class' to 'in-campus'
                     }
 
                     // 3. Update Student State
-                    var updatePresQuery = "UPDATE CAMPUS_ADMIN.STUDENTS SET CAMPUS_PRESENCE = :pres WHERE STUDENT_ID = :id";
+                    var updatePresQuery = $"UPDATE CAMPUS_ADMIN.{tableToUpdate} SET CAMPUS_PRESENCE = :pres WHERE {idColumn} = :id";
                     using var updateCmd = new OracleCommand(updatePresQuery, connection);
                     updateCmd.BindByName = true;
                     updateCmd.Parameters.Add(new OracleParameter("pres", newPresence));
@@ -226,6 +320,7 @@ namespace campus_backend.Services
                     first_name = _pendingFirstName,
                     last_name = _pendingLastName,
                     status = status,
+                    hint = scanHint,
                     timestamp = DateTime.Now.ToString("HH:mm:ss"),
                     face_reference_path = _pendingFacePath,
                     location_id = _currentLocationId,

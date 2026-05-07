@@ -17,6 +17,12 @@ namespace campus_backend.Controllers
     [Route("api/[controller]")]
     public class CameraController : ControllerBase
     {
+        public class CameraStartRequest
+        {
+            public string? Camera_Location_Id { get; set; }
+            public int Hardware_Index { get; set; } = 0;
+        }
+
         private readonly ICameraLocationRepository _locationRepo;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IHubContext<CampusHub> _hubContext;
@@ -61,12 +67,12 @@ namespace campus_backend.Controllers
         }
 
         [HttpPost("start")]
-        public async Task<IActionResult> StartCamera([FromBody] CameraStateRequest request)
+        public async Task<IActionResult> StartCamera([FromBody] CameraStartRequest request)
         {
             try
             {
                 var client = _httpClientFactory.CreateClient();
-                var payload = JsonSerializer.Serialize(new { location_id = request.Camera_Location_Id });
+                var payload = JsonSerializer.Serialize(new { location_id = request.Camera_Location_Id, hardware_index = request.Hardware_Index });
                 var content = new StringContent(payload, Encoding.UTF8, "application/json");
 
                 var response = await client.PostAsync("http://localhost:5000/start_camera", content);
@@ -127,7 +133,24 @@ namespace campus_backend.Controllers
             }
             else
             {
-                return NotFound(new { message = "Student ID not found in database." });
+                // Check USERS table for staff/professors if not found in STUDENTS
+                var staffQuery = "SELECT FIRST_NAME, MIDDLE_NAME, LAST_NAME, FACE_REFERENCE_PATH FROM CAMPUS_ADMIN.USERS WHERE USER_ID = :id";
+                using var staffCmd = new OracleCommand(staffQuery, connection);
+                staffCmd.BindByName = true;
+                staffCmd.Parameters.Add(new OracleParameter("id", studentId));
+                
+                using var staffReader = await staffCmd.ExecuteReaderAsync();
+                if (await staffReader.ReadAsync())
+                {
+                    firstName = staffReader["FIRST_NAME"]?.ToString() ?? "Unknown";
+                    string middleName = staffReader["MIDDLE_NAME"] != DBNull.Value ? staffReader["MIDDLE_NAME"]?.ToString() + " " : "";
+                    lastName = middleName + (staffReader["LAST_NAME"]?.ToString() ?? "");
+                    facePath = staffReader["FACE_REFERENCE_PATH"] != DBNull.Value ? staffReader["FACE_REFERENCE_PATH"]?.ToString() : null;
+                }
+                else
+                {
+                    return NotFound(new { message = "ID not found in database." });
+                }
             }
 
             // A. If it's a bypass, log it immediately and approve it without Face Scan
