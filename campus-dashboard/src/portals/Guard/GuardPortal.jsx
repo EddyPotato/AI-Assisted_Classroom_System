@@ -167,11 +167,11 @@ export default function GuardPortal() {
       </header>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 p-6 overflow-hidden">
+      <main className="flex-1 p-4 sm:p-6 overflow-y-auto overflow-x-hidden">
         
         {/* VIEW 1: LIVE MONITOR */}
         {activeTab === 'live' && (
-          <div className="h-full flex flex-col gap-8 max-w-7xl mx-auto animate-in fade-in duration-300">
+          <div className="min-h-full lg:h-full flex flex-col gap-4 sm:gap-6 max-w-7xl mx-auto animate-in fade-in duration-300">
             
             {/* Top Bar: Controls */}
             <CameraControls 
@@ -183,11 +183,11 @@ export default function GuardPortal() {
               onLocationChange={setCurrentLocationId}
             />
 
-            {/* Centered, Balanced 50/50 Layout for maximum visibility */}
-            <div className="flex-1 flex flex-col lg:flex-row items-center justify-center gap-8 min-h-0 w-full">
+            {/* Height-aware 50/50 layout that shrinks cleanly on lower resolutions. */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 items-stretch justify-center gap-4 sm:gap-6 min-h-0 w-full">
               
               {/* Massive Square Camera Feed (Left) */}
-              <div className="w-full lg:w-1/2 flex justify-center items-center h-full">
+              <div className="min-h-0 w-full flex justify-center items-center">
                 <LiveCameraFeed 
                   latestScan={latestScan} 
                   streamStatus={streamStatus}
@@ -197,7 +197,7 @@ export default function GuardPortal() {
               </div>
 
               {/* Massive Square Verification Panel (Right) */}
-              <div className="w-full lg:w-1/2 flex justify-center items-center h-full">
+              <div className="min-h-0 w-full flex justify-center items-center">
                 <VerificationPanel latestScan={latestScan} cacheBuster={cacheBuster} />
               </div>
 
