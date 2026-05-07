@@ -1,6 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
+using System;
+using System.Threading.Tasks;
 using campus_backend.Models;
 using campus_backend.Repositories;
+using campus_backend.Services;
 
 namespace campus_backend.Controllers
 {
@@ -9,29 +13,25 @@ namespace campus_backend.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserRepository _userRepository;
+        private readonly IImageUploadService _imageService;
 
-        public UserController(IUserRepository userRepository)
+        public UserController(IUserRepository userRepository, IImageUploadService imageService)
         {
             _userRepository = userRepository;
+            _imageService = imageService;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllUsers()
-        {
-            var users = await _userRepository.GetAllUsersAsync();
-            return Ok(users);
-        }
+        public async Task<IActionResult> GetAllUsers() => Ok(await _userRepository.GetAllUsersAsync());
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(string id)
         {
             var user = await _userRepository.GetUserByIdAsync(id);
-            if (user == null) return NotFound();
-            return Ok(user);
+            return user == null ? NotFound() : Ok(user);
         }
 
         [HttpPost]
-        // THE FIX: Changed from [FromBody] to [FromForm] to support Image Uploads
         public async Task<IActionResult> CreateUser([FromForm] User user, IFormFile? Photo)
         {
             if (string.IsNullOrEmpty(user.User_ID))
@@ -40,50 +40,24 @@ namespace campus_backend.Controllers
                 user.User_ID = "USR-" + rnd.Next(1000, 9999).ToString(); 
             }
 
-            // Image Save Logic
-            if (Photo != null && Photo.Length > 0)
+            if (Photo != null)
             {
-                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "ReferenceFaces");
-                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-
-                string uniqueFileName = $"{user.Last_Name.ToLower()}_{user.User_ID}_staff_face.jpg";
-                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    await Photo.CopyToAsync(fileStream);
-                }
-                user.Face_Reference_Path = uniqueFileName;
+                user.Face_Reference_Path = await _imageService.UploadFaceReferenceAsync(Photo, user.Last_Name, user.User_ID, "staff_face.jpg");
             }
-            
+
             await _userRepository.CreateUserAsync(user);
-            return Ok(new { message = "User created successfully", assignedId = user.User_ID });
+            return CreatedAtAction(nameof(GetUserById), new { id = user.User_ID }, user);
         }
 
         [HttpPut("{id}")]
-        // THE FIX: Changed from [FromBody] to [FromForm] to support Image Updating and Soft Deletes
         public async Task<IActionResult> UpdateUser(string id, [FromForm] User user, IFormFile? Photo)
         {
-            // Sync the ID from the URL to the model just to be safe
-            user.User_ID = id;
-
             var existingUser = await _userRepository.GetUserByIdAsync(id);
             if (existingUser == null) return NotFound("User not found.");
 
-            // Image Update Logic
-            if (Photo != null && Photo.Length > 0)
+            if (Photo != null)
             {
-                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "ReferenceFaces");
-                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-
-                string uniqueFileName = $"{user.Last_Name.ToLower()}_{user.User_ID}_staff_face.jpg";
-                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    await Photo.CopyToAsync(fileStream);
-                }
-                user.Face_Reference_Path = uniqueFileName;
+                user.Face_Reference_Path = await _imageService.UploadFaceReferenceAsync(Photo, user.Last_Name, user.User_ID, "staff_face.jpg");
             }
 
             await _userRepository.UpdateUserAsync(user);
@@ -93,10 +67,6 @@ namespace campus_backend.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(string id)
         {
-            var existingUser = await _userRepository.GetUserByIdAsync(id);
-            if (existingUser == null) return NotFound();
-
-            // Note: This triggers the HARD DELETE in the repository
             await _userRepository.DeleteUserAsync(id);
             return Ok(new { message = "User deleted successfully" });
         }

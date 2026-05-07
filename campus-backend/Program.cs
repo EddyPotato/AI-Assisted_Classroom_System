@@ -29,6 +29,10 @@ builder.Services.AddScoped<campus_backend.Repositories.ICameraLocationRepository
 // 3. Registers the new Business Logic Service for MQTT
 builder.Services.AddSingleton<campus_backend.Services.IAccessVerificationService, campus_backend.Services.AccessVerificationService>();
 
+builder.Services.AddScoped<campus_backend.Repositories.IAttendanceRepository, campus_backend.Repositories.AttendanceRepository>();
+
+builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
+
 builder.Services.AddControllers();
 
 builder.Services.AddCors(options => {

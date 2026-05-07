@@ -8,5 +8,6 @@ namespace campus_backend.Repositories
         Task CreateScheduleAsync(Schedule schedule);
         Task UpdateScheduleAsync(Schedule schedule);
         Task DeleteScheduleAsync(string id);
+        Task<int> BulkImportSchedulesAsync(List<BulkScheduleDto> schedules);
     }
 }

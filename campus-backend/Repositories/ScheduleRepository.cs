@@ -1,4 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Oracle.ManagedDataAccess.Client;
 using campus_backend.Models;
 
@@ -10,8 +14,10 @@ namespace campus_backend.Repositories
 
         public ScheduleRepository(IConfiguration configuration)
         {
-            _connectionString = configuration.GetConnectionString("OracleConnection") 
-                 ?? throw new InvalidOperationException("Oracle connection string is missing.");
+            _connectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? configuration.GetConnectionString("OracleConnection")
+                ?? configuration.GetConnectionString("OracleDb")
+                ?? throw new InvalidOperationException("Oracle connection string is missing.");
         }
 
         // --- GET ALL SCHEDULES ---
@@ -21,7 +27,6 @@ namespace campus_backend.Repositories
 
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
-                // THE FIX: Full Middle Name logic, u.FACE_REFERENCE_PATH, and s.SUBJECT_TYPE
                 string sql = @"
                     SELECT s.Schedule_ID, s.Subject_Code, s.Subject_Type, sub.Title AS Subject_Title,
                             s.Section_ID, sec.Section_Name,
@@ -47,7 +52,6 @@ namespace campus_backend.Repositories
                             {
                                 Schedule_ID = reader["Schedule_ID"].ToString(),
                                 Subject_Code = reader["Subject_Code"].ToString(),
-                                // Default to 'Lec' if the column is null for older records
                                 Subject_Type = reader["Subject_Type"] != DBNull.Value ? reader["Subject_Type"].ToString() : "Lec",
                                 Subject_Title = reader["Subject_Title"].ToString(),
                                 Section_ID = reader["Section_ID"].ToString(),
@@ -87,7 +91,6 @@ namespace campus_backend.Repositories
                     cmd.Parameters.Add(new OracleParameter("type", string.IsNullOrEmpty(schedule.Subject_Type) ? "Lec" : schedule.Subject_Type));
                     cmd.Parameters.Add(new OracleParameter("sec", schedule.Section_ID));
                     
-                    // Handle nullable foreign keys properly for Oracle
                     cmd.Parameters.Add(new OracleParameter("prof", string.IsNullOrEmpty(schedule.Professor_ID) ? DBNull.Value : schedule.Professor_ID));
                     cmd.Parameters.Add(new OracleParameter("room", string.IsNullOrEmpty(schedule.Room_ID) ? DBNull.Value : schedule.Room_ID));
                     
@@ -151,6 +154,58 @@ namespace campus_backend.Repositories
                     await con.OpenAsync();
                     await cmd.ExecuteNonQueryAsync();
                 }
+            }
+        }
+
+        // --- BULK IMPORT SCHEDULES ---
+        public async Task<int> BulkImportSchedulesAsync(List<BulkScheduleDto> schedules)
+        {
+            using var connection = new OracleConnection(_connectionString);
+            await connection.OpenAsync();
+            
+            using var transaction = connection.BeginTransaction();
+            int successCount = 0;
+
+            try
+            {
+                foreach (var s in schedules)
+                {
+                    if (string.IsNullOrWhiteSpace(s.Subject_Code) || string.IsNullOrWhiteSpace(s.Section_Id) || string.IsNullOrWhiteSpace(s.Time_Start))
+                        continue; 
+
+                    // 1. Generate unique ID
+                    string newSchedId = $"SCH-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}";
+
+                    // 2. Insert Command
+                    var cmd = new OracleCommand(@"
+                        INSERT INTO CAMPUS_ADMIN.SCHEDULES 
+                        (SCHEDULE_ID, SUBJECT_CODE, SECTION_ID, PROFESSOR_ID, ROOM_ID, TIME_START, TIME_END, CLASS_DAYS, SUBJECT_TYPE) 
+                        VALUES (:id, :subj, :sec, :prof, :room, :tstart, :tend, :days, :type)", connection);
+                    
+                    cmd.BindByName = true;
+                    cmd.Transaction = transaction;
+                    
+                    cmd.Parameters.Add(new OracleParameter("id", newSchedId));
+                    cmd.Parameters.Add(new OracleParameter("subj", s.Subject_Code.Trim()));
+                    cmd.Parameters.Add(new OracleParameter("sec", s.Section_Id.Trim()));
+                    cmd.Parameters.Add(new OracleParameter("prof", string.IsNullOrWhiteSpace(s.Professor_Id) ? DBNull.Value : s.Professor_Id.Trim()));
+                    cmd.Parameters.Add(new OracleParameter("room", string.IsNullOrWhiteSpace(s.Room_Id) ? DBNull.Value : s.Room_Id.Trim()));
+                    cmd.Parameters.Add(new OracleParameter("tstart", s.Time_Start.Trim()));
+                    cmd.Parameters.Add(new OracleParameter("tend", s.Time_End?.Trim() ?? (object)DBNull.Value));
+                    cmd.Parameters.Add(new OracleParameter("days", s.Class_Days?.Trim() ?? "TBA"));
+                    cmd.Parameters.Add(new OracleParameter("type", string.IsNullOrWhiteSpace(s.Subject_Type) ? "Lec" : s.Subject_Type.Trim()));
+
+                    await cmd.ExecuteNonQueryAsync();
+                    successCount++;
+                }
+
+                await transaction.CommitAsync();
+                return successCount;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw; 
             }
         }
     }

@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
-using System.IO;
+using System.Threading.Tasks;
 using campus_backend.Models;
 using campus_backend.Repositories;
+using campus_backend.Services;
 
 namespace campus_backend.Controllers
 {
@@ -11,7 +12,13 @@ namespace campus_backend.Controllers
     public class StaffController : ControllerBase
     {
         private readonly IStaffRepository _staffRepo;
-        public StaffController(IStaffRepository staffRepo) { _staffRepo = staffRepo; }
+        private readonly IImageUploadService _imageService;
+
+        public StaffController(IStaffRepository staffRepo, IImageUploadService imageService) 
+        { 
+            _staffRepo = staffRepo; 
+            _imageService = imageService;
+        }
 
         [HttpGet]
         public async Task<IActionResult> GetAllStaff() => Ok(await _staffRepo.GetAllStaffAsync());
@@ -20,26 +27,15 @@ namespace campus_backend.Controllers
         public async Task<IActionResult> GetStaff(string id)
         {
             var staff = await _staffRepo.GetStaffByIdAsync(id);
-            if (staff == null) return NotFound(new { message = "Staff not found" });
-            return Ok(staff);
+            return staff == null ? NotFound(new { message = "Staff not found" }) : Ok(staff);
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateStaff([FromForm] Staff dto, IFormFile? Photo)
         {
-            if (Photo != null && Photo.Length > 0)
+            if (Photo != null)
             {
-                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "ReferenceFaces");
-                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-
-                string uniqueFileName = $"{dto.Last_Name?.ToLower()}_{dto.User_ID}_staff_face.jpg";
-                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    await Photo.CopyToAsync(fileStream);
-                }
-                dto.Face_Reference_Path = uniqueFileName;
+                dto.Face_Reference_Path = await _imageService.UploadFaceReferenceAsync(Photo, dto.Last_Name, dto.User_ID, "staff_face.jpg");
             }
 
             await _staffRepo.CreateStaffAsync(dto);
@@ -51,26 +47,15 @@ namespace campus_backend.Controllers
         {
             dto.User_ID = id; 
             
-            if (Photo != null && Photo.Length > 0)
+            if (Photo != null)
             {
-                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "ReferenceFaces");
-                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-
-                string uniqueFileName = $"{dto.Last_Name?.ToLower()}_{dto.User_ID}_staff_face.jpg";
-                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    await Photo.CopyToAsync(fileStream);
-                }
-                dto.Face_Reference_Path = uniqueFileName;
+                dto.Face_Reference_Path = await _imageService.UploadFaceReferenceAsync(Photo, dto.Last_Name, dto.User_ID, "staff_face.jpg");
             }
 
             await _staffRepo.UpdateStaffAsync(dto);
             return Ok(new { message = "Staff updated successfully!" });
         }
 
-        // --- DELETE STAFF MEMBER ---
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStaff(string id)
         {
