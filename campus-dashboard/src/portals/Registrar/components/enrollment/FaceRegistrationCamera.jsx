@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { UploadCloud } from 'lucide-react'; // ADDED ICON
 import CameraSelector from './CameraSelector';
 import CameraView from './CameraView';
 
@@ -6,13 +7,13 @@ export default function FaceRegistrationCamera({ isOpen, onCapture, onClear, exi
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+  const fileInputRef = useRef(null); // ADDED REF FOR UPLOAD
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [capturedImageUrl, setCapturedImageUrl] = useState(null);
   const [videoDevices, setVideoDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [brightnessStatus, setBrightnessStatus] = useState('checking');
 
-  // ... (Keep existing useEffects for getCameras and switchStream) ...
   useEffect(() => {
     let isMounted = true;
     async function getCameras() {
@@ -50,7 +51,6 @@ export default function FaceRegistrationCamera({ isOpen, onCapture, onClear, exi
       setIsCameraActive(true);
       setBrightnessStatus('checking');
     } catch (err) {
-      // THE FIX: Log the error so the variable is used and we can debug hardware issues!
       console.error("Camera hardware error:", err); 
       alert("Error accessing camera! Ensure no other app is using the webcam.");
     }
@@ -119,13 +119,25 @@ export default function FaceRegistrationCamera({ isOpen, onCapture, onClear, exi
     }
   };
 
+  // ADDED: Handle Manual File Uploads
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      setCapturedImageUrl(imageUrl);
+      onCapture(file); // Pass the raw file directly up to the form handler
+      stopHardwareStream();
+      setIsCameraActive(false);
+    }
+  };
+
   const retakePhoto = () => {
     onClear();
     setCapturedImageUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     startCamera();
   };
 
-  // THE FIX: Allows them to cancel capturing and keep their old photo
   const cancelUpdate = () => {
     stopHardwareStream();
     setIsCameraActive(false);
@@ -137,8 +149,24 @@ export default function FaceRegistrationCamera({ isOpen, onCapture, onClear, exi
     <div className="mt-2 border-t border-slate-100 pt-6">
        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 min-h-10.5">
          <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider shrink-0">Face Data Registration</h4>
-         <div className={`w-full sm:w-auto transition-opacity duration-200 ${capturedImageUrl || (!isCameraActive && existingImageUrl) ? 'invisible opacity-0' : 'visible opacity-100'}`}>
+         
+         <div className={`flex items-center gap-3 w-full sm:w-auto transition-opacity duration-200 ${capturedImageUrl || (!isCameraActive && existingImageUrl) ? 'invisible opacity-0' : 'visible opacity-100'}`}>
            <CameraSelector videoDevices={videoDevices} selectedDeviceId={selectedDeviceId} onSelectDevice={setSelectedDeviceId} />
+           
+           {/* MANUAL UPLOAD BUTTON */}
+           <input 
+             type="file" 
+             accept="image/jpeg, image/png, image/jpg" 
+             className="hidden" 
+             ref={fileInputRef} 
+             onChange={handleFileUpload} 
+           />
+           <button 
+             onClick={(e) => { e.preventDefault(); fileInputRef.current.click(); }}
+             className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors border border-slate-200 shrink-0"
+           >
+             <UploadCloud size={16} /> Upload
+           </button>
          </div>
        </div>
        <CameraView 

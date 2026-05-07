@@ -210,7 +210,6 @@ def generate_frames():
     last_barcode_scan_time = 0
     last_deep_barcode_scan_time = 0
     
-    # We store the bounding boxes here so they display smoothly even on skipped frames!
     draw_rects = []
     draw_texts = []
 
@@ -227,19 +226,25 @@ def generate_frames():
 
             # 2. Handle Wake State (Thread-Safe Initialization)
             if camera is None:
-                # cv2.CAP_DSHOW is the magic flag that prevents the Windows Black Screen bug!
-                camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+                # CAMERA SELECTION & FALLBACK LOGIC
+                camera_index = int(os.environ.get("CAMERA_INDEX", 0))
+                camera = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
+                
+                if not camera.isOpened():
+                    print(f"[ERROR] Camera {camera_index} failed. Trying fallback index 1...")
+                    camera = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+                    
+                if not camera.isOpened():
+                    print("[ERROR] Fallback webcam also failed. Retrying in 1 second...")
+                    camera = None
+                    time.sleep(1)
+                    continue
+
                 camera.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
                 camera.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
                 camera.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
                 camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                 camera.set(cv2.CAP_PROP_AUTOFOCUS, 1)
-                if not camera.isOpened():
-                    print("[ERROR] Webcam could not be opened. Retrying in 1 second...")
-                    camera.release()
-                    camera = None
-                    time.sleep(1)
-                    continue
                 print("[HARDWARE] Webcam ACTIVE and bound to video thread.")
 
             success, frame = camera.read()
@@ -253,10 +258,6 @@ def generate_frames():
             current_time = time.time()
             frame_counter += 1
 
-            # ==========================================
-            # AI FRAME SKIPPING (Optimize CPU)
-            # Barcode scans need more chances; face matching stays heavier.
-            # ==========================================
             process_barcode_frame = (
                 current_state == "SCANNING_BARCODE"
                 and (current_time - last_barcode_scan_time) >= BARCODE_SCAN_INTERVAL
@@ -265,8 +266,8 @@ def generate_frames():
             process_this_frame = process_barcode_frame or process_face_frame
 
             if process_this_frame:
-                draw_rects = [] # Clear old boxes
-                draw_texts = [] # Clear old text
+                draw_rects = [] 
+                draw_texts = [] 
 
                 # ------------------------------------------
                 # PHASE 1: BARCODE DETECTION
@@ -287,13 +288,11 @@ def generate_frames():
                                 continue
                             current_state = "PREPARING_FACE"
 
-                        # Save drawing instructions for the video thread
                         draw_rects.append(((x, y), (x + w, y + h), (255, 191, 0)))
                         draw_texts.append((f"ID: {barcode_data}", (x, y - 10), (255, 191, 0)))
 
                         print(f"\n[PHASE 1] Barcode Scanned: {barcode_data} at {current_location_id}")
                         
-                        # Include camera_location_id in MQTT Payload
                         payload = json.dumps({
                             "student_id": barcode_data,
                             "camera_location_id": current_location_id
@@ -315,12 +314,12 @@ def generate_frames():
                                     target_student_id = barcode_data
                                     
                                     print("[PHASE 1] Ready. Give student 2.5s to look up.")
-                                    time.sleep(2.5) # Breathe time
+                                    time.sleep(2.5) 
                                     
                                     with state_lock:
                                         current_state = "VERIFYING_FACE"
                                         verification_start_time = time.time()
-                                    draw_rects.clear() # Clear barcode box immediately
+                                    draw_rects.clear() 
                                     draw_texts.clear()
                                 else:
                                     print(f"[ERROR] No face encoding found in reference photo for {barcode_data}.")
@@ -347,7 +346,6 @@ def generate_frames():
                 elif current_state == "VERIFYING_FACE":
                     cv2.putText(frame, "BIOMETRIC SCAN IN PROGRESS...", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
                     
-                    # Compress frame to 1/4 size for AI speed
                     small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
                     rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
                     
@@ -390,7 +388,7 @@ def generate_frames():
                         time.sleep(2)
 
             # ==========================================
-            # VIDEO RENDERING (Runs EVERY frame for 30fps)
+            # VIDEO RENDERING
             # ==========================================
             for (pt1, pt2, color) in draw_rects:
                 cv2.rectangle(frame, pt1, pt2, color, 3)

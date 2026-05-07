@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Save, CalendarPlus, Edit2, Search, UserCircle, Building2, CheckSquare, Square } from 'lucide-react';
+import { ArrowLeft, Save, CalendarPlus, Edit2, Search, UserCircle, Building2, CheckSquare, Square, BookOpen } from 'lucide-react';
 
 export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess }) {
   const isEditing = !!schedule;
@@ -17,13 +17,16 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
 
   const [staffList, setStaffList] = useState([]);
   const [roomList, setRoomList] = useState([]);
+  const [subjectList, setSubjectList] = useState([]); // NEW: State for subjects
   
-  // THE FIX: Start search strings empty to avoid the "parenthesis search" bug
+  // Start search strings empty to avoid the "parenthesis search" bug
   const [profSearch, setProfSearch] = useState('');
   const [roomSearch, setRoomSearch] = useState('');
+  const [subjectSearch, setSubjectSearch] = useState(''); // NEW: Search for subjects
   
   const [isProfDropdownOpen, setIsProfDropdownOpen] = useState(false);
   const [isRoomDropdownOpen, setIsRoomDropdownOpen] = useState(false);
+  const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false); // NEW: Dropdown toggle
 
   const standardDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const [selectedDays, setSelectedDays] = useState(schedule?.class_Days && schedule.class_Days !== 'TBA' ? schedule.class_Days.split('/') : []);
@@ -46,11 +49,13 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
     let isMounted = true;
     Promise.all([
       fetch('http://localhost:5106/api/staff').then(r => r.json()).catch(() => []),
-      fetch('http://localhost:5106/api/rooms').then(r => r.json()).catch(() => [])
-    ]).then(([staff, rooms]) => {
+      fetch('http://localhost:5106/api/rooms').then(r => r.json()).catch(() => []),
+      fetch('http://localhost:5106/api/subjects').then(r => r.json()).catch(() => []) // NEW: Fetch subjects
+    ]).then(([staff, rooms, subjects]) => {
       if (isMounted) {
         setStaffList(Array.isArray(staff) ? staff : []);
         setRoomList(Array.isArray(rooms) ? rooms : []);
+        setSubjectList(Array.isArray(subjects) ? subjects : []);
       }
     });
     return () => { isMounted = false; };
@@ -74,6 +79,12 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
     setRoomSearch(''); 
   };
 
+  const selectSubject = (subject) => {
+    setFormData({ ...formData, subject_Code: subject.subject_Code });
+    setIsSubjectDropdownOpen(false);
+    setSubjectSearch(''); 
+  };
+
   const format12Hour = (time24) => {
     if (!time24) return 'TBA';
     let [h, m] = time24.split(':');
@@ -90,6 +101,11 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.subject_Code) {
+      alert("Please select a subject from the dropdown.");
+      return;
+    }
 
     if (timeStart24 && timeEnd24) {
       if (timeToMinutes(timeStart24) >= timeToMinutes(timeEnd24)) {
@@ -141,7 +157,11 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
       (r.building && r.building.toLowerCase().includes(roomSearch.toLowerCase()))
   );
 
-  // THE FIX: Robust Edit Mode fallbacks using schedule props if API hasn't loaded yet
+  const filteredSubjects = subjectList.filter(s => 
+      s.subject_Code.toLowerCase().includes(subjectSearch.toLowerCase()) || 
+      (s.title && s.title.toLowerCase().includes(subjectSearch.toLowerCase()))
+  );
+
   const selectedProfObj = staffList.find(s => s.user_ID === formData.professor_ID) || 
     (isEditing && formData.professor_ID === schedule.professor_ID && schedule.professor_Name !== 'Unassigned' ? {
       user_ID: schedule.professor_ID,
@@ -155,12 +175,18 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
       building: schedule.building
     } : null);
 
+  const selectedSubjectObj = subjectList.find(s => s.subject_Code === formData.subject_Code) || 
+    (isEditing && formData.subject_Code === schedule.subject_Code ? {
+      subject_Code: schedule.subject_Code,
+      title: schedule.subject_Title // Relies on the mapped title from the DB if already saved
+    } : null);
+
   return (
     <div className="animate-in slide-in-from-right-8 duration-300 pb-10">
       
       <div className="flex items-center justify-between mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm w-full">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 hover:text-blue-600 hover:border-blue-300 transition-all shadow-sm">
+          <button onClick={onBack} type="button" className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 hover:text-blue-600 hover:border-blue-300 transition-all shadow-sm">
             <ArrowLeft size={20} strokeWidth={2.5} />
           </button>
           <div>
@@ -179,9 +205,54 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
             
             {/* Subject Code & Type */}
             <div className="flex gap-4 col-span-1">
-               <div className="flex-1">
-                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Subject Code <span className="text-rose-500">*</span></label>
-                 <input required type="text" name="subject_Code" value={formData.subject_Code} onChange={handleChange} placeholder="e.g. IT301" className="w-full px-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm" />
+               
+               {/* Smart Subject Dropdown */}
+               <div className="flex-1 relative">
+                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Subject <span className="text-rose-500">*</span></label>
+                 
+                 {formData.subject_Code && !isSubjectDropdownOpen && selectedSubjectObj ? (
+                    <div 
+                       onClick={() => { setIsSubjectDropdownOpen(true); setSubjectSearch(''); }}
+                       className="w-full flex items-center gap-3 px-4 py-2 h-12.5 border border-slate-300 rounded-xl bg-white shadow-sm cursor-text transition-all hover:border-indigo-400 group"
+                    >
+                       <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 border border-slate-200 shadow-sm shrink-0"><BookOpen size={16}/></div>
+                       <div className="flex-1 min-w-0">
+                          <p className="font-black text-slate-800 text-sm leading-tight truncate">{selectedSubjectObj.subject_Code}</p>
+                          <p className="text-[10px] font-bold text-slate-500 truncate">{selectedSubjectObj.title || 'Subject Details'}</p>
+                       </div>
+                       <Search size={16} className="text-slate-300 group-hover:text-indigo-400 transition-colors shrink-0" />
+                    </div>
+                 ) : (
+                    <div className="relative">
+                       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                       <input 
+                          autoFocus={isSubjectDropdownOpen}
+                          type="text" 
+                          value={subjectSearch} 
+                          onChange={(e) => { setSubjectSearch(e.target.value); setIsSubjectDropdownOpen(true); }}
+                          onFocus={() => setIsSubjectDropdownOpen(true)}
+                          onBlur={() => setTimeout(() => setIsSubjectDropdownOpen(false), 200)}
+                          placeholder="Search code or title..." 
+                          className="w-full pl-9 pr-4 py-3 h-12.5 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 shadow-sm transition-all" 
+                       />
+                    </div>
+                 )}
+                 
+                 {isSubjectDropdownOpen && (
+                    <div className="absolute top-full left-0 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto divide-y divide-slate-50">
+                       <div className="p-3 text-xs font-bold text-slate-400 uppercase bg-slate-50/50">Subject Suggestions</div>
+                       {filteredSubjects.map(sub => (
+                           <div key={sub.subject_Code} onMouseDown={() => selectSubject(sub)} className="flex items-center gap-3 p-3 hover:bg-indigo-50 cursor-pointer transition-colors group">
+                              <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-indigo-600"><BookOpen size={20}/></div>
+                              <div>
+                                 <p className="font-black text-slate-800 text-sm group-hover:text-indigo-700">{sub.subject_Code}</p>
+                                 <p className="text-xs font-bold text-slate-500">{sub.title}</p>
+                              </div>
+                           </div>
+                       ))}
+                       {filteredSubjects.length === 0 && <div className="p-4 text-center text-sm font-bold text-slate-400">No subjects found.</div>}
+                    </div>
+                 )}
                </div>
                
                <div className="w-36">
@@ -209,7 +280,6 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
                     )}
                     <div className="flex-1 min-w-0">
                        <p className="font-black text-slate-800 text-sm leading-tight truncate">
-                          {/* THE FIX: Prefers full_Name if loaded from edit mode, otherwise combines pieces */}
                           {selectedProfObj?.full_Name || [selectedProfObj?.first_Name, selectedProfObj?.middle_Name, selectedProfObj?.last_Name].filter(Boolean).join(' ')}
                        </p>
                        <p className="text-[10px] font-bold text-slate-500 font-mono truncate">{selectedProfObj?.user_ID}</p>
@@ -224,7 +294,7 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
                        type="text" 
                        value={profSearch} 
                        onChange={(e) => { setProfSearch(e.target.value); setIsProfDropdownOpen(true); }}
-                       onFocus={() => setIsProfDropdownOpen(true)} // THE FIX: Show dropdown on focus
+                       onFocus={() => setIsProfDropdownOpen(true)} 
                        onBlur={() => setTimeout(() => setIsProfDropdownOpen(false), 200)}
                        placeholder="Type to search professors..." 
                        className="w-full pl-9 pr-4 py-3 h-12.5 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm transition-all" 
@@ -279,7 +349,7 @@ export default function ScheduleForm({ schedule, sectionId, onBack, onSuccess })
                        type="text" 
                        value={roomSearch} 
                        onChange={(e) => { setRoomSearch(e.target.value); setIsRoomDropdownOpen(true); }}
-                       onFocus={() => setIsRoomDropdownOpen(true)} // THE FIX: Show dropdown on focus
+                       onFocus={() => setIsRoomDropdownOpen(true)} 
                        onBlur={() => setTimeout(() => setIsRoomDropdownOpen(false), 200)}
                        placeholder="Type to search rooms..." 
                        className="w-full pl-9 pr-4 py-3 h-12.5 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-slate-700 shadow-sm transition-all" 

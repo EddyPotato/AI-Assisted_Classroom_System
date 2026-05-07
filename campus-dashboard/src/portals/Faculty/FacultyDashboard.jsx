@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, MapPin, BookOpen, AlertCircle, Calendar } from 'lucide-react';
+import { Clock, MapPin, AlertCircle, Calendar } from 'lucide-react';
 
 export default function FacultyDashboard() {
   const navigate = useNavigate();
@@ -84,32 +84,29 @@ export default function FacultyDashboard() {
           if (status === 'active' || status === 'next') {
              // Center Focus: Green, scaled up
              cardClasses += " bg-emerald-500 text-white border-emerald-400 scale-105 shadow-xl shadow-emerald-500/20 z-10";
-          } else if (status === 'past') {
-             // Past: Orange, warning vibe, faded
-             cardClasses += " bg-amber-50/80 border-amber-200 text-slate-600 opacity-70 hover:opacity-100";
           } else {
-             // Future: Gray, out of focus
-             cardClasses += " bg-white/80 border-slate-200 text-slate-500 opacity-60 hover:opacity-100 scale-95";
+             // Rest: Grayed out, out of focus, scaled down
+             cardClasses += " bg-white/40 border-slate-200 text-slate-400 opacity-50 grayscale hover:grayscale-0 hover:opacity-100 scale-95";
           }
 
           return (
             <div key={sched.schedule_ID} className={cardClasses} onClick={() => navigate(`/class/${sched.schedule_ID}`)}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className={`text-xs font-black px-3 py-1 rounded-full tracking-widest uppercase ${status === 'active' || status === 'next' ? 'bg-emerald-400/30 text-emerald-50' : 'bg-slate-200 text-slate-500'}`}>
+                  <span className={`text-xs font-black px-3 py-1 rounded-full tracking-widest uppercase ${status === 'active' || status === 'next' ? 'bg-emerald-400/30 text-emerald-50' : 'bg-slate-200 text-slate-400'}`}>
                     {sched.subject_Code}
                   </span>
-                  {status === 'past' && <span className="text-amber-500 flex items-center gap-1 text-xs font-black"><AlertCircle size={14}/> CONCLUDED</span>}
+                  {status === 'past' && <span className="text-slate-400 flex items-center gap-1 text-xs font-black"><AlertCircle size={14}/> CONCLUDED</span>}
                   {status === 'active' && <span className="text-white flex items-center gap-1 text-xs font-black"><span className="w-2 h-2 rounded-full bg-white animate-pulse"></span> IN SESSION</span>}
                 </div>
-                <h3 className={`text-2xl font-black truncate tracking-tight ${status === 'active' || status === 'next' ? 'text-white' : 'text-slate-800'}`}>
+                <h3 className={`text-2xl font-black truncate tracking-tight ${status === 'active' || status === 'next' ? 'text-white' : 'text-slate-400'}`}>
                   {sched.subject_Title}
                 </h3>
               </div>
 
-              <div className={`flex flex-col items-end shrink-0 gap-1 text-right ml-4 ${status === 'active' || status === 'next' ? 'text-emerald-50' : 'text-slate-500'}`}>
+              <div className={`flex flex-col items-end shrink-0 gap-1 text-right ml-4 ${status === 'active' || status === 'next' ? 'text-emerald-50' : 'text-slate-400'}`}>
                 <div className="flex items-center gap-2 font-bold text-lg font-mono">
-                  <Clock size={18} /> {sched.time_Start}
+                  <Clock size={18} /> {sched.time_Start} - {sched.time_End}
                 </div>
                 <div className="flex items-center gap-2 font-bold text-sm">
                   <MapPin size={16} /> {sched.room_ID}

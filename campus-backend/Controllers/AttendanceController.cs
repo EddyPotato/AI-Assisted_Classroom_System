@@ -59,14 +59,12 @@ namespace campus_backend.Controllers
             return Ok(schedules);
         }
 
-        // 2. Get Real-Time Attendance for a Specific Schedule
         [HttpGet("schedule/{scheduleId}/roster")]
         public async Task<IActionResult> GetScheduleAttendance(string scheduleId)
         {
             using var connection = new OracleConnection(_connectionString);
             await connection.OpenAsync();
 
-            // A. Get Schedule Details
             string sectionId = "", roomId = "", timeStartStr = "", timeEndStr = "";
             var schedQuery = "SELECT SECTION_ID, ROOM_ID, TIME_START, TIME_END FROM CAMPUS_ADMIN.SCHEDULES WHERE SCHEDULE_ID = :id";
             using var schedCmd = new OracleCommand(schedQuery, connection);
@@ -82,16 +80,6 @@ namespace campus_backend.Controllers
             }
             else return NotFound("Schedule not found.");
 
-            // B. Find the Camera associated with the Room
-            string cameraLocationId = "";
-            var camQuery = "SELECT LOCATION_ID FROM CAMPUS_ADMIN.CAMERA_LOCATIONS WHERE ASSOCIATED_ROOM_ID = :room";
-            using var camCmd = new OracleCommand(camQuery, connection);
-            camCmd.BindByName = true;
-            camCmd.Parameters.Add(new OracleParameter("room", roomId));
-            using var camReader = await camCmd.ExecuteReaderAsync();
-            if (await camReader.ReadAsync()) cameraLocationId = camReader["LOCATION_ID"].ToString();
-
-            // C. Get all enrolled students & their logs for TODAY
             var roster = new List<object>();
             var rosterQuery = @"
                 SELECT st.STUDENT_ID, st.FIRST_NAME, st.MIDDLE_NAME, st.LAST_NAME, st.FACE_REFERENCE_PATH, st.CAMPUS_PRESENCE
@@ -105,21 +93,16 @@ namespace campus_backend.Controllers
             rosterCmd.Parameters.Add(new OracleParameter("secId", sectionId));
             using var rosterReader = await rosterCmd.ExecuteReaderAsync();
 
-            DateTime classStartTime = DateTime.Today; // Fallback
-            if (DateTime.TryParse(timeStartStr, out DateTime parsedTime))
-            {
-                classStartTime = parsedTime;
-            }
+            // STRICT TIME BOUNDARIES FIX
+            DateTime classStartTime = DateTime.Today; 
+            if (DateTime.TryParse(timeStartStr, out DateTime parsedTime)) classStartTime = parsedTime;
             
-            DateTime classEndTime = DateTime.Today.AddHours(23).AddMinutes(59);
+            DateTime classEndTime = classStartTime.AddHours(1); // Fallback to 1 hr if end time is missing
             if (DateTime.TryParse(timeEndStr, out DateTime parsedEnd)) classEndTime = parsedEnd;
 
             while (await rosterReader.ReadAsync())
             {
                 string sId = rosterReader["STUDENT_ID"].ToString();
-                string presence = rosterReader["CAMPUS_PRESENCE"].ToString();
-                
-                // Check Logs for this student TODAY at this room's camera
                 string status = "Absent";
                 string arrivalTime = "--:--";
 
@@ -143,23 +126,27 @@ namespace campus_backend.Controllers
                     string logStatus = logReader["STATUS"].ToString();
                     if (logStatus == "Cutting / Early Exit") hasCuttingLog = true;
 
-                    // If we found the camera ID for the room, check if they scanned in
-                    // Note: If you don't have a room camera yet, we fallback to marking them present if they are 'in-campus'
                     if (logStatus == "approved") 
                     {
                         DateTime scanTime = Convert.ToDateTime(logReader["TIMESTAMP"]);
-                        arrivalTime = scanTime.ToString("hh:mm tt");
-                        hasRoomScan = true;
                         
-                        // Calculate Grace Period (15 minutes)
-                        if (scanTime <= classStartTime.AddMinutes(15)) status = "Present";
-                        else status = "Late";
+                        // BOUNDARY CHECK: Scan must happen between 45 mins before class and class end time
+                        if (scanTime >= classStartTime.AddMinutes(-45) && scanTime <= classEndTime)
+                        {
+                            hasRoomScan = true;
+                            if (arrivalTime == "--:--") arrivalTime = scanTime.ToString("hh:mm tt");
+                            
+                            // Grace Period (15 minutes)
+                            if (scanTime <= classStartTime.AddMinutes(15)) {
+                                status = "Present";
+                            } else if (status != "Present") {
+                                status = "Late";
+                            }
+                        }
                     }
                 }
 
-                // If no specific room scan exists, but they are in-campus, we might want to flag them (or keep absent)
-                // For now, strict camera scanning is required to be "Present".
-                
+                if (!hasRoomScan) status = "Absent";
                 if (hasCuttingLog) status = "Cutting";
 
                 roster.Add(new

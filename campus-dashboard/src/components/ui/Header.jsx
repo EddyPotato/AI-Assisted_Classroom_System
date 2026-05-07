@@ -1,4 +1,4 @@
-import { Menu, LogOut } from 'lucide-react';
+import { LogOut, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Header() {
@@ -9,12 +9,12 @@ export default function Header() {
   const user = userString ? JSON.parse(userString) : null;
   
   // Safely handle C# JSON serialization (camelCase vs PascalCase)
-  const firstName = user?.First_Name || user?.first_Name || 'System';
-  const lastName = user?.Last_Name || user?.last_Name || 'Admin';
+  const firstName = user?.First_Name || user?.first_Name || 'Professor';
+  const lastName = user?.Last_Name || user?.last_Name || '';
   const role = user?.Role || user?.role || 'Faculty';
 
   const initial = firstName.charAt(0).toUpperCase();
-  const fullName = `${firstName} ${lastName}`;
+  const fullName = `${firstName} ${lastName}`.trim();
 
   // THE ESCAPE HATCH
   const handleLogout = () => {
@@ -25,8 +25,8 @@ export default function Header() {
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 z-10 shadow-sm">
       <div className="flex items-center gap-3">
-        <Menu className="text-gray-500 cursor-pointer hover:text-blue-600 transition-colors" size={24} />
-        <h1 className="text-xl font-black text-gray-800 tracking-tight">QCU Dashboard</h1>
+        <GraduationCap className="text-blue-600" size={28} strokeWidth={2.5} />
+        <h1 className="text-xl font-black text-gray-800 tracking-tight">Professor Dashboard</h1>
       </div>
       <div className="flex items-center gap-5">
         
