@@ -18,6 +18,14 @@ CORS(app)
 REFERENCE_FACES_DIR = r"C:\Users\EdTech\OneDrive\Desktop\AI-Assisted_Classroom_System\campus-backend\ReferenceFaces"
 MQTT_BROKER = "localhost"
 FACE_MATCH_TIMEOUT = 6.0 
+CAMERA_WIDTH = 960
+CAMERA_HEIGHT = 540
+CAMERA_FPS = 15
+BARCODE_SCAN_INTERVAL = 0.25
+BARCODE_DEEP_SCAN_INTERVAL = 1.25
+FACE_PROCESS_EVERY_N_FRAMES = 4
+JPEG_QUALITY = 75
+SHARPEN_KERNEL = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
 
 # --- HARDWARE STATE CONTROL ---
 camera_active = False # Flag controlled by React UI
@@ -30,6 +38,93 @@ current_state = "SCANNING_BARCODE"
 target_student_id = ""
 target_face_encoding = None
 verification_start_time = 0
+
+def _decode_image_variant(image, scale, offset_x, offset_y):
+    detections = []
+    for barcode in pyzbar.decode(image):
+        x, y, w, h = barcode.rect
+        barcode_data = barcode.data.decode("utf-8", errors="ignore").strip()
+        if not barcode_data:
+            continue
+
+        detections.append({
+            "data": barcode_data,
+            "rect": (
+                int(x / scale) + offset_x,
+                int(y / scale) + offset_y,
+                max(1, int(w / scale)),
+                max(1, int(h / scale))
+            )
+        })
+    return detections
+
+def decode_barcodes_robust(frame, deep_scan=False):
+    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    height, width = gray_frame.shape
+
+    regions = [
+        (
+            gray_frame[int(height * 0.45):int(height * 0.98), int(width * 0.05):int(width * 0.95)],
+            int(width * 0.05),
+            int(height * 0.45)
+        ),
+        (gray_frame, 0, 0),
+    ]
+
+    seen = set()
+    results = []
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+
+    for region, offset_x, offset_y in regions:
+        if region.size == 0:
+            continue
+
+        enhanced = clahe.apply(region)
+        fast_variants = ((region, (1.0,)), (enhanced, (1.0, 2.0)))
+
+        for base_image, scales in fast_variants:
+            for scale in scales:
+                image_to_decode = base_image
+                if scale != 1.0:
+                    image_to_decode = cv2.resize(base_image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+
+                for detection in _decode_image_variant(image_to_decode, scale, offset_x, offset_y):
+                    if detection["data"] in seen:
+                        continue
+                    seen.add(detection["data"])
+                    results.append(detection)
+
+            if results:
+                break
+
+        if results:
+            break
+
+        if not deep_scan:
+            continue
+
+        sharpened = cv2.filter2D(enhanced, -1, SHARPEN_KERNEL)
+        _, otsu = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        for base_image in (sharpened, otsu):
+            for scale in (1.0, 2.0):
+                image_to_decode = base_image
+                if scale != 1.0:
+                    image_to_decode = cv2.resize(base_image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+
+                for detection in _decode_image_variant(image_to_decode, scale, offset_x, offset_y):
+                    if detection["data"] in seen:
+                        continue
+                    seen.add(detection["data"])
+                    results.append(detection)
+
+            if results:
+                break
+
+        if results:
+            break
+
+    return results
 
 def publish_verification(status):
     publish.single(
@@ -112,6 +207,8 @@ def generate_frames():
 
     camera = None
     frame_counter = 0
+    last_barcode_scan_time = 0
+    last_deep_barcode_scan_time = 0
     
     # We store the bounding boxes here so they display smoothly even on skipped frames!
     draw_rects = []
@@ -132,8 +229,11 @@ def generate_frames():
             if camera is None:
                 # cv2.CAP_DSHOW is the magic flag that prevents the Windows Black Screen bug!
                 camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-                camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-                camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                camera.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+                camera.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
+                camera.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
+                camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                camera.set(cv2.CAP_PROP_AUTOFOCUS, 1)
                 if not camera.isOpened():
                     print("[ERROR] Webcam could not be opened. Retrying in 1 second...")
                     camera.release()
@@ -155,9 +255,14 @@ def generate_frames():
 
             # ==========================================
             # AI FRAME SKIPPING (Optimize CPU)
-            # Process heavy math only every 3rd frame
+            # Barcode scans need more chances; face matching stays heavier.
             # ==========================================
-            process_this_frame = (frame_counter % 3 == 0)
+            process_barcode_frame = (
+                current_state == "SCANNING_BARCODE"
+                and (current_time - last_barcode_scan_time) >= BARCODE_SCAN_INTERVAL
+            )
+            process_face_frame = current_state == "VERIFYING_FACE" and frame_counter % FACE_PROCESS_EVERY_N_FRAMES == 0
+            process_this_frame = process_barcode_frame or process_face_frame
 
             if process_this_frame:
                 draw_rects = [] # Clear old boxes
@@ -167,13 +272,15 @@ def generate_frames():
                 # PHASE 1: BARCODE DETECTION
                 # ------------------------------------------
                 if current_state == "SCANNING_BARCODE":
-                    # Convert to Grayscale for 3x faster barcode scanning
-                    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    barcodes = pyzbar.decode(gray_frame)
+                    last_barcode_scan_time = current_time
+                    deep_scan = (current_time - last_deep_barcode_scan_time) >= BARCODE_DEEP_SCAN_INTERVAL
+                    if deep_scan:
+                        last_deep_barcode_scan_time = current_time
+                    barcodes = decode_barcodes_robust(frame, deep_scan=deep_scan)
                     
                     for barcode in barcodes:
-                        (x, y, w, h) = barcode.rect
-                        barcode_data = barcode.data.decode("utf-8").strip()
+                        (x, y, w, h) = barcode["rect"]
+                        barcode_data = barcode["data"]
                         
                         with state_lock:
                             if current_state != "SCANNING_BARCODE":
@@ -290,7 +397,7 @@ def generate_frames():
             for (text, pt, color) in draw_texts:
                 cv2.putText(frame, text, pt, cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-            ret, buffer = cv2.imencode('.jpg', frame)
+            ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY])
             if not ret:
                 print("[WARN] Failed to encode webcam frame.")
                 continue
