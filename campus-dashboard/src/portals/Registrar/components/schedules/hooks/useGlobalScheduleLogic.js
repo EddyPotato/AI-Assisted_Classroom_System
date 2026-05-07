@@ -94,8 +94,14 @@ export function useGlobalScheduleLogic() {
   // 5. SORTING LOGIC
   const sortedSchedules = [...filteredSchedules].sort((a, b) => {
     if (!sortConfig.key) return 0;
-    const aValue = a[sortConfig.key] || '';
-    const bValue = b[sortConfig.key] || '';
+    let aValue = a[sortConfig.key] || '';
+    let bValue = b[sortConfig.key] || '';
+
+    if (sortConfig.key === 'time_Start' || sortConfig.key === 'time_End') {
+      aValue = timeToMinutes12h(aValue) ?? 0;
+      bValue = timeToMinutes12h(bValue) ?? 0;
+    }
+
     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;

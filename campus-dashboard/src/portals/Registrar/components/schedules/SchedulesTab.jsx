@@ -8,9 +8,8 @@ export default function SchedulesTab() {
   const [cacheBuster] = useState(() => Date.now());
   const standardDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  // All logic imported from our custom hook!
   const {
-    isLoading, schedules, sortedSchedules, uniqueRooms, uniqueProfs,
+    isLoading, sortedSchedules, uniqueRooms, uniqueProfs,
     zoomedImage, setZoomedImage, searchQuery, setSearchQuery,
     roomSearch, setRoomSearch, profSearch, setProfSearch,
     isRoomDropdownOpen, setIsRoomDropdownOpen,
@@ -30,7 +29,7 @@ export default function SchedulesTab() {
           <p className="text-slate-500 mt-1 font-medium">Monitor room allocations, faculty workloads, and resolve scheduling conflicts.</p>
         </div>
         <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl border border-blue-100 font-bold text-sm flex items-center gap-2 shadow-sm">
-          <CalendarDays size={18} /> {schedules.length} Total Classes
+          <CalendarDays size={18} /> {sortedSchedules.length} Classes Found
         </div>
       </div>
 
@@ -199,6 +198,14 @@ export default function SchedulesTab() {
           <div className="p-12 text-center flex flex-col items-center justify-center text-blue-600 font-bold animate-pulse">
              <Clock size={32} className="mb-3 opacity-50 animate-spin" />
              Loading global schedule data...
+          </div>
+        ) : sortedSchedules.length === 0 ? (
+          <div className="p-16 text-center">
+            <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-4">
+               <CalendarDays size={32} />
+            </div>
+            <h3 className="text-xl font-black text-slate-800">No schedules match your current filters.</h3>
+            <p className="text-slate-500 mt-2">Try adjusting your time ranges or clearing the day filter.</p>
           </div>
         ) : (
           <MasterScheduleTable schedules={sortedSchedules} onZoom={setZoomedImage} sortConfig={sortConfig} onSort={handleSort} />

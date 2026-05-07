@@ -17,8 +17,7 @@ export function useSectionFormLogic(initialSection, onSuccess, onShowToast) {
     course: initialSection?.course || 'IT',
     year_Level: initialSection?.year_Level || 1,
     section_Letter: initialSection?.section_Letter || 'A',
-    section_Name: initialSection?.section_Name || '',
-    status: initialSection?.status || 'Active'
+    section_Name: initialSection?.section_Name || ''
   });
 
   useEffect(() => {

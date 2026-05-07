@@ -1,71 +1,77 @@
 # AI-Assisted Smart Campus & Classroom System
 
-Smart campus platform for registrar workflows, classroom/room attendance, and Guard Portal access control using barcode/QR scanning, face recognition, Oracle Database, SignalR, MQTT, and a Python camera edge node.
+Smart campus platform for registrar workflows, section rosters, master schedules, classroom attendance, and guard access monitoring. The system uses a React dashboard, ASP.NET Core API, Oracle Database, SignalR, MQTT, and a Python camera edge node.
 
-**Current date/state:** May 6, 2026  
-**Current phase:** Guard Portal Phase 2 integration in progress  
-**Latest verification:** Frontend lint/build and backend build pass after the latest fixes.
+**Current date/state:** May 7, 2026
+**Current progress:** Registrar schedule/import work is integrated, the Section Directory now uses an Excel-style table view, and schema-sensitive section/schedule logic has been corrected without changing the database structure.
 
 ---
 
-## Current Status
+## What Works Now
 
-### Working or implemented
-
-- React/Vite dashboard with role-based portals:
+- Role-based dashboard portals:
+  - Registrar
   - Faculty
   - Guard
   - Principal
-  - Registrar
-- ASP.NET Core backend with Oracle repositories
-- SignalR hub for real-time UI updates
-- MQTT listener for edge-node scan and verification events
-- Python edge node for:
-  - Camera feed
-  - Barcode/QR scanning
-  - Face recognition
+- Registrar directories:
+  - Student Directory
+  - Staff Directory
+  - Section Directory
+  - Schedule Directory
+  - Resource Directory for subjects and courses
+- Section workflows:
+  - Create, edit, delete sections
+  - View sections in a sortable table
+  - Open section roster from the table
+  - Add/remove students from a section roster
+  - Assign, edit, and delete section schedules
+- Schedule workflows:
+  - Global schedule directory
+  - Schedule CRUD endpoints
+  - Master Schedule Import tab for CSV/Excel-style pasted schedule rows
+  - Subject type support through `SUBJECT_TYPE` (`Lec` / `Lab`)
+- Guard and camera workflows:
+  - Camera location support
+  - Start/stop camera through backend proxy
+  - Manual scan and bypass paths
+  - SignalR updates from backend to dashboard
+- Python edge node:
+  - Webcam/MJPEG feed
+  - Barcode/QR detection
+  - Face verification
   - MQTT publishing
-- Registrar management flows:
-  - Students
-  - Staff
-  - Sections
-  - Enrollments
-  - Schedules
-  - Courses/subjects support
-- Guard Portal Phase 2 UI pieces:
-  - Camera location selector
-  - Start/Stop camera controls
-  - Manual ID input fallback
-  - Manual bypass modal
-  - Live Monitor tab
-  - Access History tab
-  - Privacy-first recent scan display
-- Database includes camera/location-aware access tracking:
-  - `CAMERA_LOCATIONS`
-  - `EVENT_LOGS.LOCATION_ID`
-  - `EVENT_LOGS.BYPASS_REASON`
 
-### Fixed today
+---
 
-- Fixed Guard Portal lint failure caused by state updates inside `LiveCameraFeed.jsx`.
-- Moved camera stream cache-token updates into the `GuardPortal.jsx` start-camera flow.
-- Fixed backend camera/access code using the wrong Oracle connection-string key.
-- `CameraController.cs`, `CameraLocationRepository.cs`, and `AccessVerificationService.cs` now support the same fallback connection-string pattern used elsewhere.
-- Confirmed `GET /api/camera/locations` returns HTTP `200`.
-- Stopped a lingering backend process that caused `address already in use` on port `5106`.
+## Latest Fixes
 
-### Verified commands
+- Changed the Registrar Section Directory from card layout to a sortable table layout.
+- Removed unsupported section archive/status UI logic because `SECTIONS` in `database/schema.sql` has no `STATUS` column.
+- Restored schedule CRUD endpoints in `SchedulesController.cs` while keeping the new `POST /api/schedules/bulk-import` endpoint.
+- Fixed section edit fidelity by returning `CAMPUS` and `SECTION_LETTER` from `SectionRepository.GetAllSectionsAsync()`.
+- Reconnected global Schedule Directory to `useGlobalScheduleLogic.js` so it uses the shared schedule shape from `ScheduleRepository`.
+- Fixed time sorting in global schedules to compare schedule times numerically.
+- Kept schema naming aligned with the current Oracle export.
+
+---
+
+## Verification
+
+Passed:
 
 ```powershell
 cd campus-dashboard
 npm.cmd run lint
 npm.cmd run build
-
-cd ../campus-backend
-dotnet build
 ```
 
-All passed after the latest fixes.
+```powershell
+cd ..
+dotnet build campus-backend\campus-backend.csproj
+```
+
+Note: `npm.cmd run build` completes with Vite's normal large-chunk warning because the app bundle is over 500 kB after minification.
 
 ---
 
@@ -101,6 +107,7 @@ All passed after the latest fixes.
 
 - Oracle Database 21c XE
 - Schema owner: `CAMPUS_ADMIN`
+- Main schema file: `database/schema.sql`
 
 ---
 
@@ -108,16 +115,17 @@ All passed after the latest fixes.
 
 ```text
 AI-Assisted_Classroom_System/
-  CONTEXT.md
   README.md
+  CONTEXT.md
   AI-Assisted_Classroom_System.sln
+  database/
+    schema.sql
   campus-backend/
     Controllers/
     Hubs/
     Models/
     Repositories/
     Services/
-    ReferenceFaces/
     Program.cs
     appsettings.json
     campus-backend.csproj
@@ -134,28 +142,73 @@ AI-Assisted_Classroom_System/
   campus-edge/
     vision_node.py
     requirements.txt
-  database/
-    schema.sql
+```
+
+---
+
+## Important Schema Notes
+
+Use `database/schema.sql` as the naming source of truth.
+
+Current core Oracle tables:
+
+- `USERS`
+- `STUDENTS`
+- `CAMPUSES`
+- `COURSES`
+- `SUBJECTS`
+- `ROOMS`
+- `SECTIONS`
+- `ENROLLMENTS`
+- `SCHEDULES`
+- `EVENT_LOGS`
+- `CAMERA_LOCATIONS`
+
+Important section columns:
+
+```text
+SECTIONS.SECTION_ID
+SECTIONS.CAMPUS
+SECTIONS.COURSE
+SECTIONS.YEAR_LEVEL
+SECTIONS.SECTION_LETTER
+SECTIONS.SECTION_NAME
+```
+
+There is currently no `SECTIONS.STATUS` column. Do not add frontend archive/restore logic unless the schema is intentionally changed first.
+
+Important schedule columns:
+
+```text
+SCHEDULES.SCHEDULE_ID
+SCHEDULES.SUBJECT_CODE
+SCHEDULES.SECTION_ID
+SCHEDULES.PROFESSOR_ID
+SCHEDULES.ROOM_ID
+SCHEDULES.TIME_START
+SCHEDULES.TIME_END
+SCHEDULES.CLASS_DAYS
+SCHEDULES.SUBJECT_TYPE
+```
+
+Important enrollment columns:
+
+```text
+ENROLLMENTS.ENROLLMENT_ID
+ENROLLMENTS.STUDENT_ID
+ENROLLMENTS.SECTION_ID
+ENROLLMENTS.ENROLLMENT_DATE
 ```
 
 ---
 
 ## Setup
 
-### Prerequisites
-
-- Node.js 18+
-- .NET SDK compatible with the project target
-- Python 3.10+
-- Oracle Database 21c XE
-- MQTT broker, such as Mosquitto
-- Git
-
 ### 1. Database
 
 Run `database/schema.sql` in Oracle SQL Developer or SQL*Plus.
 
-The backend expects this connection string key in `campus-backend/appsettings.json`:
+The backend expects this connection string in `campus-backend/appsettings.json`:
 
 ```json
 {
@@ -220,90 +273,23 @@ http://localhost:5000/video_feed
 
 ---
 
-## Running the Full System
+## Main API Endpoints
 
-Open three terminals:
-
-### Terminal 1
-
-```powershell
-cd campus-backend
-dotnet run
-```
-
-### Terminal 2
-
-```powershell
-cd campus-dashboard
-npm.cmd run dev
-```
-
-### Terminal 3
-
-```powershell
-cd campus-edge
-venv\Scripts\activate
-python vision_node.py
-```
-
-Then open:
+### Schedules
 
 ```text
-http://localhost:5173
+GET    /api/schedules
+POST   /api/schedules
+PUT    /api/schedules/{id}
+DELETE /api/schedules/{id}
+POST   /api/schedules/bulk-import
 ```
 
----
-
-## Guard Portal Flow
-
-### Camera startup
-
-1. Guard opens the Guard Portal.
-2. Guard selects a camera location.
-3. Guard clicks Start Camera.
-4. Frontend calls `POST /api/camera/start`.
-5. Backend proxies the request to Python `POST /start_camera`.
-6. Python wakes the webcam and serves the MJPEG stream.
-7. Guard Portal displays `http://localhost:5000/video_feed`.
-
-### Barcode/face verification
-
-1. Student shows barcode/QR code to the camera.
-2. Python reads the code with pyzbar.
-3. Python publishes MQTT message to `campus/door/scan`.
-4. Backend receives the scan, looks up the student, and broadcasts `ReceiveBarcode`.
-5. Python compares the live face with the stored reference face.
-6. Python publishes verification result to `campus/door/verified`.
-7. Backend logs the event and broadcasts `ReceiveScanResult`.
-8. Guard Portal updates in real time.
-
-### Manual ID fallback
-
-1. Guard types a student ID.
-2. Frontend calls `POST /api/camera/manual-scan`.
-3. Backend looks up the student.
-4. UI shows the scan/verification state.
-
-### Manual bypass
-
-1. Guard opens the bypass modal.
-2. Guard enters student ID and reason.
-3. Backend logs the bypass with `BYPASS_REASON`.
-4. UI receives the result through SignalR.
-
----
-
-## Important API Endpoints
-
-### Camera and Guard Portal
+Bulk import expects rows shaped like:
 
 ```text
-GET  /api/camera/locations
-POST /api/camera/locations
-PUT  /api/camera/location/{id}
-POST /api/camera/start
-POST /api/camera/stop
-POST /api/camera/manual-scan
+Subject_Code,Section_Id,Professor_Id,Room_Id,Time_Start,Time_End,Class_Days,Subject_Type
+SE101,SEC-001,PRO-0001,IK604,02:30 PM,05:30 PM,Thursday/Thu,Lec
 ```
 
 ### Sections
@@ -315,18 +301,29 @@ PUT    /api/sections/{id}
 DELETE /api/sections/{id}
 GET    /api/sections/{id}/students
 POST   /api/sections/{id}/students
-DELETE /api/sections/{id}/students/{studentId}
+DELETE /api/sections/{sectionId}/students/{studentId}
 GET    /api/sections/{id}/schedule
 ```
 
-### Other common endpoints
+### Other Registrar Data
 
 ```text
 GET /api/student
 GET /api/staff
+GET /api/subjects
+GET /api/courses
 GET /api/rooms
-GET /api/schedules
-POST /api/enrollments
+```
+
+### Guard and Camera
+
+```text
+GET  /api/camera/locations
+POST /api/camera/locations
+PUT  /api/camera/location/{id}
+POST /api/camera/start
+POST /api/camera/stop
+POST /api/camera/manual-scan
 ```
 
 SignalR hub:
@@ -343,11 +340,37 @@ http://localhost:5106/ReferenceFaces/{filename}
 
 ---
 
+## Running the Full System
+
+Open three terminals:
+
+```powershell
+cd campus-backend
+dotnet run
+```
+
+```powershell
+cd campus-dashboard
+npm.cmd run dev
+```
+
+```powershell
+cd campus-edge
+venv\Scripts\activate
+python vision_node.py
+```
+
+Then open:
+
+```text
+http://localhost:5173
+```
+
+---
+
 ## Troubleshooting
 
 ### Port 5106 is already in use
-
-This means the backend is already running or a previous `campus-backend.exe` process is still alive.
 
 ```powershell
 Get-NetTCPConnection -LocalPort 5106 -ErrorAction SilentlyContinue
@@ -355,7 +378,7 @@ Get-Process campus-backend -ErrorAction SilentlyContinue
 Stop-Process -Id <PID>
 ```
 
-Only stop the specific backend process that is using port `5106`.
+Only stop the specific `campus-backend` process holding port `5106`.
 
 ### `npm` is blocked in PowerShell
 
@@ -367,61 +390,52 @@ npm.cmd run build
 npm.cmd run lint
 ```
 
-### Backend returns `ORA-50029`
+### Schedules do not create/edit/delete
 
-Check that the backend code is using `OracleConnection` from `appsettings.json`, or the fallback pattern documented in `CONTEXT.md`.
+Confirm `SchedulesController.cs` still exposes:
 
-### Camera start fails
-
-Make sure the Python edge node is running:
-
-```powershell
-cd campus-edge
-venv\Scripts\activate
-python vision_node.py
+```text
+POST /api/schedules
+PUT /api/schedules/{id}
+DELETE /api/schedules/{id}
 ```
 
-### Guard Portal does not receive scan events
+The roster schedule form depends on those endpoints.
 
-Check:
+### Section edit shows wrong campus or letter
 
-- Backend is running on `5106`
-- Frontend is running on `5173`
-- Python edge node is running on `5000`
-- MQTT broker is running
-- Oracle Database is running
-- Browser console has no SignalR connection errors
+Confirm `GET /api/sections` includes:
+
+```text
+campus
+section_Letter
+```
+
+These come from `SectionRepository.GetAllSectionsAsync()`.
 
 ---
 
 ## Git Ignore Notes
 
-Do not commit:
+Do not commit generated or sensitive files:
 
 - `node_modules/`
 - `dist/`
 - `bin/`
 - `obj/`
 - `.env`
-- `campus-edge/.env`
 - `venv/`
 - `.venv/`
 - `ReferenceFaces/`
 - real student/staff face photos
 - media files such as `.jpg`, `.jpeg`, `.png`, `.mp4`
 
-The selected `.gitignore` line `.venv\Scripts\activate` is only a commented note. The actual virtual environment folders are already ignored by `.venv/`, `venv/`, and `env/`.
-
 ---
 
-## Next Work
+## Recommended Next Work
 
-Recommended next tasks:
-
-1. Test the full Guard Portal loop with frontend, backend, Oracle, MQTT, and Python edge node running together.
-2. Confirm camera location IDs flow from UI/backend into edge-node scan results where needed.
-3. Normalize `EVENT_LOGS.STATUS` values.
-4. Improve API error handling around missing camera locations and failed database operations.
-5. Continue Guard Portal Phase 2 testing before starting larger refactors.
-6. Later, refactor `SectionRoster.jsx` into smaller components.
-
+1. Test the full Registrar schedule flow in the browser: import, global directory, section roster schedule add/edit/delete.
+2. Test section creation/editing against Oracle records that use different campuses and letters.
+3. Add stronger API validation around duplicate schedule IDs and invalid foreign keys.
+4. Normalize `EVENT_LOGS.STATUS` values later; seed data currently mixes values such as `approved`, `denied`, and `Access Granted`.
+5. Consider adding `SECTIONS.STATUS` only if archive/restore is truly needed, then wire UI and repository logic after the schema change.

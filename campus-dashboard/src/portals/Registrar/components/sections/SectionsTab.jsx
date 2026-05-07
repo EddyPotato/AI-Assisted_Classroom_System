@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, Plus, Users, LibrarySquare, Loader2, Archive, Layers, GraduationCap, ChevronDown, CheckCircle2, Edit2, RefreshCw, Trash2 } from 'lucide-react';
+import { Search, Plus, Users, LibrarySquare, Loader2, Layers, GraduationCap, ChevronDown, ChevronUp, CheckCircle2, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
 import SectionRoster from './SectionRoster';
 import SectionForm from './SectionForm';
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
@@ -18,12 +18,45 @@ export default function SectionsTab() {
     searchQuery, setSearchQuery,
     yearFilter, setYearFilter,
     courseFilter, setCourseFilter,
-    viewMode, setViewMode,
     modal, setModal,
     toastMessage, triggerToast,
     handleActionClick, fetchSections,
-    uniqueYears, uniqueCourses, getFullProgramName
+    uniqueYears, uniqueCourses, getFullProgramName,
+    totalSections
   } = useSectionsLogic();
+
+  const [sortConfig, setSortConfig] = useState({ key: 'section_Name', direction: 'asc' });
+
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const renderSortIcon = (key) => {
+    if (sortConfig.key !== key) return <ArrowUpDown size={14} className="text-slate-300" />;
+    return sortConfig.direction === 'asc'
+      ? <ChevronUp size={14} className="text-blue-500" />
+      : <ChevronDown size={14} className="text-blue-500" />;
+  };
+
+  const sortedSections = [...filteredSections].sort((a, b) => {
+    let aValue = a[sortConfig.key] ?? '';
+    let bValue = b[sortConfig.key] ?? '';
+
+    if (sortConfig.key === 'year_Level' || sortConfig.key === 'student_Count') {
+      aValue = Number(aValue) || 0;
+      bValue = Number(bValue) || 0;
+    } else {
+      aValue = aValue.toString().toLowerCase();
+      bValue = bValue.toString().toLowerCase();
+    }
+
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -84,13 +117,8 @@ export default function SectionsTab() {
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="flex bg-slate-200/50 p-1 rounded-xl border border-slate-200 shadow-inner">
-             <button onClick={() => setViewMode('active')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'active' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                <Layers size={16} /> Active
-             </button>
-             <button onClick={() => setViewMode('archived')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'archived' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                <Archive size={16} /> Archived
-             </button>
+          <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl border border-blue-100 font-bold text-sm flex items-center gap-2 shadow-sm">
+            <Layers size={18} /> {filteredSections.length} of {totalSections} Sections
           </div>
         </div>
       </div>
@@ -173,72 +201,96 @@ export default function SectionsTab() {
 
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {isLoading ? (
-           <div className="col-span-full py-20 text-center flex flex-col items-center justify-center text-blue-600 font-bold bg-white rounded-2xl border border-slate-200 shadow-sm animate-pulse">
+           <div className="py-20 text-center flex flex-col items-center justify-center text-blue-600 font-bold animate-pulse">
              <Loader2 size={32} className="mb-4 opacity-50 animate-spin" />
              Loading academic sections...
            </div>
-        ) : filteredSections.length === 0 ? (
-          <div className="col-span-full py-16 flex flex-col items-center justify-center text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+        ) : sortedSections.length === 0 ? (
+          <div className="py-16 flex flex-col items-center justify-center text-center bg-slate-50/50">
             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><Layers size={24} className="text-slate-400" /></div>
             <h3 className="text-lg font-black text-slate-700">No sections found</h3>
             <p className="text-slate-500 font-medium mt-1 max-w-sm">Try adjusting your filters or search query to find the section you are looking for.</p>
           </div>
         ) : (
-          filteredSections.map((section) => (
-            <div 
-              key={section.section_ID} 
-              onClick={() => setSelectedSection(section)}
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group flex flex-col relative"
-            >
-              {/* THE FIX: Permanently visible action buttons in the top right corner */}
-              <div className="absolute top-4 right-4 flex gap-2">
-                {viewMode === 'active' ? (
-                  <>
-                    <button onClick={(e) => { e.stopPropagation(); setEditingSection(section); setShowForm(true); }} className="p-2 bg-white text-amber-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Edit Section">
-                      <Edit2 size={16} />
-                    </button>
-                    {/* Note: Kept Hard Delete here as requested for immediate testing. Swap to 'archive' later if preferred. */}
-                    <button onClick={(e) => { e.stopPropagation(); handleActionClick(section, 'hard_delete'); }} className="p-2 bg-white text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Delete Section">
-                      <Trash2 size={16} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={(e) => { e.stopPropagation(); handleActionClick(section, 'restore'); }} className="p-2 bg-white text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Restore Section">
-                      <RefreshCw size={16} />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleActionClick(section, 'hard_delete'); }} className="p-2 bg-white text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Permanently Delete">
-                      <Trash2 size={16} />
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Added pr-24 (padding-right) to ensure long section names don't overlap the buttons */}
-              <div className="flex justify-between items-start mb-4 pr-24">
-                <div className={`px-3 py-1.5 rounded-lg font-black text-xl tracking-tight border transition-colors ${viewMode === 'active' ? 'bg-blue-50 text-blue-700 border-blue-200 group-hover:bg-blue-600 group-hover:text-white' : 'bg-slate-100 text-slate-600 border-slate-300'}`}>
-                  {section.section_Name}
-                </div>
-              </div>
-              
-              <div className="space-y-4 flex-1">
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><LibrarySquare size={14}/> Program & Level</p>
-                  <p className="font-bold text-slate-700 leading-tight pr-2">{getFullProgramName(section.course)}</p>
-                  <p className="text-sm font-black text-blue-600 mt-0.5">Year {section.year_Level}</p>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-slate-500 font-bold text-sm">
-                  <Users size={16} className="text-slate-400" />
-                  {section.student_Count || 0} Enrolled Students
-                </div>
-              </div>
-            </div>
-          ))
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left border-collapse min-w-250">
+              <thead>
+                <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 cursor-pointer select-none">
+                  <th className="p-4 w-40 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('section_Name')}>
+                    <div className="flex items-center gap-1">Section {renderSortIcon('section_Name')}</div>
+                  </th>
+                  <th className="p-4 w-28 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('campus')}>
+                    <div className="flex items-center gap-1">Campus {renderSortIcon('campus')}</div>
+                  </th>
+                  <th className="p-4 min-w-72 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('course')}>
+                    <div className="flex items-center gap-1">Program {renderSortIcon('course')}</div>
+                  </th>
+                  <th className="p-4 w-28 text-center hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('year_Level')}>
+                    <div className="flex items-center justify-center gap-1">Year {renderSortIcon('year_Level')}</div>
+                  </th>
+                  <th className="p-4 w-32 text-center hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('student_Count')}>
+                    <div className="flex items-center justify-center gap-1">Students {renderSortIcon('student_Count')}</div>
+                  </th>
+                  <th className="p-4 min-w-48 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('primary_Adviser')}>
+                    <div className="flex items-center gap-1">Primary Adviser {renderSortIcon('primary_Adviser')}</div>
+                  </th>
+                  <th className="p-4 min-w-56 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('primary_Subject')}>
+                    <div className="flex items-center gap-1">Primary Subject {renderSortIcon('primary_Subject')}</div>
+                  </th>
+                  <th className="p-4 w-36 text-right cursor-default outline-none">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sortedSections.map((section) => (
+                  <tr
+                    key={section.section_ID}
+                    onClick={() => setSelectedSection(section)}
+                    className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
+                  >
+                    <td className="p-4">
+                      <span className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-black text-sm border border-blue-200 whitespace-nowrap">
+                        {section.section_Name}
+                      </span>
+                      <div className="text-[11px] font-bold text-slate-400 font-mono mt-1">{section.section_ID}</div>
+                    </td>
+                    <td className="p-4 font-black text-slate-600">{section.campus || 'SB'}</td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <LibrarySquare size={16} className="text-slate-400 shrink-0" />
+                        <div>
+                          <p className="font-bold text-slate-800 leading-tight">{getFullProgramName(section.course)}</p>
+                          <p className="text-xs font-black text-blue-600 mt-0.5">{section.course}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 text-center font-black text-slate-700">{section.year_Level}</td>
+                    <td className="p-4 text-center">
+                      <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border bg-slate-50 text-slate-700 border-slate-200">
+                        <Users size={14} /> {section.student_Count || 0}
+                      </span>
+                    </td>
+                    <td className="p-4 font-bold text-slate-700">{section.primary_Adviser || 'Unassigned'}</td>
+                    <td className="p-4 font-medium text-slate-600">{section.primary_Subject || '-'}</td>
+                    <td className="p-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedSection(section); }} className="p-2 bg-white text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Open Roster">
+                          <Users size={16} />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setEditingSection(section); setShowForm(true); }} className="p-2 bg-white text-amber-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Edit Section">
+                          <Edit2 size={16} />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); handleActionClick(section, 'hard_delete'); }} className="p-2 bg-white text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Delete Section">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

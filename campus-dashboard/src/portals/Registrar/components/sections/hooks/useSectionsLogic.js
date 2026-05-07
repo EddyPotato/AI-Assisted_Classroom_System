@@ -8,7 +8,6 @@ export function useSectionsLogic() {
   const [searchQuery, setSearchQuery] = useState('');
   const [yearFilter, setYearFilter] = useState('All');
   const [courseFilter, setCourseFilter] = useState('All');
-  const [viewMode, setViewMode] = useState('active'); // 'active' or 'archived'
 
   // Modal & Toast States for Batch 3
   const [modal, setModal] = useState({ isOpen: false, type: '', title: '', message: '', onConfirm: null });
@@ -51,25 +50,6 @@ export function useSectionsLogic() {
     setTimeout(() => setToastMessage(''), 3500); 
   };
 
-  // --- BATCH 3: ARCHIVE, RESTORE, AND DELETE LOGIC ---
-  const executeStatusChange = async (section, newStatus, successMsg) => {
-    setModal(prev => ({ ...prev, isOpen: false }));
-    
-    const payload = { ...section, status: newStatus };
-
-    try {
-      const res = await fetch(`http://localhost:5106/api/sections/${section.section_ID}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        fetchSections();
-        triggerToast(successMsg);
-      } else alert("Failed to update section status.");
-    } catch { alert("Network error."); }
-  };
-
   const executeHardDelete = async (id) => {
     setModal(prev => ({ ...prev, isOpen: false }));
     try {
@@ -84,19 +64,7 @@ export function useSectionsLogic() {
   };
 
   const handleActionClick = (section, actionType) => {
-    if (actionType === 'archive') {
-      setModal({
-        isOpen: true, type: 'danger', title: 'Archive Section',
-        message: `Mark ${section.section_Name} as Archived? It will be hidden from the active directory.`,
-        onConfirm: () => executeStatusChange(section, 'Archived', "Section moved to archive.")
-      });
-    } else if (actionType === 'restore') {
-      setModal({
-        isOpen: true, type: 'info', title: 'Restore Section',
-        message: `Restore ${section.section_Name} to Active status?`,
-        onConfirm: () => executeStatusChange(section, 'Active', "Section restored successfully.")
-      });
-    } else if (actionType === 'hard_delete') {
+    if (actionType === 'hard_delete') {
       setModal({
         isOpen: true, type: 'danger', title: 'PERMANENT DELETION',
         message: `Are you sure you want to completely erase ${section.section_Name}? This CANNOT be undone.`,
@@ -125,16 +93,14 @@ export function useSectionsLogic() {
 
   // Filtering Logic
   const filteredSections = sections.filter(section => {
-    const isArchived = section.status === 'Archived' || section.status === 'Inactive';
-    const matchesViewMode = viewMode === 'active' ? !isArchived : isArchived;
-
     const matchesSearch = (section.section_Name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (section.course || '').toLowerCase().includes(searchQuery.toLowerCase());
+                          (section.course || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (section.campus || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesYear = yearFilter === 'All' || section.year_Level?.toString() === yearFilter?.toString();
     const matchesCourse = courseFilter === 'All' || section.course === courseFilter;
 
-    return matchesViewMode && matchesSearch && matchesYear && matchesCourse;
+    return matchesSearch && matchesYear && matchesCourse;
   });
 
   return {
@@ -142,10 +108,10 @@ export function useSectionsLogic() {
     searchQuery, setSearchQuery,
     yearFilter, setYearFilter,
     courseFilter, setCourseFilter,
-    viewMode, setViewMode,
     modal, setModal,
     toastMessage, triggerToast,
     handleActionClick, fetchSections,
-    uniqueYears, uniqueCourses, getFullProgramName
+    uniqueYears, uniqueCourses, getFullProgramName,
+    totalSections: sections.length
   };
 }

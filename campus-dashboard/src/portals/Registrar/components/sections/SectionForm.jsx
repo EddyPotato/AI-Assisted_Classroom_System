@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Save, PlusCircle, Edit2, GraduationCap, ChevronDown, Layers, Archive, MapPin } from 'lucide-react';
+import { ArrowLeft, Save, PlusCircle, Edit2, GraduationCap, ChevronDown, MapPin } from 'lucide-react';
 import { useSectionFormLogic } from './hooks/useSectionFormLogic';
 
 export default function SectionForm({ section, onBack, onSuccess, onShowToast }) {
@@ -133,21 +133,6 @@ export default function SectionForm({ section, onBack, onSuccess, onShowToast })
                   className="w-full px-4 py-3 h-13 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 shadow-sm transition-all uppercase" 
                />
             </div>
-
-            {/* Status Toggle (Visual Only) */}
-            {isEditing && (
-              <div className="col-span-1 md:col-span-2 pt-4 border-t border-slate-100 opacity-50 cursor-not-allowed" title="To enable archiving, the STATUS column must be added to the SECTIONS database table.">
-                 <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Section Status</label>
-                 <div className="flex bg-slate-50 p-1.5 rounded-xl border border-slate-200 shadow-inner w-fit pointer-events-none">
-                    <button type="button" className="flex items-center gap-2 px-6 py-2 rounded-lg font-black text-sm bg-white text-blue-700 shadow-sm border border-slate-200">
-                       <Layers size={16}/> Active Cohort
-                    </button>
-                    <button type="button" className="flex items-center gap-2 px-6 py-2 rounded-lg font-black text-sm text-slate-400">
-                       <Archive size={16}/> Archived
-                    </button>
-                 </div>
-              </div>
-            )}
 
           </div>
 

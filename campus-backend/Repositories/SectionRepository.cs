@@ -20,7 +20,7 @@ namespace campus_backend.Repositories
             {
                 string sql = @"
                     SELECT 
-                        s.SECTION_ID, s.SECTION_NAME, s.COURSE, s.YEAR_LEVEL,
+                        s.SECTION_ID, s.SECTION_NAME, s.CAMPUS, s.COURSE, s.YEAR_LEVEL, s.SECTION_LETTER,
                         (SELECT COUNT(*) FROM ENROLLMENTS e WHERE e.SECTION_ID = s.SECTION_ID) as STUDENT_COUNT,
                         (SELECT u.FIRST_NAME || ' ' || u.LAST_NAME FROM SCHEDULES sch JOIN USERS u ON sch.PROFESSOR_ID = u.USER_ID WHERE sch.SECTION_ID = s.SECTION_ID FETCH FIRST 1 ROWS ONLY) as ADVISER_NAME,
                         (SELECT sub.TITLE FROM SCHEDULES sch JOIN SUBJECTS sub ON sch.SUBJECT_CODE = sub.SUBJECT_CODE WHERE sch.SECTION_ID = s.SECTION_ID FETCH FIRST 1 ROWS ONLY) as SUBJECT_TITLE
@@ -38,8 +38,10 @@ namespace campus_backend.Repositories
                             {
                                 Section_ID = reader["SECTION_ID"].ToString() ?? "",
                                 Section_Name = reader["SECTION_NAME"].ToString() ?? "",
+                                Campus = reader["CAMPUS"]?.ToString(),
                                 Course = reader["COURSE"].ToString() ?? "",
                                 Year_Level = Convert.ToInt32(reader["YEAR_LEVEL"]),
+                                Section_Letter = reader["SECTION_LETTER"]?.ToString(),
                                 Student_Count = Convert.ToInt32(reader["STUDENT_COUNT"]),
                                 Primary_Adviser = reader["ADVISER_NAME"]?.ToString(),
                                 Primary_Subject = reader["SUBJECT_TITLE"]?.ToString()
