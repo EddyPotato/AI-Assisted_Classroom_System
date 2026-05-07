@@ -14,7 +14,7 @@ export default function GuardPortal() {
   const user = JSON.parse(localStorage.getItem('campus_user') || 'null');
 
   // --- Core State ---
-  const [activeTab, setActiveTab] = useState('live'); // 'live' or 'history'
+  const [activeTab, setActiveTab] = useState('live'); 
   const [connectionStatus, setConnectionStatus] = useState("connecting");
   const [accessLog, setAccessLog] = useState([]);
   const [cacheBuster] = useState(() => Date.now());
@@ -22,9 +22,10 @@ export default function GuardPortal() {
   // --- Camera & Location State ---
   const [locations, setLocations] = useState([]);
   const [currentLocationId, setCurrentLocationId] = useState("");
-  const [streamStatus, setStreamStatus] = useState("offline"); // offline, loading, active, error
+  const [streamStatus, setStreamStatus] = useState("offline"); 
   const [streamToken, setStreamToken] = useState(() => Date.now());
   const [hardwareIndex, setHardwareIndex] = useState(0);
+  const [videoDevices, setVideoDevices] = useState([{ index: 0, label: 'System Default Camera' }]); // NEW: Real hardware names
 
   // 1. Fetch Camera Locations on Mount
   useEffect(() => {
@@ -47,7 +48,31 @@ export default function GuardPortal() {
     return () => { isMounted = false; };
   }, []);
 
-  // 2. Initialize SignalR Connection
+  // 2. Fetch Hardware Camera Names
+  useEffect(() => {
+    let isMounted = true;
+    const getCameras = async () => {
+      try {
+        // Requesting permission briefly helps the browser return actual labels instead of empty strings
+        await navigator.mediaDevices.getUserMedia({ video: true }).then(stream => stream.getTracks().forEach(t => t.stop())).catch(() => {});
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices.filter(device => device.kind === 'videoinput');
+        
+        if (isMounted && cameras.length > 0) {
+          setVideoDevices(cameras.map((cam, idx) => ({
+            index: idx,
+            label: cam.label || `System Camera ${idx + 1}` // Fallback if permission is denied
+          })));
+        }
+      } catch (err) { 
+        console.error("Could not fetch hardware names:", err); 
+      }
+    };
+    getCameras();
+    return () => { isMounted = false; };
+  }, []);
+
+  // 3. Initialize SignalR Connection
   useEffect(() => {
     let isMounted = true;
     const newConnection = new HubConnectionBuilder()
@@ -59,7 +84,6 @@ export default function GuardPortal() {
       .then(() => isMounted && setConnectionStatus('connected'))
       .catch(() => isMounted && setConnectionStatus('disconnected'));
 
-    // Listen for Phase 1 (Barcode Scanned)
     const handleBarcode = (data) => {
       if (!isMounted) return;
       if (data.location_id === currentLocationId) {
@@ -67,7 +91,6 @@ export default function GuardPortal() {
       }
     };
 
-    // Listen for Phase 2 (Face Verified)
     const handleResult = (data) => {
       if (!isMounted) return;
       if (data.location_id === currentLocationId) {
@@ -81,7 +104,7 @@ export default function GuardPortal() {
     newConnection.on("receivescanresult", handleResult); 
 
     return () => { isMounted = false; newConnection.stop(); };
-  }, [currentLocationId]); // Re-bind when location changes
+  }, [currentLocationId]);
 
   // --- Handlers ---
   const handleStartCamera = async () => {
@@ -96,7 +119,7 @@ export default function GuardPortal() {
         setTimeout(() => {
           setStreamToken(Date.now());
           setStreamStatus("active");
-        }, 1500); // Wait for hardware wakeup
+        }, 1500); 
       } else {
         setStreamStatus("error");
       }
@@ -133,7 +156,6 @@ export default function GuardPortal() {
               {connectionStatus === 'connected' ? 'System Live' : 'Offline'}
             </span>
           </div>
-          {/* Tab Navigation */}
           <div className="hidden md:flex bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button 
               onClick={() => setActiveTab('live')}
@@ -157,7 +179,7 @@ export default function GuardPortal() {
           </div>
           <button 
             onClick={() => {
-              if (streamStatus === 'active') handleStopCamera(); // Safety cleanup
+              if (streamStatus === 'active') handleStopCamera(); 
               navigate('/login', { replace: true });
             }} 
             className="bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 p-2.5 rounded-lg transition-colors border border-slate-200 shadow-sm active:scale-95"
@@ -174,7 +196,6 @@ export default function GuardPortal() {
         {activeTab === 'live' && (
           <div className="min-h-full lg:h-full flex flex-col gap-4 sm:gap-6 max-w-7xl mx-auto animate-in fade-in duration-300">
             
-            {/* Top Bar: Controls */}
             <CameraControls 
               streamStatus={streamStatus}
               onStart={handleStartCamera}
@@ -184,12 +205,11 @@ export default function GuardPortal() {
               onLocationChange={setCurrentLocationId}
               hardwareIndex={hardwareIndex}
               onHardwareIndexChange={setHardwareIndex}
+              videoDevices={videoDevices} // NEW PROP
             />
 
-            {/* Height-aware 50/50 layout that shrinks cleanly on lower resolutions. */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 items-stretch justify-center gap-4 sm:gap-6 min-h-0 w-full">
               
-              {/* Massive Square Camera Feed (Left) */}
               <div className="min-h-0 w-full flex justify-center items-center">
                 <LiveCameraFeed 
                   latestScan={latestScan} 
@@ -200,7 +220,6 @@ export default function GuardPortal() {
                 />
               </div>
 
-              {/* Massive Square Verification Panel (Right) */}
               <div className="min-h-0 w-full flex justify-center items-center">
                 <VerificationPanel latestScan={latestScan} cacheBuster={cacheBuster} />
               </div>
@@ -209,7 +228,7 @@ export default function GuardPortal() {
           </div>
         )}
 
-        {/* VIEW 2: ACCESS HISTORY (Privacy-First Full Logs) */}
+        {/* VIEW 2: ACCESS HISTORY */}
         {activeTab === 'history' && (
           <div className="h-full max-w-3xl mx-auto">
             <AccessHistory logs={accessLog.filter(log => log.status !== 'scanning')} />

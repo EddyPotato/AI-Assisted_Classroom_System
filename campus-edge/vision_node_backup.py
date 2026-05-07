@@ -22,10 +22,8 @@ CAMERA_WIDTH = 960
 CAMERA_HEIGHT = 540
 CAMERA_FPS = 15
 BARCODE_SCAN_INTERVAL = 0.25
-BARCODE_DEEP_SCAN_INTERVAL = 1.25
 FACE_PROCESS_EVERY_N_FRAMES = 4
 JPEG_QUALITY = 75
-SHARPEN_KERNEL = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
 
 # --- HARDWARE STATE CONTROL ---
 camera_active = False # Flag controlled by React UI
@@ -39,91 +37,26 @@ target_student_id = ""
 target_face_encoding = None
 verification_start_time = 0
 
-def _decode_image_variant(image, scale, offset_x, offset_y):
-    detections = []
-    for barcode in pyzbar.decode(image):
-        x, y, w, h = barcode.rect
-        barcode_data = barcode.data.decode("utf-8", errors="ignore").strip()
-        if not barcode_data:
-            continue
-
-        detections.append({
-            "data": barcode_data,
-            "rect": (
-                int(x / scale) + offset_x,
-                int(y / scale) + offset_y,
-                max(1, int(w / scale)),
-                max(1, int(h / scale))
-            )
-        })
-    return detections
-
-def decode_barcodes_robust(frame, deep_scan=False):
+# --- LIGHTWEIGHT BARCODE DECODER ---
+def decode_barcodes(frame):
+    """
+    Lightweight detection: Converts to grayscale and scans once.
+    Removes heavy CLAHE, Thresholding, and resizing loops.
+    """
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    height, width = gray_frame.shape
-
-    regions = [
-        (
-            gray_frame[int(height * 0.45):int(height * 0.98), int(width * 0.05):int(width * 0.95)],
-            int(width * 0.05),
-            int(height * 0.45)
-        ),
-        (gray_frame, 0, 0),
-    ]
-
-    seen = set()
     results = []
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-
-    for region, offset_x, offset_y in regions:
-        if region.size == 0:
-            continue
-
-        enhanced = clahe.apply(region)
-        fast_variants = ((region, (1.0,)), (enhanced, (1.0, 2.0)))
-
-        for base_image, scales in fast_variants:
-            for scale in scales:
-                image_to_decode = base_image
-                if scale != 1.0:
-                    image_to_decode = cv2.resize(base_image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-
-                for detection in _decode_image_variant(image_to_decode, scale, offset_x, offset_y):
-                    if detection["data"] in seen:
-                        continue
-                    seen.add(detection["data"])
-                    results.append(detection)
-
-            if results:
-                break
-
-        if results:
-            break
-
-        if not deep_scan:
-            continue
-
-        sharpened = cv2.filter2D(enhanced, -1, SHARPEN_KERNEL)
-        _, otsu = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-        for base_image in (sharpened, otsu):
-            for scale in (1.0, 2.0):
-                image_to_decode = base_image
-                if scale != 1.0:
-                    image_to_decode = cv2.resize(base_image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-
-                for detection in _decode_image_variant(image_to_decode, scale, offset_x, offset_y):
-                    if detection["data"] in seen:
-                        continue
-                    seen.add(detection["data"])
-                    results.append(detection)
-
-            if results:
-                break
-
-        if results:
-            break
-
+    seen = set()
+    
+    for barcode in pyzbar.decode(gray_frame):
+        barcode_data = barcode.data.decode("utf-8", errors="ignore").strip()
+        if barcode_data and barcode_data not in seen:
+            seen.add(barcode_data)
+            x, y, w, h = barcode.rect
+            results.append({
+                "data": barcode_data,
+                "rect": (int(x), int(y), int(w), int(h))
+            })
+            
     return results
 
 def publish_verification(status):
@@ -138,7 +71,6 @@ def publish_verification(status):
 def start_camera():
     global camera_active, current_location_id
     
-    # Extract location ID sent by the C# backend
     data = request.get_json(silent=True) or {}
     if "location_id" in data and data["location_id"]:
         current_location_id = data["location_id"]
@@ -154,46 +86,6 @@ def stop_camera():
     print("\n[SYSTEM] Guard Portal Closed. Camera put to sleep.")
     return jsonify({"status": "success"})
 
-@app.route('/manual_scan', methods=['POST'])
-def manual_scan():
-    """Triggered by the C# Backend when the Guard types a student ID manually."""
-    global current_state, target_student_id, target_face_encoding, verification_start_time, current_location_id
-    
-    data = request.get_json(silent=True) or {}
-    student_id = data.get("student_id")
-    
-    if not student_id:
-        return jsonify({"status": "error", "message": "No student ID provided"}), 400
-        
-    print(f"\n[PHASE 1] Manual Scan Triggered from Backend for: {student_id}")
-    
-    # Load encoding
-    search_pattern = os.path.join(REFERENCE_FACES_DIR, f"*{student_id}*.*")
-    matching_files = glob.glob(search_pattern)
-    
-    if matching_files:
-        ref_image_path = matching_files[0]
-        try:
-            print(f"[SYSTEM] Compiling 128D map from photo for {student_id}...")
-            ref_image = face_recognition.load_image_file(ref_image_path)
-            encodings = face_recognition.face_encodings(ref_image, num_jitters=10)
-            
-            if len(encodings) > 0:
-                target_face_encoding = encodings[0]
-                target_student_id = student_id
-                with state_lock:
-                    current_state = "VERIFYING_FACE"
-                    verification_start_time = time.time()
-                print("[PHASE 1] Ready for Manual Verification.")
-                return jsonify({"status": "success"})
-        except Exception as e:
-            print(f"[ERROR] Could not encode face: {e}")
-            pass
-            
-    print(f"[PHASE 1] Face data not found for {student_id}. Emitting denied.")
-    # If no face is found, emit denied so the UI resets
-    publish_verification("denied")
-    return jsonify({"status": "error", "message": "Face data not found"})
 
 # === CORE VISION LOOP ===
 def generate_frames():
@@ -208,7 +100,6 @@ def generate_frames():
     camera = None
     frame_counter = 0
     last_barcode_scan_time = 0
-    last_deep_barcode_scan_time = 0
     
     draw_rects = []
     draw_texts = []
@@ -270,14 +161,11 @@ def generate_frames():
                 draw_texts = [] 
 
                 # ------------------------------------------
-                # PHASE 1: BARCODE DETECTION
+                # PHASE 1: LIGHTWEIGHT BARCODE DETECTION
                 # ------------------------------------------
                 if current_state == "SCANNING_BARCODE":
                     last_barcode_scan_time = current_time
-                    deep_scan = (current_time - last_deep_barcode_scan_time) >= BARCODE_DEEP_SCAN_INTERVAL
-                    if deep_scan:
-                        last_deep_barcode_scan_time = current_time
-                    barcodes = decode_barcodes_robust(frame, deep_scan=deep_scan)
+                    barcodes = decode_barcodes(frame)
                     
                     for barcode in barcodes:
                         (x, y, w, h) = barcode["rect"]
