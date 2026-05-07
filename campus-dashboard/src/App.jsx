@@ -5,7 +5,7 @@ import Header from './components/ui/Header';
 import Sidebar from './components/ui/Sidebar';
 import Login from './components/auth/Login';
 
-// NEW Faculty Portals
+// Faculty Portals
 import FacultyDashboard from './portals/Faculty/FacultyDashboard';
 import ClassAttendance from './portals/Faculty/ClassAttendance';
 
@@ -13,6 +13,7 @@ import ClassAttendance from './portals/Faculty/ClassAttendance';
 import GuardPortal from './portals/Guard/GuardPortal';
 import RegistrarPortal from './portals/Registrar/RegistrarPortal';
 import PrincipalPortal from './portals/Principal/PrincipalPortal';
+import SystemAdminPortal from './portals/SystemAdmin/SystemAdminPortal'; // <-- NEW IMPORT
 
 function ProtectedRoute({ children }) {
   const user = sessionStorage.getItem('campus_user');
@@ -53,8 +54,10 @@ function RoleDispatcher() {
     case 'Registrar':
       return <RegistrarPortal />;
     case 'Principal':
-    case 'Admin':
       return <PrincipalPortal />;
+    case 'SystemAdmin': // <-- ADDED SYSTEM ADMIN ROLE
+    case 'Admin':
+      return <SystemAdminPortal />;
     default:
       return <Navigate to="/login" replace />;
   }
