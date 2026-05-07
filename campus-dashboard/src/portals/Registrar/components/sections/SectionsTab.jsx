@@ -113,7 +113,7 @@ export default function SectionsTab() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
         <div>
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Academic Sections</h2>
-          <p className="text-slate-500 mt-1 font-medium">Manage cohorts, assign advisers, and handle student rosters.</p>
+          <p className="text-slate-500 mt-1 font-medium">Manage cohorts and handle student rosters.</p>
         </div>
         
         <div className="flex items-center gap-4">
@@ -215,7 +215,7 @@ export default function SectionsTab() {
           </div>
         ) : (
           <div className="overflow-x-auto w-full">
-            <table className="w-full text-left border-collapse min-w-250">
+            <table className="w-full text-left border-collapse min-w-190">
               <thead>
                 <tr className="bg-slate-50 text-xs uppercase text-slate-500 font-black border-b-2 border-slate-200 cursor-pointer select-none">
                   <th className="p-4 w-40 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('section_Name')}>
@@ -232,12 +232,6 @@ export default function SectionsTab() {
                   </th>
                   <th className="p-4 w-32 text-center hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('student_Count')}>
                     <div className="flex items-center justify-center gap-1">Students {renderSortIcon('student_Count')}</div>
-                  </th>
-                  <th className="p-4 min-w-48 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('primary_Adviser')}>
-                    <div className="flex items-center gap-1">Primary Adviser {renderSortIcon('primary_Adviser')}</div>
-                  </th>
-                  <th className="p-4 min-w-56 hover:bg-slate-100 transition-colors outline-none" onClick={() => handleSort('primary_Subject')}>
-                    <div className="flex items-center gap-1">Primary Subject {renderSortIcon('primary_Subject')}</div>
                   </th>
                   <th className="p-4 w-36 text-right cursor-default outline-none">Actions</th>
                 </tr>
@@ -271,8 +265,6 @@ export default function SectionsTab() {
                         <Users size={14} /> {section.student_Count || 0}
                       </span>
                     </td>
-                    <td className="p-4 font-bold text-slate-700">{section.primary_Adviser || 'Unassigned'}</td>
-                    <td className="p-4 font-medium text-slate-600">{section.primary_Subject || '-'}</td>
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-2">
                         <button onClick={(e) => { e.stopPropagation(); setSelectedSection(section); }} className="p-2 bg-white text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg shadow-sm border border-slate-200 transition-colors" title="Open Roster">

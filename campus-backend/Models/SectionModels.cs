@@ -9,8 +9,6 @@ namespace campus_backend.Models
         public string? Campus { get; set; }
         public string? Section_Letter { get; set; }
         public int Student_Count { get; set; }
-        public string? Primary_Adviser { get; set; }
-        public string? Primary_Subject { get; set; }
     }
 
     public class SectionScheduleDTO
