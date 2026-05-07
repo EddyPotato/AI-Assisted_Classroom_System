@@ -44,7 +44,7 @@ export default function LiveCameraFeed({ streamStatus, streamToken, onRetry, onS
                 <p className="text-xs text-slate-400 mb-3">Retry attempt {retryCount}</p>
               )}
               <button 
-                onClick={onRetry}
+                onClick={() => onRetry()}
                 className="flex items-center gap-2 px-5 sm:px-8 py-3 sm:py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black tracking-widest uppercase transition-colors shadow-sm active:scale-95 text-sm sm:text-base"
               >
                 <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6" /> Retry Connection
