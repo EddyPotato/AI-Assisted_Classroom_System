@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Video, VideoOff, MapPin, Usb, Search, DoorOpen, Presentation } from 'lucide-react';
+import { Video, VideoOff, MapPin, Usb, Search, ChevronDown, Maximize, Minimize } from 'lucide-react';
 
 export default function CameraControls({ 
   streamStatus, 
@@ -10,25 +10,23 @@ export default function CameraControls({
   onLocationChange,
   hardwareIndex,
   onHardwareIndexChange,
-  videoDevices
+  videoDevices,
+  isFullscreen,
+  toggleFullscreen
 }) {
   const [isLocOpen, setIsLocOpen] = useState(false);
   const [locSearch, setLocSearch] = useState('');
+  const [isHwOpen, setIsHwOpen] = useState(false);
 
-  // Find the currently selected location object
   const selectedLoc = locations.find(l => l.location_ID === currentLocationId);
 
-  // Filter locations based on search query
   const filteredLocs = locations.filter(l => 
     l.camera_Name?.toLowerCase().includes(locSearch.toLowerCase()) ||
-    l.location_Type?.toLowerCase().includes(locSearch.toLowerCase()) ||
     l.associated_Room_Id?.toLowerCase().includes(locSearch.toLowerCase()) ||
     l.location_ID?.toLowerCase().includes(locSearch.toLowerCase())
   );
 
-  // Categorize for the UI
-  const gates = filteredLocs.filter(l => !l.associated_Room_Id || l.associated_Room_Id.trim() === '');
-  const rooms = filteredLocs.filter(l => l.associated_Room_Id && l.associated_Room_Id.trim() !== '');
+  const selectedHw = videoDevices?.find(d => d.index === hardwareIndex) || videoDevices?.[0] || { label: 'System Default Camera' };
 
   const handleSelectLocation = (id) => {
     onLocationChange(id);
@@ -37,135 +35,147 @@ export default function CameraControls({
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-3 sm:p-4 shadow-sm flex flex-col xl:flex-row items-center justify-between gap-3 sm:gap-4 shrink-0 relative">
+    <div className={`${isFullscreen ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'} border rounded-2xl sm:rounded-3xl p-3 sm:p-4 shadow-sm flex flex-col xl:flex-row items-center justify-between gap-3 sm:gap-4 shrink-0 relative transition-colors duration-300`}>
       
       <div className="flex flex-col lg:flex-row items-center gap-3 w-full xl:w-auto flex-1 min-w-0">
         
-        {/* SMART LOCATION DROPDOWN */}
+        {/* SIMPLIFIED SMART LOCATION DROPDOWN */}
         <div className="relative w-full lg:flex-1 lg:max-w-md">
           {selectedLoc && !isLocOpen ? (
             <div 
                onClick={() => { if (streamStatus !== 'active' && streamStatus !== 'loading') setIsLocOpen(true); }}
-               className={`flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl px-4 py-2 sm:py-2.5 transition-all w-full select-none ${streamStatus === 'active' || streamStatus === 'loading' ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer hover:border-blue-400 hover:bg-white focus:ring-2 focus:ring-blue-500/20'}`}
+               className={`flex items-center justify-between border rounded-xl sm:rounded-2xl px-4 py-3 sm:py-3.5 w-full select-none transition-colors ${
+                 streamStatus === 'active' || streamStatus === 'loading' 
+                   ? (isFullscreen ? 'opacity-50 cursor-not-allowed bg-slate-800 border-slate-700' : 'opacity-70 cursor-not-allowed bg-slate-50 border-slate-300')
+                   : (isFullscreen ? 'cursor-pointer hover:border-slate-500 bg-slate-700 border-slate-600' : 'cursor-pointer hover:border-slate-400 bg-white border-slate-300')
+               }`}
             >
                <div className="flex items-center gap-3 overflow-hidden">
-                 <MapPin className="text-blue-500 shrink-0" size={22} />
-                 <div className="flex flex-col min-w-0">
-                   <span className="font-black text-slate-800 text-sm sm:text-base leading-tight truncate">
-                     {selectedLoc.camera_Name}
-                   </span>
-                   <span className="text-[10px] sm:text-xs font-bold text-slate-500 truncate uppercase tracking-wider">
-                     {selectedLoc.associated_Room_Id ? `Room: ${selectedLoc.associated_Room_Id}` : selectedLoc.location_Type}
-                   </span>
-                 </div>
+                 <MapPin className={isFullscreen ? "text-blue-400 shrink-0" : "text-slate-400 shrink-0"} size={22} />
+                 <span className={`font-black text-lg truncate ${isFullscreen ? 'text-white' : 'text-slate-800'}`}>
+                   {selectedLoc.camera_Name}
+                 </span>
                </div>
-               <Search size={16} className="text-slate-400 shrink-0 ml-2" />
+               <ChevronDown size={20} className={isFullscreen ? "text-slate-400 shrink-0 ml-2" : "text-slate-400 shrink-0 ml-2"} />
             </div>
           ) : (
             <div className="relative w-full">
-              <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={22} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500" />
               <input 
                  autoFocus={isLocOpen}
                  type="text" 
                  value={locSearch} 
                  onChange={(e) => { setLocSearch(e.target.value); setIsLocOpen(true); }}
-                 onFocus={() => setIsLocOpen(true)}
                  onBlur={() => setTimeout(() => setIsLocOpen(false), 200)}
-                 placeholder="Search gates or rooms (e.g. IL606)..." 
-                 className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-white border border-blue-400 rounded-xl sm:rounded-2xl outline-none ring-4 ring-blue-500/10 font-bold text-slate-800 text-sm sm:text-base transition-all" 
+                 placeholder="Search locations..." 
+                 className={`w-full pl-12 pr-4 py-3 sm:py-3.5 border rounded-xl sm:rounded-2xl outline-none font-black text-lg m-0 box-border transition-colors ${
+                   isFullscreen 
+                    ? 'bg-slate-700 border-blue-500 text-white placeholder:text-slate-400 ring-4 ring-blue-500/20' 
+                    : 'bg-white border-blue-500 text-slate-800 placeholder:text-slate-400 ring-4 ring-blue-500/10'
+                 }`} 
               />
             </div>
           )}
 
-          {/* Location Suggestions Panel */}
           {isLocOpen && (
-            <div className="absolute top-full left-0 w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 max-h-80 overflow-y-auto divide-y divide-slate-100">
-              
-              {/* Category: Gates */}
-              {gates.length > 0 && (
-                <div className="py-2">
-                  <div className="px-4 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Main Campus Gates</div>
-                  {gates.map(loc => (
-                    <div key={loc.location_ID} onMouseDown={() => handleSelectLocation(loc.location_ID)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors group">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors text-slate-400"><DoorOpen size={16}/></div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-black text-slate-800 group-hover:text-blue-700">{loc.camera_Name}</span>
-                        <span className="text-xs font-bold text-slate-500">{loc.location_Type}</span>
-                      </div>
-                    </div>
-                  ))}
+            <div className={`absolute top-full left-0 w-full mt-2 border rounded-2xl shadow-xl z-50 max-h-80 overflow-y-auto py-2 ${isFullscreen ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
+              {filteredLocs.map(loc => (
+                <div 
+                  key={loc.location_ID} 
+                  onMouseDown={() => handleSelectLocation(loc.location_ID)} 
+                  className={`px-5 py-3 cursor-pointer transition-colors ${isFullscreen ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
+                >
+                  <span className={`text-lg font-black ${isFullscreen ? 'text-white' : 'text-slate-800'}`}>{loc.camera_Name}</span>
                 </div>
+              ))}
+              {filteredLocs.length === 0 && (
+                <div className={`p-4 text-center text-sm font-bold ${isFullscreen ? 'text-slate-400' : 'text-slate-400'}`}>No locations found.</div>
               )}
-
-              {/* Category: Rooms */}
-              {rooms.length > 0 && (
-                <div className="py-2">
-                  <div className="px-4 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Classrooms / Labs</div>
-                  {rooms.map(loc => (
-                    <div key={loc.location_ID} onMouseDown={() => handleSelectLocation(loc.location_ID)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-emerald-50 cursor-pointer transition-colors group">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors text-slate-400"><Presentation size={16}/></div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-black text-slate-800 group-hover:text-emerald-700">{loc.associated_Room_Id} Station</span>
-                        <span className="text-xs font-bold text-slate-500">{loc.camera_Name}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {filteredLocs.length === 0 && <div className="p-4 text-center text-sm font-bold text-slate-400">No locations match your search.</div>}
             </div>
           )}
         </div>
 
-        {/* NATIVE HARDWARE DROPDOWN */}
-        <div className="flex items-center gap-2 w-full lg:w-auto">
-          <div className="relative w-full flex items-center group">
-            <div className="absolute left-4 z-10">
-              <Usb className="text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={22} />
-            </div>
-            <select 
-              value={hardwareIndex}
-              onChange={(e) => onHardwareIndexChange(parseInt(e.target.value))}
-              disabled={streamStatus === 'active' || streamStatus === 'loading'}
-              className="bg-slate-50 border border-slate-200 text-slate-700 font-black text-sm sm:text-base rounded-xl sm:rounded-2xl pl-12 pr-10 py-2 sm:py-3 outline-none hover:border-indigo-300 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50 transition-all w-full appearance-none cursor-pointer"
-            >
-              {videoDevices?.length > 0 ? (
+        {/* CUSTOM HARDWARE DROPDOWN */}
+        <div className="relative w-full lg:w-80">
+          <div 
+             onClick={() => { if (streamStatus !== 'active' && streamStatus !== 'loading') setIsHwOpen(!isHwOpen); }}
+             className={`flex items-center justify-between border rounded-xl sm:rounded-2xl px-4 py-3 sm:py-3.5 w-full select-none transition-colors ${
+              streamStatus === 'active' || streamStatus === 'loading' 
+                ? (isFullscreen ? 'opacity-50 cursor-not-allowed bg-slate-800 border-slate-700' : 'opacity-70 cursor-not-allowed bg-slate-50 border-slate-300')
+                : (isFullscreen ? 'cursor-pointer hover:border-slate-500 bg-slate-700 border-slate-600' : 'cursor-pointer hover:border-slate-400 bg-white border-slate-300')
+            }`}
+          >
+             <div className="flex items-center gap-3 overflow-hidden">
+               <Usb className={isFullscreen ? "text-slate-400 shrink-0" : "text-slate-400 shrink-0"} size={22} />
+               <span className={`font-black text-base truncate ${isFullscreen ? 'text-white' : 'text-slate-800'}`}>
+                 {selectedHw.label}
+               </span>
+             </div>
+             <ChevronDown size={20} className={isFullscreen ? "text-slate-400 shrink-0 ml-2" : "text-slate-400 shrink-0 ml-2"} />
+          </div>
+
+          {isHwOpen && (
+            <div className={`absolute top-full left-0 w-full mt-2 border rounded-2xl shadow-xl z-50 max-h-64 overflow-y-auto py-2 ${isFullscreen ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
+              {videoDevices && videoDevices.length > 0 ? (
                 videoDevices.map(cam => (
-                  <option key={cam.index} value={cam.index}>
-                    {cam.label}
-                  </option>
+                  <div 
+                    key={cam.index} 
+                    onMouseDown={() => { onHardwareIndexChange(cam.index); setIsHwOpen(false); }} 
+                    className={`px-5 py-3 cursor-pointer transition-colors truncate ${isFullscreen ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
+                  >
+                    <span className={`text-base font-black ${isFullscreen ? 'text-white' : 'text-slate-800'}`}>{cam.label}</span>
+                  </div>
                 ))
               ) : (
-                <option value={0}>System Default Camera</option>
+                <div className="px-5 py-3">
+                  <span className={`text-base font-black ${isFullscreen ? 'text-white' : 'text-slate-800'}`}>System Default Camera</span>
+                </div>
               )}
-            </select>
-            {/* Custom dropdown arrow */}
-            <div className="absolute right-4 pointer-events-none">
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
-          </div>
+          )}
         </div>
 
       </div>
 
       {/* ACTION BUTTONS */}
-      <div className="flex items-center gap-3 w-full xl:w-auto shrink-0">
+      <div className="flex items-center gap-2 w-full xl:w-auto shrink-0">
         {streamStatus === 'active' || streamStatus === 'loading' ? (
           <button 
             onClick={onStop}
-            className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black text-sm sm:text-base px-6 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl border border-rose-200 transition-colors active:scale-95 whitespace-nowrap shadow-sm"
+            className={`flex-1 xl:flex-none flex items-center justify-center gap-2 font-black text-sm sm:text-base px-6 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl border transition-colors active:scale-95 whitespace-nowrap shadow-sm ${
+              isFullscreen 
+                ? 'bg-rose-900/50 hover:bg-rose-900 text-rose-400 border-rose-800' 
+                : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
+            }`}
           >
             <VideoOff size={18} strokeWidth={2.5} /> Stop Monitoring
           </button>
         ) : (
           <button 
             onClick={onStart}
-            className="w-full flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-black text-sm sm:text-base px-6 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl border border-emerald-200 transition-colors active:scale-95 whitespace-nowrap shadow-sm"
+            className={`flex-1 xl:flex-none flex items-center justify-center gap-2 font-black text-sm sm:text-base px-6 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl border transition-colors active:scale-95 whitespace-nowrap shadow-sm ${
+              isFullscreen 
+                ? 'bg-emerald-900/50 hover:bg-emerald-900 text-emerald-400 border-emerald-800' 
+                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200'
+            }`}
           >
             <Video size={18} strokeWidth={2.5} /> Start Monitoring
           </button>
         )}
+
+        {/* FULLSCREEN TOGGLE */}
+        <button 
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Exit Fullscreen" : "Enter Enterprise Kiosk Mode"}
+          className={`flex items-center justify-center p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border transition-colors active:scale-95 shadow-sm shrink-0 ${
+            isFullscreen 
+              ? 'bg-slate-700 hover:bg-slate-600 text-slate-300 border-slate-600' 
+              : 'bg-slate-50 hover:bg-slate-100 text-slate-500 border-slate-200'
+          }`}
+        >
+          {isFullscreen ? <Minimize size={20} strokeWidth={2.5} /> : <Maximize size={20} strokeWidth={2.5} />}
+        </button>
+
       </div>
     </div>
   );

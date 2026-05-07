@@ -120,8 +120,15 @@ def vision_processing_loop():
                     
                     print(f"[SUCCESS] Identity Confirmed for {state.target_student_id}")
                     publish_verification("approved")
+                    
+                    # Update State
                     state.current_state = "SCANNING_BARCODE"
-                    time.sleep(2) # "Snapshots" the frame visually for the user
+                    
+                    # Wait 2 seconds so the user can see the green box, THEN clear it
+                    time.sleep(2) 
+                    draw_rects.clear()
+                    draw_texts.clear()
+                    
                 else:
                     draw_rects.append(((left, top), (right, bottom), (0, 165, 255)))
                     draw_texts.append((f"POOR MATCH: {round(match_result['distance'], 2)}", (left, top - 10), (0, 165, 255)))
@@ -129,8 +136,12 @@ def vision_processing_loop():
             elif (current_time - state.verification_start_time) > config.FACE_MATCH_TIMEOUT:
                 print(f"[FAILED] Match timeout for {state.target_student_id}")
                 publish_verification("denied")
+                
+                # Update State and clear arrays on timeout
                 state.current_state = "SCANNING_BARCODE"
                 time.sleep(2)
+                draw_rects.clear()
+                draw_texts.clear()
 
         # RENDER VISUALS
         if state.current_state == "VERIFYING_FACE":

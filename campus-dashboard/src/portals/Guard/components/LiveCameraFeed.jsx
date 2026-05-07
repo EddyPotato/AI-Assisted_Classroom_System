@@ -1,6 +1,6 @@
 import { Video, ScanLine, Power, RefreshCw } from 'lucide-react';
 
-export default function LiveCameraFeed({ latestScan, streamStatus, streamToken, onRetry, onStreamDrop }) {
+export default function LiveCameraFeed({ streamStatus, streamToken, onRetry, onStreamDrop }) {
   const streamUrl = `http://localhost:5000/video_feed?t=${streamToken}`;
 
   return (
@@ -10,19 +10,9 @@ export default function LiveCameraFeed({ latestScan, streamStatus, streamToken, 
         <img 
           src={streamUrl} 
           alt="Live Feed" 
-          className="w-full h-full object-cover transform scale-x-[-1] animate-in fade-in duration-500" 
+          className="w-full h-full object-cover animate-in fade-in duration-500" 
           onError={onStreamDrop}
         />
-      )}
-
-      {/* Target Reticle (Responsive Square) */}
-      {streamStatus === "active" && (
-        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2/3 h-2/3 aspect-square max-w-xs max-h-xs border-2 rounded-3xl transition-all duration-300 z-20 pointer-events-none ${latestScan?.status === 'scanning' ? 'border-blue-400/50 scale-105' : 'border-white/20'}`}>
-            <div className={`absolute -top-2 -left-2 w-10 h-10 border-t-4 border-l-4 rounded-tl-2xl transition-colors ${latestScan?.status === 'scanning' ? 'border-blue-500' : 'border-white/50'}`}></div>
-            <div className={`absolute -top-2 -right-2 w-10 h-10 border-t-4 border-r-4 rounded-tr-2xl transition-colors ${latestScan?.status === 'scanning' ? 'border-blue-500' : 'border-white/50'}`}></div>
-            <div className={`absolute -bottom-2 -left-2 w-10 h-10 border-b-4 border-l-4 rounded-bl-2xl transition-colors ${latestScan?.status === 'scanning' ? 'border-blue-500' : 'border-white/50'}`}></div>
-            <div className={`absolute -bottom-2 -right-2 w-10 h-10 border-b-4 border-r-4 rounded-br-2xl transition-colors ${latestScan?.status === 'scanning' ? 'border-blue-500' : 'border-white/50'}`}></div>
-        </div>
       )}
 
       {/* Fallback States */}
