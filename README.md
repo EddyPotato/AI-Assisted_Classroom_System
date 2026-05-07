@@ -32,10 +32,10 @@ Smart campus platform for registrar workflows, section rosters, master schedules
   - Master Schedule Import tab for CSV/Excel-style pasted schedule rows
   - Subject type support through `SUBJECT_TYPE` (`Lec` / `Lab`)
 - Guard and camera workflows:
-  - Camera location support
-  - Start/stop camera through backend proxy
-  - Manual scan and bypass paths
-  - SignalR updates from backend to dashboard
+  - Real-time access log verification via SignalR WebSockets
+  - Camera location configuration (Entrance, Exit, Room-specific)
+  - Start/stop manual camera controls
+  - Manual ID entry and bypass override paths with privacy-first event logging
 - Python edge node:
   - Webcam/MJPEG feed
   - Barcode/QR detection
@@ -46,6 +46,7 @@ Smart campus platform for registrar workflows, section rosters, master schedules
 
 ## Latest Fixes
 
+- Migrated frontend authentication from `localStorage` to `sessionStorage` to enforce secure session clearing on tab close and to allow multi-tab role concurrency.
 - Changed the Registrar Section Directory from card layout to a sortable table layout.
 - Removed unsupported section archive/status UI logic because `SECTIONS` in `database/schema.sql` has no `STATUS` column.
 - Restored schedule CRUD endpoints in `SchedulesController.cs` while keeping the new `POST /api/schedules/bulk-import` endpoint.
@@ -117,6 +118,8 @@ Note: `npm.cmd run build` completes with Vite's normal large-chunk warning becau
 AI-Assisted_Classroom_System/
   README.md
   CONTEXT.md
+  GUARD_PORTAL_DEV_GUIDE.md
+  NEXT_GOALS.md
   AI-Assisted_Classroom_System.sln
   database/
     schema.sql

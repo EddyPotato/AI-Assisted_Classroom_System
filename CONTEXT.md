@@ -75,6 +75,15 @@ Important behavior:
 - Bulk import uses nullable Oracle values for optional professor and room IDs.
 - Global schedule directory uses the shared hook again and sorts times numerically.
 
+### Authentication Storage & Concurrency
+
+Authentication state is now managed using `sessionStorage` instead of `localStorage`.
+
+Important behavior:
+- Logging in sets a `sessionStorage` item (`campus_user`).
+- Closing a tab completely wipes the session, securely returning the user to the login page when reopening.
+- Supports multi-tab role concurrency: Tab A can be logged in as Guard while Tab B is logged in as Registrar or Principal.
+
 ### Master Schedule Import
 
 Current file:
@@ -393,6 +402,8 @@ The table-based Section Directory should stay schema-honest. Archive/restore can
 ---
 
 ## Guard Portal Notes
+
+**See:** `GUARD_PORTAL_DEV_GUIDE.md` and `NEXT_GOALS.md` for the comprehensive real-time SignalR implementation guide, face-recognition AI details, and phase 2 roadmaps.
 
 Guard Portal Phase 2 has these pieces:
 

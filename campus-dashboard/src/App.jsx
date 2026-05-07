@@ -15,7 +15,7 @@ import RegistrarPortal from './portals/Registrar/RegistrarPortal';
 import PrincipalPortal from './portals/Principal/PrincipalPortal';
 
 function ProtectedRoute({ children }) {
-  const user = localStorage.getItem('campus_user');
+  const user = sessionStorage.getItem('campus_user');
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
@@ -39,7 +39,7 @@ function CampusLayout() {
 
 // --- THE ROLE ROUTER ---
 function RoleDispatcher() {
-  const userString = localStorage.getItem('campus_user');
+  const userString = sessionStorage.getItem('campus_user');
   const user = userString ? JSON.parse(userString) : null;
 
   if (!user) return <Navigate to="/login" replace />;
