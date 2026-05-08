@@ -1,15 +1,21 @@
 # Camera and Image Processing
 opencv-python>=4.9.0
 numpy>=1.26.4
+Pillow>=10.0.0
 
-# AI Facial Recognition
+# AI Facial Recognition (REQUIRES Visual C++ Build Tools on Windows!)
+# Install CMake first: pip install cmake
+# Then install dlib (may take 5-10 minutes to compile)
+# Or use pre-built wheel: pip install dlib-19.24.2-cp311-cp311-win_amd64.whl
 face_recognition>=1.3.0
 dlib>=19.24.2
+scipy>=1.11.0
+scikit-image>=0.21.0
 
 # Barcode / QR Code Scanning
 pyzbar>=0.1.9
 
-# Edge Node Web Server (ADDED THESE)
+# Edge Node Web Server
 Flask>=3.0.3
 Flask-Cors>=4.0.1
 
