@@ -35,7 +35,6 @@ export default function Login() {
       if (response.ok) {
         const responseData = await response.json();
         
-        // THE FIX: We specifically target responseData.user to save to sessionStorage
         sessionStorage.setItem('campus_user', JSON.stringify(responseData.user));
         
         navigate('/dashboard', { replace: true });
@@ -45,20 +44,20 @@ export default function Login() {
       }
     } catch (err) {
       console.error("Login Error:", err);
-      setError("Network error. Cannot connect to the Campus Server.");
+      setError("Network error. Cannot connect to the campus servers. Please check your connection.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4 font-sans">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans selection:bg-blue-200">
       <div className="w-full max-w-md">
         
         <LoginHeader />
 
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
-          <div className="p-8">
+        <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
+          <div className="p-8 sm:p-10">
             <LoginForm 
               credentials={credentials}
               error={error}
@@ -68,13 +67,16 @@ export default function Login() {
             />
           </div>
           
+          {/* Real-world Academic Contact Footer */}
           <div className="bg-slate-50 p-6 border-t border-slate-100 text-center">
-            <p className="text-sm font-medium text-slate-500">
-              Need access? Contact the QCU Registrar.
+            <p className="text-sm font-medium text-slate-500 leading-relaxed">
+              Having trouble signing in? <br/>
+              <a href="#" className="text-blue-600 hover:text-blue-800 font-bold transition-colors">
+                Contact the MIS / IT Support Helpdesk.
+              </a>
             </p>
           </div>
         </div>
-
       </div>
     </div>
   );

@@ -92,5 +92,18 @@ namespace campus_backend.Repositories
             await connection.OpenAsync();
             return await command.ExecuteNonQueryAsync() > 0;
         }
+
+        public async Task<bool> DeleteLocationAsync(string locationId)
+        {
+            using var connection = new OracleConnection(_connectionString);
+            await connection.OpenAsync();
+            
+            var query = "DELETE FROM CAMPUS_ADMIN.CAMERA_LOCATIONS WHERE LOCATION_ID = :id";
+            using var cmd = new OracleCommand(query, connection);
+            cmd.Parameters.Add(new OracleParameter("id", locationId));
+            
+            var rowsAffected = await cmd.ExecuteNonQueryAsync();
+            return rowsAffected > 0;
+        }
     }
 }

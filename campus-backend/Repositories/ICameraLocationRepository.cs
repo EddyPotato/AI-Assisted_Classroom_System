@@ -10,5 +10,6 @@ namespace campus_backend.Repositories
         Task<CameraLocation> GetLocationByIdAsync(string locationId);
         Task<bool> CreateLocationAsync(CameraLocation location);
         Task<bool> UpdateLocationAsync(string locationId, CameraLocation location);
+        Task<bool> DeleteLocationAsync(string locationId);
     }
 }

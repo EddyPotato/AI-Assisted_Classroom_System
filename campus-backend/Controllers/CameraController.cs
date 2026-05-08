@@ -38,5 +38,14 @@ namespace campus_backend.Controllers
             if (success) return Ok();
             return NotFound("Camera location not found.");
         }
+
+        [HttpDelete("locations/{id}")]
+        public async Task<IActionResult> DeleteLocation(string id)
+        {
+            // Ensure your ICameraLocationRepository has a DeleteLocationAsync method!
+            var success = await _locationRepo.DeleteLocationAsync(id);
+            if (success) return Ok();
+            return BadRequest("Failed to delete location.");
+        }
     }
 }
