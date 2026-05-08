@@ -1,10 +1,7 @@
 import { ShieldCheck, XCircle, AlertTriangle, User, Clock, Camera, ImageOff } from 'lucide-react';
 
-// THE FIX: Added currentLocationId as a prop to handle Hot-Swapping resets
 export default function VerificationPanel({ latestScan, cacheBuster, currentLocationId }) {
   
-  // HOT-SWAP FIX: If there is no scan, OR if the scan belongs to the OLD camera, 
-  // immediately reset the UI to Phase 1 so it doesn't "ghost" the previous student!
   if (!latestScan || (currentLocationId && latestScan.location_id !== currentLocationId)) {
     return (
       <div className="w-full h-full min-h-75 flex flex-col items-center justify-center bg-white rounded-3xl border border-slate-200 shadow-sm p-8 text-center">
@@ -34,7 +31,9 @@ export default function VerificationPanel({ latestScan, cacheBuster, currentLoca
   let panelStyle = "bg-rose-50 border-rose-500 shadow-rose-100"; 
   let Icon = XCircle;
   let iconColor = "text-rose-600";
-  let statusMessage = latestScan.message || latestScan.hint || "ENTRY DENIED";
+  
+  // THE FIX: Safe fallback logic so an approved scan NEVER says "ENTRY DENIED"
+  let statusMessage = latestScan.message || latestScan.hint || (isApproved ? "ACCESS GRANTED" : "ENTRY DENIED");
   let messageStyle = "bg-rose-100 text-rose-800";
 
   if (isScanning) {
@@ -58,7 +57,6 @@ export default function VerificationPanel({ latestScan, cacheBuster, currentLoca
     messageStyle = "bg-emerald-100 text-emerald-800";
   } 
   else if (isCutting || isDuplicate) {
-    // YELLOW WARNING (Includes the new HCI "Already In-Campus" message)
     panelStyle = "bg-amber-50 border-amber-500 shadow-amber-100";
     Icon = AlertTriangle;
     iconColor = "text-amber-600";
@@ -85,7 +83,6 @@ export default function VerificationPanel({ latestScan, cacheBuster, currentLoca
 
   const showTimestamp = latestScan.timestamp && !isScanning && !isMissingFace && !isInvalidSchedule;
 
-  // THE FIX: Format the Middle Initial if it exists
   const middleInitial = latestScan.middle_name ? ` ${latestScan.middle_name.charAt(0)}.` : '';
 
   return (
@@ -93,7 +90,6 @@ export default function VerificationPanel({ latestScan, cacheBuster, currentLoca
       
       <div className="p-6 sm:p-8 flex-1 flex flex-col items-center justify-center text-center">
         
-        {/* SQUARE PROFILE PICTURE WITH FLOATING STATUS ICON */}
         <div className="relative mb-6">
           {profilePicUrl ? (
             <img
@@ -131,7 +127,6 @@ export default function VerificationPanel({ latestScan, cacheBuster, currentLoca
           </div>
         </div>
 
-        {/* STUDENT IDENTITY WITH MIDDLE INITIAL */}
         <h2 className="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight leading-none mt-2">
           {latestScan.first_name}{middleInitial} <span className="text-slate-500">{latestScan.last_name}</span>
         </h2>
@@ -139,12 +134,10 @@ export default function VerificationPanel({ latestScan, cacheBuster, currentLoca
           {latestScan.student_id}
         </div>
 
-        {/* NATURAL TEXT MESSAGE FROM BACKEND */}
         <div className={`px-6 py-4 rounded-2xl w-full font-black text-lg sm:text-xl leading-relaxed shadow-sm ${messageStyle}`}>
           {statusMessage}
         </div>
 
-        {/* CONDITIONAL TIMESTAMP */}
         {showTimestamp && (
           <div className="mt-8 flex items-center gap-2 text-sm font-bold text-slate-500 bg-white/60 px-5 py-2.5 rounded-xl border border-slate-200 shadow-sm animate-in fade-in zoom-in duration-300">
             <Clock size={18} />

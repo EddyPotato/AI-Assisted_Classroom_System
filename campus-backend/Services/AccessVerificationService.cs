@@ -24,11 +24,14 @@ namespace campus_backend.Services
         // Shared State across phases
         private string _pendingStudentId = "";
         private string _pendingFirstName = "";
-        private string _pendingMiddleName = ""; // THE FIX: Added Middle Name State
+        private string _pendingMiddleName = ""; 
         private string _pendingLastName = "";
         private string? _pendingFacePath = null;
         private string _currentLocationId = "CAM-001";
         private string _pendingRole = "student"; 
+        
+        // THE FIX: State flag to completely lock out Phase 2 if Phase 1 resolves early.
+        private bool _abortPhase2 = false; 
 
         public AccessVerificationService(
             ILogger<AccessVerificationService> logger,
@@ -42,6 +45,7 @@ namespace campus_backend.Services
 
         public async Task ProcessPhase1BarcodeAsync(string payload)
         {
+            _abortPhase2 = false; // Reset the lock on every new barcode scan
             ParsePayload(payload);
             if (string.IsNullOrEmpty(_pendingStudentId)) return;
 
@@ -57,8 +61,6 @@ namespace campus_backend.Services
                 var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
                 var locRepo = scope.ServiceProvider.GetRequiredService<ICameraLocationRepository>();
                 var schedRepo = scope.ServiceProvider.GetRequiredService<IScheduleRepository>();
-                
-                // THE FIX: Pull AttendanceRepo into Phase 1 for immediate status checking
                 var attRepo = scope.ServiceProvider.GetRequiredService<IAttendanceRepository>();
 
                 // 1. Fetch Node Data
@@ -73,16 +75,20 @@ namespace campus_backend.Services
                 var student = await studentRepo.GetStudentByIdAsync(_pendingStudentId);
                 if (student != null) {
                     _pendingFirstName = student.First_Name ?? "Unknown";
-                    _pendingMiddleName = student.Middle_Name ?? ""; // Store Middle Name
+                    _pendingMiddleName = student.Middle_Name ?? ""; 
                     _pendingLastName = student.Last_Name ?? "";
+                    
+                    // KEEP THE PHOTO INTACT
                     _pendingFacePath = student.Face_Reference_Path; 
                     _pendingRole = "student";
                 } else {
                     var user = await userRepo.GetUserByIdAsync(_pendingStudentId);
                     if (user != null) {
                         _pendingFirstName = user.First_Name ?? "Unknown";
-                        _pendingMiddleName = user.Middle_Name ?? ""; // Store Middle Name
+                        _pendingMiddleName = user.Middle_Name ?? ""; 
                         _pendingLastName = user.Last_Name ?? "";
+                        
+                        // KEEP THE PHOTO INTACT
                         _pendingFacePath = user.Face_Reference_Path; 
                         _pendingRole = "user";
                     }
@@ -97,12 +103,12 @@ namespace campus_backend.Services
                 {
                     if (logicType == "gate" && locationType == "entrance")
                     {
-                        // Immediate Duplicate Check
+                        // Immediate Duplicate Check for Campus Entry
                         if (currentPresence.ToLower() == "in-campus")
                         {
                             earlyStatus = "duplicate";
                             scanHint = "Campus Access Active: You are already IN-CAMPUS.";
-                            _pendingFacePath = null; // Setting to null aborts Phase 2 verification
+                            _abortPhase2 = true; // Lock out Phase 2 completely (Keeps photo intact!)
                         }
                     }
                     else if (logicType == "room" && locationType == "entrance")
@@ -114,7 +120,7 @@ namespace campus_backend.Services
                             if (!isEnrolled) {
                                 earlyStatus = "invalid_schedule";
                                 scanHint = "No scheduled class here at this time.";
-                                _pendingFacePath = null; // Aborts Phase 2 verification
+                                _abortPhase2 = true; // Lock out Phase 2 completely (Keeps photo intact!)
                             }
                         }
                     }
@@ -125,10 +131,11 @@ namespace campus_backend.Services
             await _hubContext.Clients.All.SendAsync("ReceiveBarcode", new {
                 student_id = _pendingStudentId, 
                 first_name = _pendingFirstName, 
-                middle_name = _pendingMiddleName, // Passed to React
+                middle_name = _pendingMiddleName,
                 last_name = _pendingLastName,
                 face_reference_path = _pendingFacePath, 
                 status = earlyStatus,
+                message = scanHint, // THE FIX: Double-mapping for React compatibility
                 hint = scanHint,
                 location_id = _currentLocationId
             });
@@ -136,6 +143,9 @@ namespace campus_backend.Services
 
         public async Task ProcessPhase2VerificationAsync(string payload)
         {
+            // THE FIX: Completely block Phase 2 if Phase 1 resolved it (duplicate/invalid schedule).
+            if (_abortPhase2) return; 
+
             string status = "denied";
             ParsePayload(payload, out status);
 
@@ -159,34 +169,63 @@ namespace campus_backend.Services
                     // Apply Final State Machine Rules
                     if (locData?.Logic_Type?.ToLower() == "gate")
                     {
-                        if (locData.Location_Type?.ToLower() == "entrance") newPresence = "in-campus";
-                        else {
-                            if (currentPresence == "in-class") { eventLogStatus = "Cutting / Early Exit"; status = "cutting"; }
-                            newPresence = "offline";
+                        if (locData.Location_Type?.ToLower() == "entrance") 
+                        {
+                            newPresence = "in-campus";
+                            scanHint = "ENTRY RECORDED. WELCOME TO CAMPUS!"; 
+                        }
+                        else 
+                        {
+                            if (currentPresence.ToLower() == "in-class") { 
+                                eventLogStatus = "Cutting / Early Exit"; 
+                                status = "cutting"; 
+                                scanHint = "WARNING: You have an ongoing class. Exit recorded as CUTTING.";
+                            } 
+                            else {
+                                newPresence = "offline";
+                                scanHint = "EXIT RECORDED. THANK YOU!"; // Guarantee Exit Message
+                            }
                         }
                     }
                     else if (locData?.Logic_Type?.ToLower() == "room")
                     {
-                        if (_pendingRole == "user") newPresence = "in-class";
+                        if (_pendingRole == "user") {
+                            newPresence = "in-class";
+                            scanHint = "PROFESSOR ATTENDANCE RECORDED.";
+                        }
                         else {
                             bool isEnrolled = await schedRepo.IsStudentInClassNowAsync(_pendingStudentId, locData.Associated_Room_ID ?? "");
-                            if (isEnrolled) newPresence = "in-class";
-                            else { status = "denied"; eventLogStatus = "Invalid Schedule / Wrong Room"; scanHint = "No scheduled class here."; }
+                            if (isEnrolled) {
+                                newPresence = "in-class";
+                                scanHint = "CLASS ATTENDANCE RECORDED.";
+                            }
+                            else { 
+                                status = "denied"; 
+                                eventLogStatus = "Invalid Schedule / Wrong Room"; 
+                                scanHint = "No scheduled class here."; 
+                            }
                         }
                     }
 
                     // Log it safely through the Repository
-                    await attRepo.UpdatePresenceAndLogAsync(_pendingStudentId, _pendingRole, _currentLocationId, newPresence, eventLogStatus);
+                    if(status == "approved" || status == "cutting") {
+                        await attRepo.UpdatePresenceAndLogAsync(_pendingStudentId, _pendingRole, _currentLocationId, newPresence, eventLogStatus);
+                    }
                 }
+            }
+            else if (status == "denied")
+            {
+                scanHint = "FACE MATCH FAILED. ACCESS DENIED.";
             }
 
             // Blast Phase 2 Result to UI
             await _hubContext.Clients.All.SendAsync("ReceiveScanResult", new {
                 student_id = _pendingStudentId, 
                 first_name = _pendingFirstName, 
-                middle_name = _pendingMiddleName, // Passed to React
+                middle_name = _pendingMiddleName, 
                 last_name = _pendingLastName,
                 status = status, 
+                message = scanHint, // THE FIX: Double-mapping for React compatibility
                 hint = scanHint, 
                 timestamp = DateTime.Now.ToString("hh:mm tt"),
                 face_reference_path = _pendingFacePath, 
