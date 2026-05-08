@@ -303,11 +303,11 @@ Insert into CAMPUS_ADMIN.EVENT_LOGS (LOG_ID,STUDENT_ID,STATUS,MATCH_CONFIDENCE,T
 Insert into CAMPUS_ADMIN.EVENT_LOGS (LOG_ID,STUDENT_ID,STATUS,MATCH_CONFIDENCE,TIMESTAMP,BYPASS_REASON,LOCATION_ID) values (122,'24-1507','approved',null,to_timestamp('07-MAY-26 09.07.10.000000000 PM','DD-MON-RR HH.MI.SSXFF AM'),null,'CAM-001');
 REM INSERTING into CAMPUS_ADMIN.ROOMS
 SET DEFINE OFF;
-Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IL602','New Academic Building',6,'Lecture Room','Inactive','SB');
-Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IL703','New Academic Building',7,'Lecture Room','Inactive','SB');
-Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IK504','Bautista Building',7,'Computer Laboratory','Inactive','SB');
-Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IK604','Bautista Building',6,'Computer Laboratory','Inactive','SB');
-Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IL604','New Academic Building',6,'Lecture Room','Inactive','SB');
+Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IL602','New Academic Building',6,'Lecture Room','Active','SB');
+Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IL703','New Academic Building',7,'Lecture Room','Active','SB');
+Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IK504','Bautista Building',7,'Computer Laboratory','Active','SB');
+Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IK604','Bautista Building',6,'Computer Laboratory','Active','SB');
+Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IL604','New Academic Building',6,'Lecture Room','Active','SB');
 Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IK103','Bautista Building',1,'Computer Laboratory','Active','SB');
 Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IK104','Bautista Building',1,'Computer Laboratory','Active','SB');
 Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IK203','Bautista Building',2,'Computer Laboratory','Active','SB');
@@ -344,7 +344,7 @@ Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) 
 Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IL704','New Academic Building',7,'Lecture Room','Active','SB');
 Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IL705','New Academic Building',7,'Lecture Room','Active','SB');
 Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IL706','New Academic Building',7,'Lecture Room','Active','SB');
-Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IL606','New Academic Building',6,'Lecture Room','Inactive','SB');
+Insert into CAMPUS_ADMIN.ROOMS (ROOM_ID,BUILDING,FLOOR,ROOM_TYPE,STATUS,CAMPUS) values ('IL606','New Academic Building',6,'Lecture Room','Active','SB');
 REM INSERTING into CAMPUS_ADMIN.SCHEDULES
 SET DEFINE OFF;
 Insert into CAMPUS_ADMIN.SCHEDULES (SCHEDULE_ID,SUBJECT_CODE,SECTION_ID,PROFESSOR_ID,ROOM_ID,TIME_START,TIME_END,CLASS_DAYS,SUBJECT_TYPE) values ('SCH-2441','IPT101','SEC-001','PRO-0001','IK604','10:30 AM','01:30 PM','Thu/Fri','Lab');

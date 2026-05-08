@@ -25,7 +25,6 @@ namespace campus_backend.Repositories
             using var connection = new OracleConnection(_connectionString);
             await connection.OpenAsync();
 
-            // Note: Adjust the column names if your database uses slightly different casing
             var query = "SELECT LOCATION_ID, CAMERA_NAME, LOGIC_TYPE, LOCATION_TYPE, ASSOCIATED_ROOM_ID, IS_ACTIVE FROM CAMPUS_ADMIN.CAMERA_LOCATIONS";
             using var cmd = new OracleCommand(query, connection);
             using var reader = await cmd.ExecuteReaderAsync();
@@ -54,6 +53,7 @@ namespace campus_backend.Repositories
 
             var query = "SELECT LOCATION_ID, CAMERA_NAME, LOGIC_TYPE, LOCATION_TYPE, ASSOCIATED_ROOM_ID, IS_ACTIVE FROM CAMPUS_ADMIN.CAMERA_LOCATIONS WHERE LOCATION_ID = :id";
             using var cmd = new OracleCommand(query, connection);
+            cmd.BindByName = true; // CRITICAL FIX
             cmd.Parameters.Add(new OracleParameter("id", locationId));
             
             using var reader = await cmd.ExecuteReaderAsync();
@@ -77,37 +77,21 @@ namespace campus_backend.Repositories
             using var connection = new OracleConnection(_connectionString);
             await connection.OpenAsync();
 
-            // Auto-generate STATUS_ON_SCAN based on location type if not provided
-            string statusOnScan = location.Status_On_Scan;
-            if (string.IsNullOrEmpty(statusOnScan))
-            {
-                if (location.Logic_Type == "gate")
-                {
-                    statusOnScan = location.Location_Type == "entrance" ? "in-campus" : "offline";
-                }
-                else if (location.Logic_Type == "room")
-                {
-                    statusOnScan = "present-in-room";
-                }
-                else
-                {
-                    statusOnScan = "inactive";
-                }
-            }
-
+            // CRITICAL FIX: Explicitly feeding STATUS_ON_SCAN and CREATED_AT to satisfy Oracle
             var query = @"INSERT INTO CAMPUS_ADMIN.CAMERA_LOCATIONS 
                           (LOCATION_ID, CAMERA_NAME, LOGIC_TYPE, LOCATION_TYPE, ASSOCIATED_ROOM_ID, STATUS_ON_SCAN, IS_ACTIVE, CREATED_AT) 
-                          VALUES (:id, :name, :logic, :type, :room, :status, :active, SYSDATE)";
+                          VALUES (:id, :name, :logic, :type, :room, 'System-Managed', :active, SYSDATE)";
             
             using var cmd = new OracleCommand(query, connection);
+            cmd.BindByName = true; // CRITICAL FIX
+            
             cmd.Parameters.Add(new OracleParameter("id", location.Location_ID));
             cmd.Parameters.Add(new OracleParameter("name", location.Camera_Name));
-            cmd.Parameters.Add(new OracleParameter("logic", location.Logic_Type ?? "gate"));
+            cmd.Parameters.Add(new OracleParameter("logic", location.Logic_Type));
             cmd.Parameters.Add(new OracleParameter("type", location.Location_Type));
             
             // Handles null room associations safely
             cmd.Parameters.Add(new OracleParameter("room", string.IsNullOrEmpty(location.Associated_Room_ID) ? DBNull.Value : location.Associated_Room_ID));
-            cmd.Parameters.Add(new OracleParameter("status", statusOnScan));
             cmd.Parameters.Add(new OracleParameter("active", location.Is_Active ? 1 : 0));
 
             var rowsAffected = await cmd.ExecuteNonQueryAsync();
@@ -120,24 +104,28 @@ namespace campus_backend.Repositories
             await connection.OpenAsync();
 
             var query = @"UPDATE CAMPUS_ADMIN.CAMERA_LOCATIONS 
-                          SET CAMERA_NAME = :name, LOGIC_TYPE = :logic, LOCATION_TYPE = :type, ASSOCIATED_ROOM_ID = :room, IS_ACTIVE = :active 
+                          SET CAMERA_NAME = :name, 
+                              LOGIC_TYPE = :logic, 
+                              LOCATION_TYPE = :type, 
+                              ASSOCIATED_ROOM_ID = :room, 
+                              IS_ACTIVE = :active, 
+                              STATUS_ON_SCAN = 'System-Managed' 
                           WHERE LOCATION_ID = :id";
 
             using var cmd = new OracleCommand(query, connection);
+            cmd.BindByName = true; // CRITICAL FIX
+            
             cmd.Parameters.Add(new OracleParameter("name", location.Camera_Name));
             cmd.Parameters.Add(new OracleParameter("logic", location.Logic_Type));
             cmd.Parameters.Add(new OracleParameter("type", location.Location_Type));
             cmd.Parameters.Add(new OracleParameter("room", string.IsNullOrEmpty(location.Associated_Room_ID) ? DBNull.Value : location.Associated_Room_ID));
             cmd.Parameters.Add(new OracleParameter("active", location.Is_Active ? 1 : 0));
-            
-            // ID must be the last parameter to match the WHERE clause
             cmd.Parameters.Add(new OracleParameter("id", locationId));
 
             var rowsAffected = await cmd.ExecuteNonQueryAsync();
             return rowsAffected > 0;
         }
 
-        // 👇 The missing method that caused the build error! 👇
         public async Task<bool> DeleteLocationAsync(string locationId)
         {
             using var connection = new OracleConnection(_connectionString);
@@ -145,6 +133,7 @@ namespace campus_backend.Repositories
             
             var query = "DELETE FROM CAMPUS_ADMIN.CAMERA_LOCATIONS WHERE LOCATION_ID = :id";
             using var cmd = new OracleCommand(query, connection);
+            cmd.BindByName = true; // CRITICAL FIX
             cmd.Parameters.Add(new OracleParameter("id", locationId));
             
             var rowsAffected = await cmd.ExecuteNonQueryAsync();

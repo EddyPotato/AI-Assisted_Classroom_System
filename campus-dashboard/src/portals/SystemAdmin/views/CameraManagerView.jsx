@@ -1,31 +1,34 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Save, Server, Trash2, ShieldAlert } from 'lucide-react';
 import ConfirmModal from '../../../components/ui/ConfirmModal';
 
 export default function CameraManagerView() {
   const [locations, setLocations] = useState([]);
+  const [rooms, setRooms] = useState([]); // NEW: State to hold database rooms
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
   const [modal, setModal] = useState({ isOpen: false, locationId: null, name: '' });
 
-  // 1. INITIAL LOAD: Completely isolated to satisfy the strict React linter
+  // 1. INITIAL LOAD: Fetch both Cameras and Rooms
   useEffect(() => {
     let isMounted = true;
     const loadInitialData = async () => {
       try {
-        const res = await fetch('http://localhost:5106/api/camera/locations');
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted) setLocations(data);
-        }
-      } catch (err) { console.error(err); }
+        // Fetch Camera Locations
+        const locRes = await fetch('http://localhost:5106/api/camera/locations');
+        if (locRes.ok && isMounted) setLocations(await locRes.json());
+
+        // Fetch Rooms for the Dropdown (using your existing RoomsController)
+        const roomRes = await fetch('http://localhost:5106/api/rooms');
+        if (roomRes.ok && isMounted) setRooms(await roomRes.json());
+        
+      } catch (err) { console.error("Initial load error:", err); }
     };
     
     loadInitialData();
     return () => { isMounted = false; };
-  }, []); // <-- This empty array is now 100% safe!
+  }, []);
 
-  // 2. MANUAL REFRESH: Used only after saving or deleting nodes
   const refreshLocations = async () => {
     try {
       const res = await fetch('http://localhost:5106/api/camera/locations');
@@ -42,27 +45,21 @@ export default function CameraManagerView() {
         camera_Name: '',
         logic_Type: 'gate',
         location_Type: 'entrance',
-        associated_Room_ID: 'Campus Entrance', // Default to prevent nulls
+        associated_Room_ID: '', // Start empty
         is_Active: true
       });
     }
     setIsEditing(true);
   };
 
-  // Smart Form Handler: Automatically updates Target Room based on Logic Type
   const handleLogicChange = (field, value) => {
     let newData = { ...formData, [field]: value };
-    
     const logic = field === 'logic_Type' ? value : newData.logic_Type;
-    const flow = field === 'location_Type' ? value : newData.location_Type;
 
-    // Auto-fill Gate locations to prevent nulls in the database
+    // If it's a gate, it shouldn't be tied to a specific classroom FK
     if (logic === 'gate') {
-      newData.associated_Room_ID = flow === 'entrance' ? 'Campus Entrance' : 'Campus Exit';
-    } else if (logic === 'room' && newData.associated_Room_ID.startsWith('Campus')) {
-      newData.associated_Room_ID = ''; // Clear it out so they can type a room number
-    }
-
+      newData.associated_Room_ID = ''; 
+    } 
     setFormData(newData);
   };
 
@@ -78,13 +75,19 @@ export default function CameraManagerView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
+      
       if (res.ok) {
         setIsEditing(false);
         refreshLocations();
       } else {
-        alert('Failed to save hardware node.');
+        // ROBUST ERROR LOGGING: Extract the exact error from the backend
+        const errorText = await res.text();
+        alert(`❌ SAVE FAILED\n\nServer Status Code: ${res.status}\n\nDatabase/Server Error Details:\n${errorText}\n\n(Check your backend console for the full Oracle exception)`);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error(err); 
+      alert(`⚠️ NETWORK ERROR\n\nCould not connect to the C# Backend.\nDetails: ${err.message}`);
+    }
   };
 
   const confirmDelete = (loc) => {
@@ -98,7 +101,8 @@ export default function CameraManagerView() {
         setModal({ isOpen: false, locationId: null, name: '' });
         refreshLocations();
       } else {
-        alert('Failed to delete node. It may be currently active.');
+        const errorText = await res.text();
+        alert(`❌ DELETE FAILED\n\nStatus: ${res.status}\nDetails: ${errorText}`);
       }
     } catch (err) { console.error(err); }
   };
@@ -158,15 +162,35 @@ export default function CameraManagerView() {
 
             <div className="lg:col-span-2">
               <label className="block text-sm font-black text-slate-500 uppercase mb-2">TARGET ROOM / BUILDING *</label>
-              <input 
-                required 
-                type="text" 
-                value={formData.associated_Room_ID || ''} 
-                onChange={e => setFormData({...formData, associated_Room_ID: e.target.value})} 
-                disabled={formData.logic_Type === 'gate'}
-                className="w-full p-4 bg-slate-50 border border-slate-300 rounded-xl font-bold text-lg text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed" 
-                placeholder="e.g. IL604" 
-              />
+              
+              {/* SMART RENDERING: Dropdown for Rooms, Disabled text for Gates */}
+              {formData.logic_Type === 'room' ? (
+                <select 
+                  required 
+                  value={formData.associated_Room_ID || ''} 
+                  onChange={e => setFormData({...formData, associated_Room_ID: e.target.value})} 
+                  className="w-full p-4 bg-white border border-slate-300 rounded-xl font-bold text-lg text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all cursor-pointer shadow-sm"
+                >
+                  <option value="" disabled>-- Select an Official Room --</option>
+                  {rooms.map((r, idx) => {
+                    // Fallback handles differing API capitalization (room_ID vs Room_ID)
+                    const roomId = r.room_ID || r.Room_ID || r.roomId;
+                    const bldg = r.building || r.Building || "Campus";
+                    return (
+                      <option key={idx} value={roomId}>
+                        {roomId} ({bldg})
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : (
+                <input 
+                  type="text" 
+                  value="N/A (Gate Hardware does not map to a specific classroom)" 
+                  disabled
+                  className="w-full p-4 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-400 outline-none cursor-not-allowed" 
+                />
+              )}
             </div>
             
             <div className="lg:col-span-2 flex justify-end items-end gap-3 pt-2">
@@ -210,7 +234,7 @@ export default function CameraManagerView() {
                   </span>
                 </td>
                 <td className="p-5 font-black text-slate-600 text-lg">
-                  {loc.associated_Room_ID}
+                  {loc.associated_Room_ID || <span className="text-slate-300 italic text-sm">Gate Node</span>}
                 </td>
                 <td className="p-5 text-center">
                   <div className="flex justify-center items-center gap-3">
