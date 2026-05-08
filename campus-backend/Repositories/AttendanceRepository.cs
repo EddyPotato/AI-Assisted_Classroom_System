@@ -99,14 +99,12 @@ namespace campus_backend.Repositories
             return schedules;
         }
 
-        // THE FIX: Massive upgrade to calculate Present, Late, Absent, and Cutting mathematically.
         public async Task<IEnumerable<object>> GetScheduleRosterAndAttendanceAsync(string scheduleId)
         {
             var roster = new List<object>();
             using var connection = new OracleConnection(_connectionString);
             await connection.OpenAsync();
 
-            // 1. Get Schedule specifics (Room & Start Time)
             var schedCmd = new OracleCommand("SELECT ROOM_ID, TIME_START FROM CAMPUS_ADMIN.SCHEDULES WHERE SCHEDULE_ID = :id", connection);
             schedCmd.Parameters.Add(new OracleParameter("id", scheduleId));
             
@@ -124,14 +122,13 @@ namespace campus_backend.Repositories
 
             if (string.IsNullOrEmpty(roomId)) return roster;
 
-            // 2. Establish the strictly defined 15-Minute Grace Period
             DateTime gracePeriodEnd = DateTime.Now;
             if (DateTime.TryParse(timeStartStr, out DateTime scheduleStartTime))
             {
                 gracePeriodEnd = scheduleStartTime.AddMinutes(15);
             }
 
-            // 3. Find enrolled students and their absolute earliest APPROVED room scan TODAY
+            // THE FIX: Joined CAMERA_LOCATIONS so EVENT_LOGS checks the physical Camera ID connected to the Room ID!
             var query = @"
                 SELECT 
                     st.STUDENT_ID, 
@@ -140,10 +137,11 @@ namespace campus_backend.Repositories
                     st.LAST_NAME, 
                     st.FACE_REFERENCE_PATH, 
                     st.CAMPUS_PRESENCE,
-                    (SELECT MIN(TIMESTAMP) 
+                    (SELECT MIN(el.TIMESTAMP) 
                      FROM CAMPUS_ADMIN.EVENT_LOGS el 
+                     JOIN CAMPUS_ADMIN.CAMERA_LOCATIONS cl ON el.LOCATION_ID = cl.LOCATION_ID
                      WHERE el.STUDENT_ID = st.STUDENT_ID 
-                       AND el.LOCATION_ID = :roomId 
+                       AND cl.ASSOCIATED_ROOM_ID = :roomId 
                        AND el.STATUS = 'approved' 
                        AND TRUNC(el.TIMESTAMP) = TRUNC(SYSDATE)) AS SCAN_TIME
                 FROM CAMPUS_ADMIN.ENROLLMENTS e
@@ -163,7 +161,6 @@ namespace campus_backend.Repositories
                 string arrivalTime = "--:--";
                 string status = "Absent";
 
-                // Evaluate student's physical log against the Class Time Matrix
                 if (reader["SCAN_TIME"] != DBNull.Value)
                 {
                     DateTime scanTime = Convert.ToDateTime(reader["SCAN_TIME"]);
@@ -171,24 +168,23 @@ namespace campus_backend.Repositories
 
                     if (campusPresence == "cutting")
                     {
-                        status = "Cutting"; // Punitive override. If they cut, they are marked cutting regardless of arrival.
+                        status = "Cutting"; 
                     }
                     else
                     {
-                        // Check if they made it inside the 15-minute grace period!
+                        // 15-Minute Grace Period check
                         if (scanTime <= gracePeriodEnd)
                         {
                             status = "Present";
                         }
                         else
                         {
-                            status = "Late"; // Still 'in-class' in the DB physically, but marked 'Late' for the Professor's record!
+                            status = "Late"; 
                         }
                     }
                 }
                 else
                 {
-                    // If no scan exists, they are normally Absent, UNLESS they bypassed and somehow cut.
                     if (campusPresence == "cutting") status = "Cutting"; 
                 }
 

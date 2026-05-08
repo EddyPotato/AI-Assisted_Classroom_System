@@ -209,14 +209,14 @@ namespace campus_backend.Repositories
             }
         }
 
-        // Legacy compatibility - Keep this until interface is formally updated
+        // Legacy compatibility
         public async Task<bool> IsStudentInClassNowAsync(string studentId, string roomId)
         {
             var result = await CheckStudentClassAccessAsync(studentId, roomId);
             return result.Status == "InSession";
         }
 
-        // NEW: Advanced State Machine Checker
+        // Advanced State Machine Checker
         public async Task<(string Status, string Message)> CheckStudentClassAccessAsync(string studentId, string roomId)
         {
             using var connection = new OracleConnection(_connectionString);
@@ -260,20 +260,39 @@ namespace campus_backend.Repositories
 
             if (classList.Count == 0) return ("Denied", "No scheduled class here today.");
 
-            // Sort by start time to accurately evaluate chronologically
             classList.Sort((a, b) => a.Start.CompareTo(b.Start));
 
             foreach (var c in classList)
             {
-                // SCENARIO 2, 3, 4, 5, 6: Student is On Time, Late, or Prof is Absent/Present
-                // As long as they scan BETWEEN the start and end time, it is fully valid.
                 if (now >= c.Start && now <= c.End)
                 {
+                    // THE FIX: Check if the student has ALREADY logged an 'approved' scan for THIS room during THIS specific class time today.
+                    var dupCmd = new OracleCommand(@"
+                        SELECT COUNT(*) FROM CAMPUS_ADMIN.EVENT_LOGS el
+                        JOIN CAMPUS_ADMIN.CAMERA_LOCATIONS cl ON el.LOCATION_ID = cl.LOCATION_ID
+                        WHERE el.STUDENT_ID = :sid 
+                          AND cl.ASSOCIATED_ROOM_ID = :room
+                          AND el.STATUS = 'approved'
+                          AND el.TIMESTAMP >= :cStart 
+                          AND el.TIMESTAMP <= :cEnd", connection);
+
+                    dupCmd.Parameters.Add(new OracleParameter("sid", studentId));
+                    dupCmd.Parameters.Add(new OracleParameter("room", roomId));
+                    dupCmd.Parameters.Add(new OracleParameter("cStart", c.Start));
+                    dupCmd.Parameters.Add(new OracleParameter("cEnd", c.End));
+
+                    int logCount = Convert.ToInt32(await dupCmd.ExecuteScalarAsync());
+
+                    if (logCount > 0)
+                    {
+                        // Returning "Early" is a clever trick! It triggers the exact same logic block in AccessVerificationService 
+                        // that safely aborts Phase 2, shows the duplicate warning UI window, and displays our custom message.
+                        return ("Early", "ATTENDANCE ALREADY RECORDED: You are already marked present/late for this session.");
+                    }
+
                     return ("InSession", "CLASS ATTENDANCE RECORDED.");
                 }
                 
-                // SCENARIO 1: Early (Time < Start for the upcoming class)
-                // Stops Phase 2 and returns rich HCI schedule details!
                 if (now < c.Start)
                 {
                     string timeStr = $"{c.Start.ToString("hh:mm tt")} - {c.End.ToString("hh:mm tt")}";
