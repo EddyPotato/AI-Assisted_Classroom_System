@@ -1,8 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-// Layout & UI Components
-import Header from './components/ui/Header';
-import Sidebar from './components/ui/Sidebar';
+// Auth Components
 import Login from './components/auth/Login';
 
 // Faculty Portals
@@ -13,7 +11,7 @@ import ClassAttendance from './portals/Faculty/ClassAttendance';
 import GuardPortal from './portals/Guard/GuardPortal';
 import RegistrarPortal from './portals/Registrar/RegistrarPortal';
 import PrincipalPortal from './portals/Principal/PrincipalPortal';
-import SystemAdminPortal from './portals/SystemAdmin/SystemAdminPortal'; // <-- NEW IMPORT
+import SystemAdminPortal from './portals/SystemAdmin/SystemAdminPortal'; 
 
 function ProtectedRoute({ children }) {
   const user = sessionStorage.getItem('campus_user');
@@ -22,19 +20,16 @@ function ProtectedRoute({ children }) {
 }
 
 // --- MASTER LAYOUT & LOGIC (FACULTY VIEW) ---
+// THE FIX: Removed <Header /> and <Sidebar /> wrappers. 
+// The faculty views now contain their own built-in top navigation headers
+// and manage their own full-screen layouts.
 function CampusLayout() {
   return (
-    <div className="h-screen flex flex-col bg-slate-50 font-sans overflow-hidden">
-      <Header />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar />
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<FacultyDashboard />} />
-          <Route path="/class/:scheduleId" element={<ClassAttendance />} />
-        </Routes>
-      </div>
-    </div>
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/dashboard" element={<FacultyDashboard />} />
+      <Route path="/class/:scheduleId" element={<ClassAttendance />} />
+    </Routes>
   );
 }
 
@@ -55,7 +50,7 @@ function RoleDispatcher() {
       return <RegistrarPortal />;
     case 'Principal':
       return <PrincipalPortal />;
-    case 'SystemAdmin': // <-- ADDED SYSTEM ADMIN ROLE
+    case 'SystemAdmin': 
     case 'Admin':
       return <SystemAdminPortal />;
     default:
