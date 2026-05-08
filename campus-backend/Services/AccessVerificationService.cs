@@ -47,7 +47,7 @@ namespace campus_backend.Services
 
         public async Task ProcessPhase1BarcodeAsync(string payload)
         {
-            _abortPhase2 = false; // Reset the lock on every new barcode scan
+            _abortPhase2 = false; 
             ParsePayload(payload);
             if (string.IsNullOrEmpty(_pendingStudentId)) return;
 
@@ -80,7 +80,6 @@ namespace campus_backend.Services
                     _pendingMiddleName = student.Middle_Name ?? ""; 
                     _pendingLastName = student.Last_Name ?? "";
                     
-                    // KEEP THE PHOTO INTACT
                     _pendingFacePath = student.Face_Reference_Path; 
                     _pendingRole = "student";
                 } else {
@@ -90,7 +89,6 @@ namespace campus_backend.Services
                         _pendingMiddleName = user.Middle_Name ?? ""; 
                         _pendingLastName = user.Last_Name ?? "";
                         
-                        // KEEP THE PHOTO INTACT
                         _pendingFacePath = user.Face_Reference_Path; 
                         _pendingRole = "user";
                     }
@@ -105,35 +103,39 @@ namespace campus_backend.Services
                 {
                     if (logicType == "gate" && locationType == "entrance")
                     {
-                        // Immediate Duplicate Check for Campus Entry
-                        if (currentPresence.ToLower() == "in-campus")
+                        if (currentPresence.ToLower() == "in-campus" || currentPresence.ToLower() == "in-class")
                         {
                             earlyStatus = "duplicate";
                             scanHint = "Campus Access Active: You are already IN-CAMPUS.";
-                            _abortPhase2 = true; // Lock out Phase 2 completely
+                            _abortPhase2 = true; 
                         }
                     }
-                    // THE FIX: Added reverse logic check for the EXIT gate here!
                     else if (logicType == "gate" && locationType == "exit") 
                     {
-                        // Immediate Duplicate Check for Campus Exit
-                        if (currentPresence.ToLower() == "offline" || string.IsNullOrEmpty(currentPresence))
+                        // THE FIX: "cutting" means they are already outside. Stop double exits.
+                        if (currentPresence.ToLower() == "offline" || currentPresence.ToLower() == "cutting" || string.IsNullOrEmpty(currentPresence))
                         {
-                            earlyStatus = "duplicate"; // Reusing duplicate status for UI styling
+                            earlyStatus = "duplicate"; 
                             scanHint = "Campus Access Inactive: You are already OUTSIDE.";
-                            _abortPhase2 = true; // Lock out Phase 2 completely
+                            _abortPhase2 = true; 
                         }
                     }
                     else if (logicType == "room" && locationType == "entrance")
                     {
-                        // Immediate Schedule Check
-                        if (_pendingRole == "student") 
+                        // THE FIX: Cannot bypass gates if they are offline OR cutting.
+                        if (currentPresence.ToLower() == "offline" || currentPresence.ToLower() == "cutting" || string.IsNullOrEmpty(currentPresence))
+                        {
+                            earlyStatus = "denied"; 
+                            scanHint = "Campus Entry Required: Please scan at the Main Entrance Gate first.";
+                            _abortPhase2 = true; 
+                        }
+                        else if (_pendingRole == "student") 
                         {
                             bool isEnrolled = await schedRepo.IsStudentInClassNowAsync(_pendingStudentId, associatedRoomId ?? "");
                             if (!isEnrolled) {
                                 earlyStatus = "invalid_schedule";
                                 scanHint = "No scheduled class here at this time.";
-                                _abortPhase2 = true; // Lock out Phase 2 completely
+                                _abortPhase2 = true; 
                             }
                         }
                     }
@@ -160,7 +162,6 @@ namespace campus_backend.Services
                 {
                     using var httpClient = new HttpClient();
                     var content = new StringContent("{\"command\":\"abort_phase2\"}", Encoding.UTF8, "application/json");
-                    // Call the Python edge node directly
                     await httpClient.PostAsync("http://localhost:5000/command", content);
                     _logger.LogInformation("[SYSTEM] Sent abort_phase2 command to edge node.");
                 }
@@ -173,7 +174,6 @@ namespace campus_backend.Services
 
         public async Task ProcessPhase2VerificationAsync(string payload)
         {
-            // Completely block Phase 2 if Phase 1 resolved it (duplicate/invalid schedule).
             if (_abortPhase2) return; 
 
             string status = "denied";
@@ -196,24 +196,41 @@ namespace campus_backend.Services
                     string newPresence = currentPresence;
                     string eventLogStatus = "approved";
 
-                    // Apply Final State Machine Rules
                     if (locData?.Logic_Type?.ToLower() == "gate")
                     {
                         if (locData.Location_Type?.ToLower() == "entrance") 
                         {
-                            newPresence = "in-campus";
-                            scanHint = "ENTRY RECORDED. WELCOME TO CAMPUS!"; 
+                            if (currentPresence.ToLower() == "in-campus" || currentPresence.ToLower() == "in-class")
+                            {
+                                status = "duplicate"; 
+                                scanHint = "Campus Access Active: You are already IN-CAMPUS.";
+                            }
+                            else 
+                            {
+                                newPresence = "in-campus";
+                                scanHint = "ENTRY RECORDED. WELCOME TO CAMPUS!"; 
+                            }
                         }
                         else 
                         {
-                            if (currentPresence.ToLower() == "in-class") { 
+                            if (currentPresence.ToLower() == "offline" || currentPresence.ToLower() == "cutting" || string.IsNullOrEmpty(currentPresence))
+                            {
+                                status = "duplicate"; 
+                                scanHint = "Campus Access Inactive: You are already OUTSIDE.";
+                            }
+                            else if (currentPresence.ToLower() == "in-class") 
+                            { 
                                 eventLogStatus = "Cutting / Early Exit"; 
                                 status = "cutting"; 
-                                scanHint = "WARNING: You have an ongoing class. Exit recorded as CUTTING.";
+                                
+                                // THE FIX: Custom warning message and strict database state change
+                                scanHint = "WARNING: You are now in 'cutting' status. Go back to class and scan to be considered IN-CLASS again to avoid issues.";
+                                newPresence = "cutting"; 
                             } 
-                            else {
+                            else 
+                            {
                                 newPresence = "offline";
-                                scanHint = "EXIT RECORDED. THANK YOU!"; // Guarantee Exit Message
+                                scanHint = "EXIT RECORDED. THANK YOU!"; 
                             }
                         }
                     }
@@ -224,20 +241,28 @@ namespace campus_backend.Services
                             scanHint = "PROFESSOR ATTENDANCE RECORDED.";
                         }
                         else {
-                            bool isEnrolled = await schedRepo.IsStudentInClassNowAsync(_pendingStudentId, locData.Associated_Room_ID ?? "");
-                            if (isEnrolled) {
-                                newPresence = "in-class";
-                                scanHint = "CLASS ATTENDANCE RECORDED.";
-                            }
-                            else { 
+                            if (currentPresence.ToLower() == "offline" || currentPresence.ToLower() == "cutting" || string.IsNullOrEmpty(currentPresence))
+                            {
                                 status = "denied"; 
-                                eventLogStatus = "Invalid Schedule / Wrong Room"; 
-                                scanHint = "No scheduled class here."; 
+                                eventLogStatus = "Denied: Not in Campus";
+                                scanHint = "Campus Entry Required: Please scan at the Main Entrance Gate first.";
+                            }
+                            else 
+                            {
+                                bool isEnrolled = await schedRepo.IsStudentInClassNowAsync(_pendingStudentId, locData.Associated_Room_ID ?? "");
+                                if (isEnrolled) {
+                                    newPresence = "in-class";
+                                    scanHint = "CLASS ATTENDANCE RECORDED.";
+                                }
+                                else { 
+                                    status = "denied"; 
+                                    eventLogStatus = "Invalid Schedule / Wrong Room"; 
+                                    scanHint = "No scheduled class here."; 
+                                }
                             }
                         }
                     }
 
-                    // Log it safely through the Repository
                     if(status == "approved" || status == "cutting") {
                         await attRepo.UpdatePresenceAndLogAsync(_pendingStudentId, _pendingRole, _currentLocationId, newPresence, eventLogStatus);
                     }

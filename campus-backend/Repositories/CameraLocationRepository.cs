@@ -77,10 +77,10 @@ namespace campus_backend.Repositories
             using var connection = new OracleConnection(_connectionString);
             await connection.OpenAsync();
 
-            // CRITICAL FIX: Explicitly feeding STATUS_ON_SCAN and CREATED_AT to satisfy Oracle
+            // THE FIX: Removed STATUS_ON_SCAN since it does not exist in the Oracle table definition
             var query = @"INSERT INTO CAMPUS_ADMIN.CAMERA_LOCATIONS 
-                          (LOCATION_ID, CAMERA_NAME, LOGIC_TYPE, LOCATION_TYPE, ASSOCIATED_ROOM_ID, STATUS_ON_SCAN, IS_ACTIVE, CREATED_AT) 
-                          VALUES (:id, :name, :logic, :type, :room, 'System-Managed', :active, SYSDATE)";
+                          (LOCATION_ID, CAMERA_NAME, LOGIC_TYPE, LOCATION_TYPE, ASSOCIATED_ROOM_ID, IS_ACTIVE, CREATED_AT) 
+                          VALUES (:id, :name, :logic, :type, :room, :active, SYSDATE)";
             
             using var cmd = new OracleCommand(query, connection);
             cmd.BindByName = true; // CRITICAL FIX
@@ -103,13 +103,13 @@ namespace campus_backend.Repositories
             using var connection = new OracleConnection(_connectionString);
             await connection.OpenAsync();
 
+            // THE FIX: Removed STATUS_ON_SCAN = 'System-Managed' from the UPDATE query
             var query = @"UPDATE CAMPUS_ADMIN.CAMERA_LOCATIONS 
                           SET CAMERA_NAME = :name, 
                               LOGIC_TYPE = :logic, 
                               LOCATION_TYPE = :type, 
                               ASSOCIATED_ROOM_ID = :room, 
-                              IS_ACTIVE = :active, 
-                              STATUS_ON_SCAN = 'System-Managed' 
+                              IS_ACTIVE = :active 
                           WHERE LOCATION_ID = :id";
 
             using var cmd = new OracleCommand(query, connection);
