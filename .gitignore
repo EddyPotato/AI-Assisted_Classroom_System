@@ -72,7 +72,7 @@ env/
 .DS_Store
 Thumbs.db
 
-#.venv\Scripts\activate
+# .venv\Scripts\activate
 
 # python vision_node.py
 
