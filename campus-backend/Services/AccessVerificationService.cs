@@ -1,8 +1,8 @@
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Net.Http; // Added to call the edge node
-using System.Text;     // Added for JSON encoding
+using System.Net.Http; 
+using System.Text;     
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,7 +32,7 @@ namespace campus_backend.Services
         private string _currentLocationId = "CAM-001";
         private string _pendingRole = "student"; 
         
-        // THE FIX: State flag to completely lock out Phase 2 if Phase 1 resolves early.
+        // State flag to completely lock out Phase 2 if Phase 1 resolves early.
         private bool _abortPhase2 = false; 
 
         public AccessVerificationService(
@@ -113,6 +113,17 @@ namespace campus_backend.Services
                             _abortPhase2 = true; // Lock out Phase 2 completely
                         }
                     }
+                    // THE FIX: Added reverse logic check for the EXIT gate here!
+                    else if (logicType == "gate" && locationType == "exit") 
+                    {
+                        // Immediate Duplicate Check for Campus Exit
+                        if (currentPresence.ToLower() == "offline" || string.IsNullOrEmpty(currentPresence))
+                        {
+                            earlyStatus = "duplicate"; // Reusing duplicate status for UI styling
+                            scanHint = "Campus Access Inactive: You are already OUTSIDE.";
+                            _abortPhase2 = true; // Lock out Phase 2 completely
+                        }
+                    }
                     else if (logicType == "room" && locationType == "entrance")
                     {
                         // Immediate Schedule Check
@@ -142,7 +153,7 @@ namespace campus_backend.Services
                 location_id = _currentLocationId
             });
 
-            // THE FIX: Notify edge node to cancel facial recognition if aborted
+            // Notify edge node to cancel facial recognition if aborted
             if (_abortPhase2)
             {
                 try
@@ -162,7 +173,7 @@ namespace campus_backend.Services
 
         public async Task ProcessPhase2VerificationAsync(string payload)
         {
-            // THE FIX: Completely block Phase 2 if Phase 1 resolved it (duplicate/invalid schedule).
+            // Completely block Phase 2 if Phase 1 resolved it (duplicate/invalid schedule).
             if (_abortPhase2) return; 
 
             string status = "denied";
