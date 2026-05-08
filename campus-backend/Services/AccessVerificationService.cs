@@ -1,6 +1,8 @@
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Net.Http; // Added to call the edge node
+using System.Text;     // Added for JSON encoding
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
@@ -108,7 +110,7 @@ namespace campus_backend.Services
                         {
                             earlyStatus = "duplicate";
                             scanHint = "Campus Access Active: You are already IN-CAMPUS.";
-                            _abortPhase2 = true; // Lock out Phase 2 completely (Keeps photo intact!)
+                            _abortPhase2 = true; // Lock out Phase 2 completely
                         }
                     }
                     else if (logicType == "room" && locationType == "entrance")
@@ -120,7 +122,7 @@ namespace campus_backend.Services
                             if (!isEnrolled) {
                                 earlyStatus = "invalid_schedule";
                                 scanHint = "No scheduled class here at this time.";
-                                _abortPhase2 = true; // Lock out Phase 2 completely (Keeps photo intact!)
+                                _abortPhase2 = true; // Lock out Phase 2 completely
                             }
                         }
                     }
@@ -135,10 +137,27 @@ namespace campus_backend.Services
                 last_name = _pendingLastName,
                 face_reference_path = _pendingFacePath, 
                 status = earlyStatus,
-                message = scanHint, // THE FIX: Double-mapping for React compatibility
+                message = scanHint, 
                 hint = scanHint,
                 location_id = _currentLocationId
             });
+
+            // THE FIX: Notify edge node to cancel facial recognition if aborted
+            if (_abortPhase2)
+            {
+                try
+                {
+                    using var httpClient = new HttpClient();
+                    var content = new StringContent("{\"command\":\"abort_phase2\"}", Encoding.UTF8, "application/json");
+                    // Call the Python edge node directly
+                    await httpClient.PostAsync("http://localhost:5000/command", content);
+                    _logger.LogInformation("[SYSTEM] Sent abort_phase2 command to edge node.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"[SYSTEM] Failed to abort edge node Phase 2: {ex.Message}");
+                }
+            }
         }
 
         public async Task ProcessPhase2VerificationAsync(string payload)
@@ -225,7 +244,7 @@ namespace campus_backend.Services
                 middle_name = _pendingMiddleName, 
                 last_name = _pendingLastName,
                 status = status, 
-                message = scanHint, // THE FIX: Double-mapping for React compatibility
+                message = scanHint, 
                 hint = scanHint, 
                 timestamp = DateTime.Now.ToString("hh:mm tt"),
                 face_reference_path = _pendingFacePath, 

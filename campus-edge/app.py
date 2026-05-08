@@ -95,10 +95,22 @@ def vision_processing_loop():
                     if encoding is not None:
                         state.target_face_encoding = encoding
                         state.target_student_id = barcode_data
-                        print("[PHASE 1] Ready. Switch to Face Verification.")
-                        time.sleep(2.0) 
-                        state.current_state = "VERIFYING_FACE"
-                        state.verification_start_time = time.time()
+                        print("[PHASE 1] Ready. Waiting for backend validation...")
+                        
+                        # THE FIX: Small delay loop. If the backend detects a duplicate, it hits the /command route
+                        # which will change state.current_state to "SCANNING_BARCODE". This loop breaks out early.
+                        for _ in range(20): # Up to 2.0 seconds total
+                            if state.current_state != "PREPARING_FACE":
+                                break
+                            time.sleep(0.1)
+                            
+                        # Only proceed if we weren't aborted!
+                        if state.current_state == "PREPARING_FACE":
+                            print("[PHASE 1] Validated. Switch to Face Verification.")
+                            state.current_state = "VERIFYING_FACE"
+                            state.verification_start_time = time.time()
+                        else:
+                            print(f"[PHASE 1] Aborted backend check for {barcode_data}. Dropping Phase 2.")
                     else:
                         publish_verification("denied")
                         state.current_state = "SCANNING_BARCODE"
@@ -159,6 +171,19 @@ def vision_processing_loop():
 threading.Thread(target=vision_processing_loop, daemon=True).start()
 
 # --- FLASK ROUTES ---
+
+# THE FIX: Add a new command route to let the backend safely abort Phase 2
+@app.route('/command', methods=['POST'])
+def handle_command():
+    data = request.get_json(silent=True) or {}
+    cmd = data.get("command")
+    if cmd == "abort_phase2":
+        if state.current_state in ["PREPARING_FACE", "VERIFYING_FACE"]:
+            print("\n[SYSTEM] Backend requested abort. Cancelling facial recognition.")
+            state.current_state = "SCANNING_BARCODE"
+    return jsonify({"status": "success"})
+
+
 @app.route('/start_camera', methods=['POST'])
 def start_camera():
     data = request.get_json(silent=True) or {}
