@@ -209,7 +209,15 @@ namespace campus_backend.Repositories
             }
         }
 
+        // Legacy compatibility - Keep this until interface is formally updated
         public async Task<bool> IsStudentInClassNowAsync(string studentId, string roomId)
+        {
+            var result = await CheckStudentClassAccessAsync(studentId, roomId);
+            return result.Status == "InSession";
+        }
+
+        // NEW: Advanced State Machine Checker
+        public async Task<(string Status, string Message)> CheckStudentClassAccessAsync(string studentId, string roomId)
         {
             using var connection = new OracleConnection(_connectionString);
             await connection.OpenAsync();
@@ -217,14 +225,21 @@ namespace campus_backend.Repositories
             string currentDay = DateTime.Now.ToString("ddd");
             DateTime now = DateTime.Now;
 
+            // Fetch all classes for the student in this room today
             var schedCmd = new OracleCommand(@"
-                SELECT s.TIME_START, s.TIME_END FROM CAMPUS_ADMIN.SCHEDULES s
+                SELECT s.TIME_START, s.TIME_END, s.SUBJECT_CODE, 
+                       sec.SECTION_NAME, u.LAST_NAME, u.FIRST_NAME 
+                FROM CAMPUS_ADMIN.SCHEDULES s
                 JOIN CAMPUS_ADMIN.ENROLLMENTS e ON s.SECTION_ID = e.SECTION_ID
+                LEFT JOIN CAMPUS_ADMIN.SECTIONS sec ON s.SECTION_ID = sec.SECTION_ID
+                LEFT JOIN CAMPUS_ADMIN.USERS u ON s.PROFESSOR_ID = u.USER_ID
                 WHERE s.ROOM_ID = :room AND e.STUDENT_ID = :sid AND s.CLASS_DAYS LIKE '%' || :day || '%'", connection);
             
             schedCmd.Parameters.Add(new OracleParameter("room", roomId));
             schedCmd.Parameters.Add(new OracleParameter("sid", studentId));
             schedCmd.Parameters.Add(new OracleParameter("day", currentDay));
+
+            var classList = new List<(DateTime Start, DateTime End, string Subj, string Sec, string Prof)>();
             
             using var reader = await schedCmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -232,13 +247,41 @@ namespace campus_backend.Repositories
                 if (DateTime.TryParse(reader["TIME_START"].ToString(), out DateTime startTime) && 
                     DateTime.TryParse(reader["TIME_END"]?.ToString(), out DateTime endTime))
                 {
-                    // Valid if they scan 45 mins early, up until the class ends
-                    if (now >= startTime.AddMinutes(-45) && now <= endTime) {
-                        return true; 
-                    }
+                    string profFirst = reader["FIRST_NAME"]?.ToString() ?? "";
+                    string profLast = reader["LAST_NAME"]?.ToString() ?? "TBA";
+                    string profName = string.IsNullOrWhiteSpace(profFirst) ? profLast : $"{profFirst} {profLast}";
+
+                    classList.Add((startTime, endTime, 
+                        reader["SUBJECT_CODE"]?.ToString(), 
+                        reader["SECTION_NAME"]?.ToString(), 
+                        profName));
                 }
             }
-            return false;
+
+            if (classList.Count == 0) return ("Denied", "No scheduled class here today.");
+
+            // Sort by start time to accurately evaluate chronologically
+            classList.Sort((a, b) => a.Start.CompareTo(b.Start));
+
+            foreach (var c in classList)
+            {
+                // SCENARIO 2, 3, 4, 5, 6: Student is On Time, Late, or Prof is Absent/Present
+                // As long as they scan BETWEEN the start and end time, it is fully valid.
+                if (now >= c.Start && now <= c.End)
+                {
+                    return ("InSession", "CLASS ATTENDANCE RECORDED.");
+                }
+                
+                // SCENARIO 1: Early (Time < Start for the upcoming class)
+                // Stops Phase 2 and returns rich HCI schedule details!
+                if (now < c.Start)
+                {
+                    string timeStr = $"{c.Start.ToString("hh:mm tt")} - {c.End.ToString("hh:mm tt")}";
+                    return ("Early", $"You are early. Please wait for the professor.\n{c.Subj} - {c.Sec} | Prof. {c.Prof} | Room: {roomId} | {timeStr}");
+                }
+            }
+
+            return ("Denied", "No scheduled class here at this time.");
         }
     }
 }

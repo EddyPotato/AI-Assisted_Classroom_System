@@ -112,7 +112,6 @@ namespace campus_backend.Services
                     }
                     else if (logicType == "gate" && locationType == "exit") 
                     {
-                        // THE FIX: "cutting" means they are already outside. Stop double exits.
                         if (currentPresence.ToLower() == "offline" || currentPresence.ToLower() == "cutting" || string.IsNullOrEmpty(currentPresence))
                         {
                             earlyStatus = "duplicate"; 
@@ -122,7 +121,6 @@ namespace campus_backend.Services
                     }
                     else if (logicType == "room" && locationType == "entrance")
                     {
-                        // THE FIX: Cannot bypass gates if they are offline OR cutting.
                         if (currentPresence.ToLower() == "offline" || currentPresence.ToLower() == "cutting" || string.IsNullOrEmpty(currentPresence))
                         {
                             earlyStatus = "denied"; 
@@ -131,12 +129,23 @@ namespace campus_backend.Services
                         }
                         else if (_pendingRole == "student") 
                         {
-                            bool isEnrolled = await schedRepo.IsStudentInClassNowAsync(_pendingStudentId, associatedRoomId ?? "");
-                            if (!isEnrolled) {
-                                earlyStatus = "invalid_schedule";
-                                scanHint = "No scheduled class here at this time.";
+                            // THE FIX: Intercept Early vs Denied vs InSession
+                            var classStatus = await ((ScheduleRepository)schedRepo).CheckStudentClassAccessAsync(_pendingStudentId, associatedRoomId ?? "");
+                            
+                            if (classStatus.Status == "Early") 
+                            {
+                                // Show yellow warning popup via "duplicate" styling flag, stopping face scan!
+                                earlyStatus = "duplicate"; 
+                                scanHint = classStatus.Message;
                                 _abortPhase2 = true; 
                             }
+                            else if (classStatus.Status == "Denied") 
+                            {
+                                earlyStatus = "invalid_schedule";
+                                scanHint = classStatus.Message;
+                                _abortPhase2 = true; 
+                            }
+                            // Note: If "InSession", we do nothing. The scanner proceeds normally to Phase 2.
                         }
                     }
                 }
@@ -222,8 +231,6 @@ namespace campus_backend.Services
                             { 
                                 eventLogStatus = "Cutting / Early Exit"; 
                                 status = "cutting"; 
-                                
-                                // THE FIX: Custom warning message and strict database state change
                                 scanHint = "WARNING: You are now in 'cutting' status. Go back to class and scan to be considered IN-CLASS again to avoid issues.";
                                 newPresence = "cutting"; 
                             } 
@@ -249,15 +256,19 @@ namespace campus_backend.Services
                             }
                             else 
                             {
-                                bool isEnrolled = await schedRepo.IsStudentInClassNowAsync(_pendingStudentId, locData.Associated_Room_ID ?? "");
-                                if (isEnrolled) {
-                                    newPresence = "in-class";
-                                    scanHint = "CLASS ATTENDANCE RECORDED.";
+                                // THE FIX: Phase 2 Final Evaluation.
+                                var classStatus = await ((ScheduleRepository)schedRepo).CheckStudentClassAccessAsync(_pendingStudentId, locData.Associated_Room_ID ?? "");
+                                
+                                if (classStatus.Status == "InSession") 
+                                {
+                                    newPresence = "in-class"; // FINALLY: Database state locks in!
+                                    scanHint = classStatus.Message;
                                 }
-                                else { 
+                                else 
+                                { 
                                     status = "denied"; 
-                                    eventLogStatus = "Invalid Schedule / Wrong Room"; 
-                                    scanHint = "No scheduled class here."; 
+                                    eventLogStatus = "Invalid Schedule / Early Registration"; 
+                                    scanHint = classStatus.Message; 
                                 }
                             }
                         }

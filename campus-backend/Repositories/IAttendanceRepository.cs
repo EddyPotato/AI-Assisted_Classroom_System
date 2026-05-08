@@ -8,8 +8,9 @@ namespace campus_backend.Repositories
     {
         Task<string> GetCurrentPresenceAsync(string personId, string role);
         Task UpdatePresenceAndLogAsync(string personId, string role, string locationId, string newPresence, string eventLogStatus);
-        
         Task<IEnumerable<Schedule>> GetTodaySchedulesForProfessorAsync(string professorId);
-        Task<IEnumerable<RosterStudent>> GetScheduleRosterAndAttendanceAsync(string scheduleId);
+        
+        // Changed to IEnumerable<object> to support dynamic matrix fields (status, arrivalTime, facePath)
+        Task<IEnumerable<object>> GetScheduleRosterAndAttendanceAsync(string scheduleId);
     }
 }

@@ -36,5 +36,20 @@ namespace campus_backend.Controllers
 
             return Ok(roster);
         }
+
+        // THE FIX: Added a quick endpoint to verify if the Professor has scanned into the class yet!
+        [HttpGet("presence/{role}/{personId}")]
+        public async Task<IActionResult> GetPresenceStatus(string role, string personId)
+        {
+            try 
+            {
+                var presence = await _attendanceRepo.GetCurrentPresenceAsync(personId, role);
+                return Ok(new { status = presence });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to retrieve presence state.", error = ex.Message });
+            }
+        }
     }
 }

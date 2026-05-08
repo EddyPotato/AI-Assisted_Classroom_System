@@ -99,32 +99,108 @@ namespace campus_backend.Repositories
             return schedules;
         }
 
-        public async Task<IEnumerable<RosterStudent>> GetScheduleRosterAndAttendanceAsync(string scheduleId)
+        // THE FIX: Massive upgrade to calculate Present, Late, Absent, and Cutting mathematically.
+        public async Task<IEnumerable<object>> GetScheduleRosterAndAttendanceAsync(string scheduleId)
         {
-            var roster = new List<RosterStudent>();
+            var roster = new List<object>();
             using var connection = new OracleConnection(_connectionString);
             await connection.OpenAsync();
 
+            // 1. Get Schedule specifics (Room & Start Time)
+            var schedCmd = new OracleCommand("SELECT ROOM_ID, TIME_START FROM CAMPUS_ADMIN.SCHEDULES WHERE SCHEDULE_ID = :id", connection);
+            schedCmd.Parameters.Add(new OracleParameter("id", scheduleId));
+            
+            string roomId = "";
+            string timeStartStr = "";
+            
+            using (var schedReader = await schedCmd.ExecuteReaderAsync())
+            {
+                if (await schedReader.ReadAsync())
+                {
+                    roomId = schedReader["ROOM_ID"]?.ToString() ?? "";
+                    timeStartStr = schedReader["TIME_START"]?.ToString() ?? "";
+                }
+            }
+
+            if (string.IsNullOrEmpty(roomId)) return roster;
+
+            // 2. Establish the strictly defined 15-Minute Grace Period
+            DateTime gracePeriodEnd = DateTime.Now;
+            if (DateTime.TryParse(timeStartStr, out DateTime scheduleStartTime))
+            {
+                gracePeriodEnd = scheduleStartTime.AddMinutes(15);
+            }
+
+            // 3. Find enrolled students and their absolute earliest APPROVED room scan TODAY
             var query = @"
-                SELECT st.STUDENT_ID, st.FIRST_NAME, st.LAST_NAME, st.CAMPUS_PRESENCE
+                SELECT 
+                    st.STUDENT_ID, 
+                    st.FIRST_NAME, 
+                    st.MIDDLE_NAME, 
+                    st.LAST_NAME, 
+                    st.FACE_REFERENCE_PATH, 
+                    st.CAMPUS_PRESENCE,
+                    (SELECT MIN(TIMESTAMP) 
+                     FROM CAMPUS_ADMIN.EVENT_LOGS el 
+                     WHERE el.STUDENT_ID = st.STUDENT_ID 
+                       AND el.LOCATION_ID = :roomId 
+                       AND el.STATUS = 'approved' 
+                       AND TRUNC(el.TIMESTAMP) = TRUNC(SYSDATE)) AS SCAN_TIME
                 FROM CAMPUS_ADMIN.ENROLLMENTS e
                 JOIN CAMPUS_ADMIN.STUDENTS st ON e.STUDENT_ID = st.STUDENT_ID
-                JOIN CAMPUS_ADMIN.SCHEDULES s ON e.SECTION_ID = s.SECTION_ID
-                WHERE s.SCHEDULE_ID = :schedId";
+                WHERE e.SECTION_ID = (SELECT SECTION_ID FROM CAMPUS_ADMIN.SCHEDULES WHERE SCHEDULE_ID = :schedId)
+            ";
 
             using var cmd = new OracleCommand(query, connection);
             cmd.BindByName = true;
+            cmd.Parameters.Add(new OracleParameter("roomId", roomId));
             cmd.Parameters.Add(new OracleParameter("schedId", scheduleId));
 
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                roster.Add(new RosterStudent
+                string campusPresence = reader["CAMPUS_PRESENCE"]?.ToString()?.ToLower() ?? "offline";
+                string arrivalTime = "--:--";
+                string status = "Absent";
+
+                // Evaluate student's physical log against the Class Time Matrix
+                if (reader["SCAN_TIME"] != DBNull.Value)
                 {
-                    Student_ID = reader["STUDENT_ID"]?.ToString(),
-                    First_Name = reader["FIRST_NAME"]?.ToString(),
-                    Last_Name = reader["LAST_NAME"]?.ToString(),
-                    Enrollment_Status = reader["CAMPUS_PRESENCE"]?.ToString() ?? "Offline"
+                    DateTime scanTime = Convert.ToDateTime(reader["SCAN_TIME"]);
+                    arrivalTime = scanTime.ToString("hh:mm tt");
+
+                    if (campusPresence == "cutting")
+                    {
+                        status = "Cutting"; // Punitive override. If they cut, they are marked cutting regardless of arrival.
+                    }
+                    else
+                    {
+                        // Check if they made it inside the 15-minute grace period!
+                        if (scanTime <= gracePeriodEnd)
+                        {
+                            status = "Present";
+                        }
+                        else
+                        {
+                            status = "Late"; // Still 'in-class' in the DB physically, but marked 'Late' for the Professor's record!
+                        }
+                    }
+                }
+                else
+                {
+                    // If no scan exists, they are normally Absent, UNLESS they bypassed and somehow cut.
+                    if (campusPresence == "cutting") status = "Cutting"; 
+                }
+
+                roster.Add(new 
+                {
+                    student_ID = reader["STUDENT_ID"]?.ToString(),
+                    first_Name = reader["FIRST_NAME"]?.ToString(),
+                    middle_Name = reader["MIDDLE_NAME"]?.ToString(),
+                    last_Name = reader["LAST_NAME"]?.ToString(),
+                    face_Reference_Path = reader["FACE_REFERENCE_PATH"]?.ToString(),
+                    status = status,
+                    arrival_Time = arrivalTime
                 });
             }
             return roster;

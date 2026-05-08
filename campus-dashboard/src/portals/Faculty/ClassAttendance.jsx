@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, UserCircle, Download, ArrowUpDown, ChevronUp, ChevronDown, CheckCircle2, Clock, AlertTriangle, XCircle, RefreshCw, LogOut, User } from 'lucide-react';
+import { ArrowLeft, UserCircle, Download, ArrowUpDown, ChevronUp, ChevronDown, CheckCircle2, Clock, AlertTriangle, XCircle, RefreshCw, LogOut, User, AlertCircle } from 'lucide-react';
 
 // Import the system logo from your assets folder
 import qcuLogo from '../../assets/qcu-logo.svg';
@@ -34,33 +34,46 @@ export default function ClassAttendance() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [sortConfig, setSortConfig] = useState({ key: 'lastName', direction: 'asc' });
+  
+  // THE FIX: Professor Presence State
+  const [profPresence, setProfPresence] = useState('Checking...');
 
   useEffect(() => {
-    const fetchRoster = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch(`http://localhost:5106/api/attendance/schedule/${scheduleId}/roster`);
-        if (res.ok) setRoster(await res.json());
+        // Fetch Roster
+        const rosterRes = await fetch(`http://localhost:5106/api/attendance/schedule/${scheduleId}/roster`);
+        if (rosterRes.ok) setRoster(await rosterRes.json());
+        
+        // Fetch Professor's personal scanned status
+        const profRes = await fetch(`http://localhost:5106/api/attendance/presence/user/${profId}`);
+        if (profRes.ok) {
+           const data = await profRes.json();
+           setProfPresence(data.status);
+        }
       } catch (err) {
-        console.error("Failed to fetch roster:", err);
+        console.error("Failed to fetch data:", err);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchRoster();
-  }, [scheduleId]);
+    
+    fetchData();
+    
+    // Auto-refresh data every 10 seconds to catch live scans!
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, [scheduleId, profId]);
 
-  // THE FIX: Safe extraction & Dynamic Face URL Construction
+  // THE FIX: Safe extraction from the new Dynamic Matrix JSON
   const getStudentData = (s) => {
-    const id = s.studentId || s.student_ID || s.STUDENT_ID || 'UNKNOWN';
-    const firstName = s.firstName || s.first_Name || s.FIRST_NAME || '';
-    const middleName = s.middleName || s.middle_Name || s.MIDDLE_NAME || '';
-    const lastName = s.lastName || s.last_Name || s.LAST_NAME || '';
+    const id = s.student_ID || s.studentId || s.STUDENT_ID || 'UNKNOWN';
+    const firstName = s.first_Name || s.firstName || s.FIRST_NAME || '';
+    const middleName = s.middle_Name || s.middleName || s.MIDDLE_NAME || '';
+    const lastName = s.last_Name || s.lastName || s.LAST_NAME || '';
     
-    // Attempt to grab from the DB column first
-    const rawFacePath = s.faceReferencePath || s.face_Reference_Path || s.FACE_REFERENCE_PATH;
-    
-    // If null/missing, dynamically construct exactly as requested: lastname_studentID_face.jpg
-    const safeLastName = lastName.toLowerCase().replace(/\s+/g, ''); // Strip spaces just in case
+    const rawFacePath = s.face_Reference_Path || s.faceReferencePath || s.FACE_REFERENCE_PATH;
+    const safeLastName = lastName.toLowerCase().replace(/\s+/g, ''); 
     const computedFacePath = rawFacePath || `${safeLastName}_${id}_face.jpg`;
 
     return {
@@ -69,8 +82,8 @@ export default function ClassAttendance() {
       middleName, 
       lastName,
       facePath: computedFacePath,
-      status: s.status || s.STATUS || 'Absent',
-      arrivalTime: s.arrivalTime || s.arrival_Time || s.ARRIVAL_TIME || '--:--'
+      status: s.status || s.STATUS || 'Absent', // Now reliably returns Present, Late, Absent, or Cutting!
+      arrivalTime: s.arrival_Time || s.arrivalTime || s.ARRIVAL_TIME || '--:--'
     };
   };
 
@@ -194,6 +207,21 @@ export default function ClassAttendance() {
       <main className="flex-1 p-4 sm:p-8 overflow-y-auto relative animate-in fade-in">
         
         <div className="max-w-6xl mx-auto space-y-6">
+          
+          {/* THE FIX: Professor Action Reminder Banner */}
+          {!isLoading && profPresence.toLowerCase() !== 'in-class' && (
+            <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-2xl shadow-sm flex items-start gap-4 animate-in slide-in-from-top">
+                <AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={24} />
+                <div>
+                    <h3 className="text-amber-800 font-black text-lg">Action Required: Professor Not Checked In</h3>
+                    <p className="text-amber-700 text-sm mt-1 font-medium">
+                        Your system presence is currently <strong>'{profPresence}'</strong>. 
+                        While students can still scan in on time, please scan your ID or face at the edge node immediately to officially record your faculty attendance for this schedule.
+                    </p>
+                </div>
+            </div>
+          )}
+
           {/* Controls Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mt-2">
             <div className="flex items-center gap-4">
@@ -210,8 +238,8 @@ export default function ClassAttendance() {
             </button>
           </div>
 
-          {/* 3 Status Counters */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Status Counters */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <button onClick={() => setFilter('Present')} className={`p-5 rounded-2xl border text-left transition-all group ${filter === 'Present' ? 'bg-emerald-500 border-emerald-600 text-white shadow-lg scale-105' : 'bg-white border-slate-200 hover:border-emerald-300 shadow-sm'}`}>
               <div className="flex justify-between items-center mb-2">
                  <span className={`text-xs font-black uppercase tracking-widest ${filter === 'Present' ? 'text-emerald-100' : 'text-emerald-600'}`}>Present</span>
@@ -228,12 +256,20 @@ export default function ClassAttendance() {
               <div className={`text-4xl font-black ${filter === 'Late' ? 'text-white' : 'text-slate-800'}`}>{counts.Late}</div>
             </button>
 
-            <button onClick={() => setFilter('Absent')} className={`p-5 rounded-2xl border text-left transition-all group ${filter === 'Absent' ? 'bg-rose-500 border-rose-600 text-white shadow-lg scale-105' : 'bg-white border-slate-200 hover:border-rose-300 shadow-sm'}`}>
+            <button onClick={() => setFilter('Absent')} className={`p-5 rounded-2xl border text-left transition-all group ${filter === 'Absent' ? 'bg-slate-500 border-slate-600 text-white shadow-lg scale-105' : 'bg-white border-slate-200 hover:border-slate-400 shadow-sm'}`}>
               <div className="flex justify-between items-center mb-2">
-                 <span className={`text-xs font-black uppercase tracking-widest ${filter === 'Absent' ? 'text-rose-100' : 'text-rose-600'}`}>Absent</span>
-                 <XCircle size={20} className={filter === 'Absent' ? 'text-white' : 'text-rose-400'} />
+                 <span className={`text-xs font-black uppercase tracking-widest ${filter === 'Absent' ? 'text-slate-200' : 'text-slate-500'}`}>Absent</span>
+                 <XCircle size={20} className={filter === 'Absent' ? 'text-white' : 'text-slate-400'} />
               </div>
               <div className={`text-4xl font-black ${filter === 'Absent' ? 'text-white' : 'text-slate-800'}`}>{counts.Absent}</div>
+            </button>
+
+            <button onClick={() => setFilter('Cutting')} className={`p-5 rounded-2xl border text-left transition-all group ${filter === 'Cutting' ? 'bg-rose-500 border-rose-600 text-white shadow-lg scale-105' : 'bg-white border-slate-200 hover:border-rose-300 shadow-sm'}`}>
+              <div className="flex justify-between items-center mb-2">
+                 <span className={`text-xs font-black uppercase tracking-widest ${filter === 'Cutting' ? 'text-rose-100' : 'text-rose-600'}`}>Cutting</span>
+                 <AlertTriangle size={20} className={filter === 'Cutting' ? 'text-white' : 'text-rose-400'} />
+              </div>
+              <div className={`text-4xl font-black ${filter === 'Cutting' ? 'text-white' : 'text-slate-800'}`}>{counts.Cutting}</div>
             </button>
           </div>
 
@@ -277,12 +313,10 @@ export default function ClassAttendance() {
                       
                       return (
                         <tr key={student.id} className="hover:bg-slate-50 transition-colors">
-                          {/* 1. Student ID */}
                           <td className="p-4 font-mono font-bold text-slate-600 text-sm">
                             {student.id}
                           </td>
 
-                          {/* 2. Photo (Anti-Jitter Implementation) */}
                           <td className="p-3 flex justify-center">
                             <div className="relative w-10 h-10 rounded-full overflow-hidden border border-slate-200 shadow-sm bg-slate-100 shrink-0">
                               <div className="absolute inset-0 flex items-center justify-center text-slate-400 bg-slate-100">
@@ -298,22 +332,19 @@ export default function ClassAttendance() {
                             </div>
                           </td>
 
-                          {/* 3. Full Name (Last, First Middle) */}
                           <td className="p-4">
                             <div className="font-black text-slate-800 text-lg leading-tight">
                               {student.lastName}, {student.firstName} {student.middleName}
                             </div>
                           </td>
 
-                          {/* 4. Status */}
                           <td className="p-4 text-center">
                             {student.status === 'Present' && <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-700 border border-emerald-200 font-black text-xs uppercase tracking-widest rounded-lg shadow-sm"><CheckCircle2 size={14}/> Present</span>}
                             {student.status === 'Late' && <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 font-black text-xs uppercase tracking-widest rounded-lg shadow-sm"><Clock size={14}/> Late</span>}
-                            {student.status === 'Absent' && <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-500 border border-slate-200 font-black text-xs uppercase tracking-widest rounded-lg shadow-sm"><XCircle size={14}/> Absent</span>}
+                            {student.status === 'Absent' && <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-600 border border-slate-300 font-black text-xs uppercase tracking-widest rounded-lg shadow-sm"><XCircle size={14}/> Absent</span>}
                             {student.status === 'Cutting' && <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-100 text-rose-700 border border-rose-200 font-black text-xs uppercase tracking-widest rounded-lg shadow-sm animate-pulse"><AlertTriangle size={14}/> Cutting</span>}
                           </td>
 
-                          {/* 5. Arrival Time */}
                           <td className="p-4 text-center font-bold font-mono text-sm text-slate-600">
                             {student.arrivalTime}
                           </td>
