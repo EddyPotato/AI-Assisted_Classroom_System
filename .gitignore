@@ -58,11 +58,11 @@ env/
 # 4. Project Specific Data (CRITICAL)
 # =========================
 # Do not upload actual student face photos to GitHub!
-ReferenceFaces/
-*.jpg
-*.jpeg
-*.png
-*.mp4
+# ReferenceFaces/
+# *.jpg
+# *.jpeg
+# *.png
+# *.mp4
 
 # =========================
 # 5. OS & Editor Files
