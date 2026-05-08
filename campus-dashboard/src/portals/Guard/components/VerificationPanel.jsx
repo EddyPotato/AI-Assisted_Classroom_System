@@ -1,89 +1,64 @@
-import { ImageOff, ScanLine, AlertCircle, CheckCircle2, BadgeCheck, CalendarX } from 'lucide-react';
+import { ShieldCheck, XCircle, AlertTriangle, User, Clock } from 'lucide-react';
 
 export default function VerificationPanel({ latestScan, cacheBuster }) {
   if (!latestScan) {
     return (
-      <div className="w-full max-w-xl h-full mx-auto bg-white border border-slate-200 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-8 text-center text-slate-400 flex flex-col items-center justify-center shadow-sm min-h-[400px]">
-        <ScanLine className="mb-5 sm:mb-6 opacity-30 w-14 h-14 lg:w-20 lg:h-20" />
-        <p className="font-black text-2xl sm:text-3xl text-slate-500 tracking-tight">System Ready</p>
-        <p className="text-base sm:text-lg mt-2 font-medium text-slate-400">Awaiting biometric scan...</p>
+      <div className="w-full h-full min-h-[300px] flex flex-col items-center justify-center bg-white rounded-3xl border border-slate-200 shadow-sm p-8 text-center">
+        <User size={64} className="text-slate-200 mb-4" />
+        <h3 className="text-xl font-black text-slate-400">Awaiting Subject</h3>
+        <p className="text-slate-400 font-medium mt-2">Camera stream is active. Waiting for face detection...</p>
       </div>
     );
   }
 
-  const isScanning = latestScan.status === 'scanning';
-  const isMissing = latestScan.status === 'missing_face';
-  const isApproved = latestScan.status === 'approved' || latestScan.status === 'Access Granted';
-  const isNoProfessor = latestScan.status === 'no_professor_yet';
-  const isCutting = latestScan.status === 'cutting';
-  const isInvalidSchedule = latestScan.status === 'invalid_schedule'; // NEW: Early Rejection
+  // Determine styles and icons based on the STRICT state machine statuses
+  const isApproved = latestScan.status === 'approved';
+  const isCutting = latestScan.status === 'Cutting / Early Exit';
+  const isDuplicate = latestScan.status === 'duplicate';
+  
+  const panelStyle = isApproved 
+    ? "bg-emerald-50 border-emerald-500 shadow-emerald-100" 
+    : isCutting || isDuplicate
+      ? "bg-amber-50 border-amber-500 shadow-amber-100"
+      : "bg-rose-50 border-rose-500 shadow-rose-100";
+
+  const Icon = isApproved ? ShieldCheck : isCutting || isDuplicate ? AlertTriangle : XCircle;
+  const iconColor = isApproved ? "text-emerald-600" : isCutting || isDuplicate ? "text-amber-600" : "text-rose-600";
 
   return (
-    <div className={`w-full max-w-xl h-full mx-auto border rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-6 lg:p-8 shadow-sm transition-all duration-300 flex flex-col justify-center overflow-y-auto min-h-[450px] ${isScanning ? 'bg-blue-50 border-blue-300 ring-4 ring-blue-500/20' : isMissing ? 'bg-amber-50 border-amber-300 ring-4 ring-amber-500/20' : isNoProfessor ? 'bg-amber-50 border-amber-400 ring-4 ring-amber-500/30' : isApproved ? 'bg-emerald-50 border-emerald-300 ring-4 ring-emerald-500/20' : 'bg-rose-50 border-rose-300 ring-4 ring-rose-500/20'}`}>
+    <div className={`w-full h-full flex flex-col bg-white rounded-3xl border-2 ${panelStyle} shadow-lg overflow-hidden transition-all duration-300 animate-in slide-in-from-right-4`}>
       
-      <h2 className="text-xs sm:text-sm font-black text-slate-500 uppercase tracking-widest text-center shrink-0">
-         {isScanning ? 'Analyzing Biometrics...' : isMissing ? 'Error: Missing Data' : isNoProfessor ? 'Attendance Paused' : isInvalidSchedule ? 'Schedule Error' : 'Verification Result'}
-      </h2>
-      
-      {/* EARLY REJECTION UI (Skips face and just shows error) */}
-      {isInvalidSchedule ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-center my-6">
-           <div className="w-24 h-24 sm:w-32 sm:h-32 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mb-6">
-             <CalendarX size={64} strokeWidth={2} />
-           </div>
-           <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tighter mb-2">No Schedule Found</h3>
-           <p className="text-rose-600 font-bold text-lg px-6">{latestScan.hint || "You are not scheduled for this room right now."}</p>
+      <div className="p-6 sm:p-8 flex-1 flex flex-col items-center justify-center text-center">
+        
+        {/* Dynamic Icon */}
+        <div className="mb-6">
+          <Icon size={72} className={iconColor} strokeWidth={2} />
         </div>
-      ) : (
-        <>
-          {/* Square Profile Picture Area (Flexes to fit) */}
-          <div className="w-full max-w-[14rem] sm:max-w-[16rem] lg:max-w-[20rem] aspect-square mx-auto bg-white rounded-2xl sm:rounded-3xl border-8 border-white shadow-md flex items-center justify-center overflow-hidden relative my-4 sm:my-6 shrink-0">
-            {latestScan.face_reference_path ? (
-              <img 
-                src={`http://localhost:5106/ReferenceFaces/${latestScan.face_reference_path}?t=${cacheBuster}`} 
-                className="w-full h-full object-contain bg-slate-100"
-                alt="Reference" 
-              />
-            ) : (
-              <ImageOff className="text-slate-300 w-16 h-16 sm:w-24 sm:h-24" />
-            )}
-            
-            {isScanning && latestScan.face_reference_path && (
-              <div className="absolute inset-0 pointer-events-none">
-                 <div className="w-full h-1 bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-[scan_1.5s_ease-in-out_infinite_alternate] absolute top-0 left-0"></div>
-              </div>
-            )}
-          </div>
 
-          {/* Details Section */}
-          <div className="text-center mb-4 lg:mb-6 shrink-0 flex flex-col items-center justify-center">
-            <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 leading-none tracking-tighter w-full pb-2" style={{ wordBreak: 'break-word' }}>
-              {latestScan.first_name} {latestScan.last_name}
-            </h3>
-            
-            <div className="flex items-center justify-center gap-2 sm:gap-3 mt-1 sm:mt-2 bg-slate-100/70 px-4 py-2 rounded-xl border border-slate-200">
-              <BadgeCheck className="text-blue-500 w-6 h-6 lg:w-8 lg:h-8 shrink-0" />
-              <p className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-700 font-mono tracking-wider truncate">
-                {latestScan.student_id}
-              </p>
-            </div>
+        {/* Student Identity */}
+        <h2 className="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight">
+          {latestScan.first_name} <span className="text-slate-500">{latestScan.last_name}</span>
+        </h2>
+        <div className="font-mono font-bold text-slate-400 text-lg mt-2 mb-6 tracking-widest">
+          {latestScan.student_id}
+        </div>
 
-            {latestScan.hint && !isInvalidSchedule && (
-              <p className="text-amber-700 font-black text-sm sm:text-base mt-4 px-4 py-2 bg-amber-100 border border-amber-200 rounded-xl inline-block w-full">
-                {latestScan.hint}
-              </p>
-            )}
-          </div>
-        </>
-      )}
-      
-      {/* Friendly Status Badge */}
-      <div className={`p-4 lg:p-5 rounded-2xl font-black text-base lg:text-xl flex items-center justify-center gap-3 w-full text-white shadow-lg mt-auto tracking-widest shrink-0 ${isScanning ? 'bg-blue-600 shadow-blue-500/30' : (isMissing || isNoProfessor) ? 'bg-amber-500 shadow-amber-500/30' : isApproved ? 'bg-emerald-600 shadow-emerald-500/30' : 'bg-rose-600 shadow-rose-500/30'}`}>
-        {isScanning ? <ScanLine className="animate-spin w-6 h-6 lg:w-8 lg:h-8 shrink-0" /> : (isMissing || isNoProfessor) ? <AlertCircle className="w-6 h-6 lg:w-8 lg:h-8 shrink-0" /> : isApproved ? <CheckCircle2 className="w-6 h-6 lg:w-8 lg:h-8 shrink-0" /> : <AlertCircle className="w-6 h-6 lg:w-8 lg:h-8 shrink-0" />}
-        {isScanning ? 'ANALYZING...' : isMissing ? 'NO REGISTERED PHOTO' : isNoProfessor ? 'WAITING FOR PROFESSOR' : isInvalidSchedule ? 'INVALID SCHEDULE' : isCutting ? 'EARLY EXIT FLAG' : isApproved ? 'ATTENDANCE RECORDED' : 'ENTRY DENIED'}
+        {/* The Natural Text Message from the Backend */}
+        <div className={`px-6 py-4 rounded-2xl w-full font-black text-lg sm:text-xl leading-relaxed ${
+          isApproved ? 'bg-emerald-100 text-emerald-800' : 
+          isCutting || isDuplicate ? 'bg-amber-100 text-amber-800' : 
+          'bg-rose-100 text-rose-800'
+        }`}>
+          {latestScan.message || (isApproved ? "ACCESS GRANTED" : "ACCESS DENIED")}
+        </div>
+
+        {/* Timestamp & Metadata */}
+        <div className="mt-8 flex items-center gap-2 text-sm font-bold text-slate-400 bg-white/50 px-4 py-2 rounded-xl border border-slate-200">
+          <Clock size={16} />
+          <span>Scanned at {latestScan.timestamp}</span>
+        </div>
+
       </div>
-
-      <style dangerouslySetInnerHTML={{__html: `@keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }`}} />
     </div>
   );
 }

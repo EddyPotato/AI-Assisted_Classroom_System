@@ -1,7 +1,7 @@
 import CameraControls from '../components/controls/CameraControls';
 import LiveCameraFeed from '../components/LiveCameraFeed';
 import VerificationPanel from '../components/VerificationPanel';
-import PhaseStepper from '../components/PhaseStepper'; // <-- ADD THIS IMPORT
+import PhaseStepper from '../components/PhaseStepper'; 
 
 export default function LiveMonitorView({
   isFullscreen, setIsFullscreen,
@@ -39,7 +39,6 @@ export default function LiveMonitorView({
           />
         </div>
 
-        {/* Change this wrapper to flex-col and gap-4 to stack the stepper and panel nicely */}
         <div className="min-h-0 w-full flex flex-col justify-center items-center gap-4">
           <PhaseStepper latestScan={latestScan} />
           <VerificationPanel latestScan={latestScan} cacheBuster={cacheBuster} />

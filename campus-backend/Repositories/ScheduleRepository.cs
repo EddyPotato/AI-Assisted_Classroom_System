@@ -208,5 +208,37 @@ namespace campus_backend.Repositories
                 throw; 
             }
         }
+
+        public async Task<bool> IsStudentInClassNowAsync(string studentId, string roomId)
+        {
+            using var connection = new OracleConnection(_connectionString);
+            await connection.OpenAsync();
+
+            string currentDay = DateTime.Now.ToString("ddd");
+            DateTime now = DateTime.Now;
+
+            var schedCmd = new OracleCommand(@"
+                SELECT s.TIME_START, s.TIME_END FROM CAMPUS_ADMIN.SCHEDULES s
+                JOIN CAMPUS_ADMIN.ENROLLMENTS e ON s.SECTION_ID = e.SECTION_ID
+                WHERE s.ROOM_ID = :room AND e.STUDENT_ID = :sid AND s.CLASS_DAYS LIKE '%' || :day || '%'", connection);
+            
+            schedCmd.Parameters.Add(new OracleParameter("room", roomId));
+            schedCmd.Parameters.Add(new OracleParameter("sid", studentId));
+            schedCmd.Parameters.Add(new OracleParameter("day", currentDay));
+            
+            using var reader = await schedCmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                if (DateTime.TryParse(reader["TIME_START"].ToString(), out DateTime startTime) && 
+                    DateTime.TryParse(reader["TIME_END"]?.ToString(), out DateTime endTime))
+                {
+                    // Valid if they scan 45 mins early, up until the class ends
+                    if (now >= startTime.AddMinutes(-45) && now <= endTime) {
+                        return true; 
+                    }
+                }
+            }
+            return false;
+        }
     }
 }

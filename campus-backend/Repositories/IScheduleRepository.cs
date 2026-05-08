@@ -9,5 +9,7 @@ namespace campus_backend.Repositories
         Task UpdateScheduleAsync(Schedule schedule);
         Task DeleteScheduleAsync(string id);
         Task<int> BulkImportSchedulesAsync(List<BulkScheduleDto> schedules);
+        // Add this inside IScheduleRepository
+        Task<bool> IsStudentInClassNowAsync(string studentId, string roomId);
     }
 }
