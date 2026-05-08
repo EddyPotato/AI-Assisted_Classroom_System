@@ -12,8 +12,9 @@ export default function LiveMonitorView({
   latestScan, cacheBuster, retryCount
 }) {
   return (
-    <div className={`min-h-full lg:h-full flex flex-col gap-4 mx-auto animate-in fade-in duration-300 ${isFullscreen ? 'max-w-[100rem]' : 'max-w-7xl sm:gap-6'}`}>
+    <div className={`min-h-full lg:h-full flex flex-col gap-4 mx-auto animate-in fade-in duration-300 ${isFullscreen ? 'max-w-400' : 'max-w-7xl sm:gap-6'}`}>
       
+      {/* 1. CAMERA CONTROLS / DROPDOWNS */}
       <CameraControls 
         streamStatus={streamStatus}
         onStart={handleStartCamera}
@@ -28,7 +29,10 @@ export default function LiveMonitorView({
         toggleFullscreen={() => setIsFullscreen(!isFullscreen)}
       />
 
+      {/* 2. MAIN LAYOUT GRID (Split between Camera and Data) */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 items-stretch justify-center gap-4 sm:gap-6 min-h-0 w-full">
+        
+        {/* LEFT SIDE: Video Feed */}
         <div className="min-h-0 w-full flex justify-center items-center">
           <LiveCameraFeed 
             streamStatus={streamStatus}
@@ -39,9 +43,16 @@ export default function LiveMonitorView({
           />
         </div>
 
+        {/* RIGHT SIDE: State Machine and Verification Results */}
         <div className="min-h-0 w-full flex flex-col justify-center items-center gap-4">
           <PhaseStepper latestScan={latestScan} />
-          <VerificationPanel latestScan={latestScan} cacheBuster={cacheBuster} />
+          
+          {/* THE FIX: Passed currentLocationId to instantly reset UI on camera swap */}
+          <VerificationPanel 
+            latestScan={latestScan} 
+            cacheBuster={cacheBuster} 
+            currentLocationId={currentLocationId} 
+          />
         </div>
       </div>
       

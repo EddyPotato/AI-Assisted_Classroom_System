@@ -24,6 +24,7 @@ namespace campus_backend.Services
         // Shared State across phases
         private string _pendingStudentId = "";
         private string _pendingFirstName = "";
+        private string _pendingMiddleName = ""; // THE FIX: Added Middle Name State
         private string _pendingLastName = "";
         private string? _pendingFacePath = null;
         private string _currentLocationId = "CAM-001";
@@ -56,6 +57,9 @@ namespace campus_backend.Services
                 var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
                 var locRepo = scope.ServiceProvider.GetRequiredService<ICameraLocationRepository>();
                 var schedRepo = scope.ServiceProvider.GetRequiredService<IScheduleRepository>();
+                
+                // THE FIX: Pull AttendanceRepo into Phase 1 for immediate status checking
+                var attRepo = scope.ServiceProvider.GetRequiredService<IAttendanceRepository>();
 
                 // 1. Fetch Node Data
                 var locData = await locRepo.GetLocationByIdAsync(_currentLocationId);
@@ -69,38 +73,59 @@ namespace campus_backend.Services
                 var student = await studentRepo.GetStudentByIdAsync(_pendingStudentId);
                 if (student != null) {
                     _pendingFirstName = student.First_Name ?? "Unknown";
+                    _pendingMiddleName = student.Middle_Name ?? ""; // Store Middle Name
                     _pendingLastName = student.Last_Name ?? "";
-                    // _pendingFacePath = student.Face_Reference_Path; 
+                    _pendingFacePath = student.Face_Reference_Path; 
                     _pendingRole = "student";
                 } else {
                     var user = await userRepo.GetUserByIdAsync(_pendingStudentId);
                     if (user != null) {
                         _pendingFirstName = user.First_Name ?? "Unknown";
+                        _pendingMiddleName = user.Middle_Name ?? ""; // Store Middle Name
                         _pendingLastName = user.Last_Name ?? "";
+                        _pendingFacePath = user.Face_Reference_Path; 
                         _pendingRole = "user";
                     }
                 }
                 
-                earlyStatus = _pendingFacePath != null ? "scanning" : "missing_face";
+                earlyStatus = !string.IsNullOrEmpty(_pendingFacePath) ? "scanning" : "missing_face";
 
-                // 3. Early Rejection Check (Rooms)
-                if (earlyStatus == "scanning" && logicType == "room" && locationType == "entrance")
+                // 3. EARLY EVALUATION (Stop Phase 2 before it even starts)
+                string currentPresence = await attRepo.GetCurrentPresenceAsync(_pendingStudentId, _pendingRole);
+
+                if (earlyStatus == "scanning")
                 {
-                    if (_pendingRole == "student") 
+                    if (logicType == "gate" && locationType == "entrance")
                     {
-                        bool isEnrolled = await schedRepo.IsStudentInClassNowAsync(_pendingStudentId, associatedRoomId ?? "");
-                        if (!isEnrolled) {
-                            earlyStatus = "invalid_schedule";
-                            scanHint = "No scheduled class here.";
-                            _pendingFirstName = ""; _pendingLastName = ""; _pendingFacePath = null;
+                        // Immediate Duplicate Check
+                        if (currentPresence.ToLower() == "in-campus")
+                        {
+                            earlyStatus = "duplicate";
+                            scanHint = "Campus Access Active: You are already IN-CAMPUS.";
+                            _pendingFacePath = null; // Setting to null aborts Phase 2 verification
+                        }
+                    }
+                    else if (logicType == "room" && locationType == "entrance")
+                    {
+                        // Immediate Schedule Check
+                        if (_pendingRole == "student") 
+                        {
+                            bool isEnrolled = await schedRepo.IsStudentInClassNowAsync(_pendingStudentId, associatedRoomId ?? "");
+                            if (!isEnrolled) {
+                                earlyStatus = "invalid_schedule";
+                                scanHint = "No scheduled class here at this time.";
+                                _pendingFacePath = null; // Aborts Phase 2 verification
+                            }
                         }
                     }
                 }
             }
 
+            // Blast Phase 1 Result to UI
             await _hubContext.Clients.All.SendAsync("ReceiveBarcode", new {
                 student_id = _pendingStudentId, 
                 first_name = _pendingFirstName, 
+                middle_name = _pendingMiddleName, // Passed to React
                 last_name = _pendingLastName,
                 face_reference_path = _pendingFacePath, 
                 status = earlyStatus,
@@ -131,7 +156,7 @@ namespace campus_backend.Services
                     string newPresence = currentPresence;
                     string eventLogStatus = "approved";
 
-                    // Apply State Machine Rules
+                    // Apply Final State Machine Rules
                     if (locData?.Logic_Type?.ToLower() == "gate")
                     {
                         if (locData.Location_Type?.ToLower() == "entrance") newPresence = "in-campus";
@@ -155,10 +180,18 @@ namespace campus_backend.Services
                 }
             }
 
+            // Blast Phase 2 Result to UI
             await _hubContext.Clients.All.SendAsync("ReceiveScanResult", new {
-                student_id = _pendingStudentId, first_name = _pendingFirstName, last_name = _pendingLastName,
-                status = status, hint = scanHint, timestamp = DateTime.Now.ToString("HH:mm:ss"),
-                face_reference_path = _pendingFacePath, location_id = _currentLocationId, location_name = locationName
+                student_id = _pendingStudentId, 
+                first_name = _pendingFirstName, 
+                middle_name = _pendingMiddleName, // Passed to React
+                last_name = _pendingLastName,
+                status = status, 
+                hint = scanHint, 
+                timestamp = DateTime.Now.ToString("hh:mm tt"),
+                face_reference_path = _pendingFacePath, 
+                location_id = _currentLocationId, 
+                location_name = locationName
             });
         }
 
