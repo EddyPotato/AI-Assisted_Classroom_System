@@ -1,41 +1,34 @@
-using campus_backend.Hubs;
-using campus_backend.Services;
-using campus_backend.Repositories;
-using Microsoft.Extensions.FileProviders;
+using System.IO;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.IO;
+using Microsoft.Extensions.FileProviders;
+using campus_backend.Hubs;
+using campus_backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ==========================================
-// 1. DATABASE REPOSITORIES
+// 1. REPOSITORIES
 // ==========================================
-// Encapsulates all Oracle SQL logic into strictly typed interfaces.
-builder.Services.AddScoped<IStudentRepository, StudentRepository>();
-builder.Services.AddScoped<IStaffRepository, StaffRepository>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IRoomRepository, RoomRepository>();
-builder.Services.AddScoped<IScheduleRepository, ScheduleRepository>();
-builder.Services.AddScoped<ISectionRepository, SectionRepository>();
-builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
-builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
-builder.Services.AddScoped<ICourseRepository, CourseRepository>();
-builder.Services.AddScoped<ICameraLocationRepository, CameraLocationRepository>();
-builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.IStudentRepository, campus_backend.Repositories.StudentRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.IStaffRepository, campus_backend.Repositories.StaffRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.IUserRepository, campus_backend.Repositories.UserRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.IRoomRepository, campus_backend.Repositories.RoomRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.IScheduleRepository, campus_backend.Repositories.ScheduleRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.ISectionRepository, campus_backend.Repositories.SectionRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.IEnrollmentRepository, campus_backend.Repositories.EnrollmentRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.ISubjectRepository, campus_backend.Repositories.SubjectRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.ICourseRepository, campus_backend.Repositories.CourseRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.ICameraLocationRepository, campus_backend.Repositories.CameraLocationRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.IAttendanceRepository, campus_backend.Repositories.AttendanceRepository>();
 
 // ==========================================
-// 2. BUSINESS LOGIC & CORE SERVICES
+// 2. SERVICES
 // ==========================================
-// Handles file system operations (saving face references)
 builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
-
-// The "State Machine Brain" for processing camera scans. 
-// Registered as SINGLETON because the background MQTT service needs constant access to it.
-builder.Services.AddSingleton<IAccessVerificationService, AccessVerificationService>();
-
-// Enables HTTP calls to the Python Edge Nodes
+// Singleton Brain for the State Machine
+builder.Services.AddSingleton<IAccessVerificationService, AccessVerificationService>(); 
 builder.Services.AddHttpClient(); 
 
 // ==========================================
@@ -44,7 +37,6 @@ builder.Services.AddHttpClient();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // Ensures JSON properties match React's camelCase expectations
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 
@@ -58,17 +50,10 @@ builder.Services.AddCors(options => {
     });
 });
 
-// Real-time WebSockets (For Live Monitor UI updates)
 builder.Services.AddSignalR();
-
-// Background Service: Constantly listens to the Python AI over MQTT
 builder.Services.AddHostedService<MqttListenerService>();
-
 builder.Services.AddOpenApi();
 
-// ==========================================
-// 4. APP BUILD & PIPELINE
-// ==========================================
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -77,10 +62,14 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// IMPORTANT: CORS must happen BEFORE Static Files so the images aren't blocked!
 app.UseCors("AllowReactApp");
 
-// --- STATIC FILE SERVER (Images) ---
-// Automatically creates the directory if you deploy to a fresh server
+// ==========================================
+// 4. STATIC FILE SERVER (Images)
+// ==========================================
+// This explicitly targets your local C:\Users\EdTech\...\ReferenceFaces folder
 var facesDirectory = Path.Combine(Directory.GetCurrentDirectory(), "ReferenceFaces");
 if (!Directory.Exists(facesDirectory))
 {
@@ -93,7 +82,9 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/ReferenceFaces" 
 });
 
-// --- ROUTING ---
+// ==========================================
+// 5. ROUTING
+// ==========================================
 app.MapControllers();
 app.MapHub<CampusHub>("/campushub");
 

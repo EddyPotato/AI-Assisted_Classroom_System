@@ -3,7 +3,7 @@ import { ShieldCheck, XCircle, AlertTriangle, User, Clock, Camera, ImageOff } fr
 export default function VerificationPanel({ latestScan, cacheBuster }) {
   if (!latestScan) {
     return (
-      <div className="w-full h-full min-h-[300px] flex flex-col items-center justify-center bg-white rounded-3xl border border-slate-200 shadow-sm p-8 text-center">
+      <div className="w-full h-full min-h-75 flex flex-col items-center justify-center bg-white rounded-3xl border border-slate-200 shadow-sm p-8 text-center">
         <User size={64} className="text-slate-200 mb-4" />
         <h3 className="text-xl font-black text-slate-400">Awaiting Subject</h3>
         <p className="text-slate-400 font-medium mt-2">Camera stream is active. Waiting for barcode scan...</p>
@@ -36,10 +36,10 @@ export default function VerificationPanel({ latestScan, cacheBuster }) {
   let messageStyle = "bg-rose-100 text-rose-800";
 
   if (isScanning) {
-    // The "Waiting for Face" State
+    // The "Waiting for Face" State - Turns Blue!
     panelStyle = "bg-blue-50 border-blue-500 shadow-blue-100";
     Icon = Camera;
-    iconColor = "text-blue-600 animate-pulse"; // Pulses to show it is actively processing
+    iconColor = "text-blue-600 animate-pulse"; 
     statusMessage = "Barcode Scanned. Verifying Face...";
     messageStyle = "bg-blue-100 text-blue-800";
   } 
@@ -67,13 +67,30 @@ export default function VerificationPanel({ latestScan, cacheBuster }) {
   }
 
   // ==========================================
-  // 3. PROFILE PICTURE CONSTRUCTION
+  // 3. SMART PROFILE PICTURE EXTRACTOR
   // ==========================================
-  const profilePicUrl = latestScan.face_reference_path
-    ? `http://localhost:5106/ReferenceFaces/${latestScan.face_reference_path}?cb=${cacheBuster}`
+  const getCleanFilename = (path) => {
+    if (!path) return null;
+    
+    // 1. Strip away any accidental folder paths (e.g., "C:\...\image")
+    let filename = path.split('\\').pop().split('/').pop();
+    
+    // 2. THE FIX: If the database string (e.g., 'canon_26-0004_face') 
+    // does not have a valid image extension, we explicitly append '.jpg'
+    const lowerName = filename.toLowerCase();
+    if (!lowerName.endsWith('.jpg') && !lowerName.endsWith('.jpeg') && !lowerName.endsWith('.png')) {
+      filename += '.jpg';
+    }
+    
+    return filename;
+  };
+
+  const cleanFacePath = getCleanFilename(latestScan.face_reference_path);
+  const profilePicUrl = cleanFacePath
+    ? `http://localhost:5106/ReferenceFaces/${cleanFacePath}?cb=${cacheBuster}`
     : null;
 
-  // Only show timestamp if we are out of Phase 1 and the backend provided it
+  // Only show timestamp if we are strictly out of Phase 1
   const showTimestamp = latestScan.timestamp && !isScanning && !isMissingFace && !isInvalidSchedule;
 
   return (
@@ -94,7 +111,7 @@ export default function VerificationPanel({ latestScan, cacheBuster }) {
                 'border-rose-500'
               }`}
               onError={(e) => {
-                e.target.onerror = null;
+                e.target.onerror = null; // Prevent infinite loops
                 e.target.src = "https://via.placeholder.com/150?text=Image+Error"; 
               }}
             />
@@ -134,7 +151,7 @@ export default function VerificationPanel({ latestScan, cacheBuster }) {
           {statusMessage}
         </div>
 
-        {/* CONDITIONAL TIMESTAMP (Hidden during Barcode scanning) */}
+        {/* CONDITIONAL TIMESTAMP (Strictly hidden during Barcode scanning) */}
         {showTimestamp && (
           <div className="mt-8 flex items-center gap-2 text-sm font-bold text-slate-500 bg-white/60 px-5 py-2.5 rounded-xl border border-slate-200 shadow-sm animate-in fade-in zoom-in duration-300">
             <Clock size={18} />
