@@ -56,7 +56,7 @@ export default function Login() {
         
         <LoginHeader />
 
-        <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
+        <div className="bg-white rounded-4xl border border-slate-200 shadow-xl overflow-hidden">
           <div className="p-8 sm:p-10">
             <LoginForm 
               credentials={credentials}
