@@ -33,7 +33,11 @@ builder.Services.AddScoped<campus_backend.Repositories.IAttendanceRepository, ca
 
 builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
 
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowReactApp", policy => {

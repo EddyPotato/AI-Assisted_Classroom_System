@@ -31,7 +31,7 @@ namespace campus_backend.Controllers
             return BadRequest("Failed to create camera location.");
         }
 
-        [HttpPut("location/{id}")]
+        [HttpPut("locations/{id}")]
         public async Task<IActionResult> UpdateLocation(string id, [FromBody] CameraLocation location)
         {
             var success = await _locationRepo.UpdateLocationAsync(id, location);

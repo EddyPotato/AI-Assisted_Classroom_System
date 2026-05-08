@@ -13,7 +13,9 @@ namespace campus_backend.Repositories
         public AttendanceRepository(IConfiguration configuration)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection")
-                ?? throw new InvalidOperationException("Connection string not found.");
+                ?? configuration.GetConnectionString("OracleConnection")
+                ?? configuration.GetConnectionString("OracleDb")
+                ?? throw new InvalidOperationException("Oracle connection string is missing.");
         }
 
         public async Task<List<object>> GetTodaySchedulesForProfessorAsync(string professorId, string currentDay)

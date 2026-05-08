@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
+using System.Linq;
 using campus_backend.Models;
 using campus_backend.Repositories;
 
@@ -21,10 +22,85 @@ namespace campus_backend.Controllers
         [HttpGet]
         public async Task<IActionResult> GetSchedules()
         {
-            // Assuming you have a GetAllSchedulesAsync method in your repo
-            // var schedules = await _scheduleRepository.GetAllSchedulesAsync();
-            // return Ok(schedules);
-            return Ok(); 
+            try
+            {
+                var schedules = await _scheduleRepository.GetAllSchedulesAsync();
+                return Ok(schedules);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Database error retrieving schedules.", error = ex.Message });
+            }
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetScheduleById(string id)
+        {
+            try
+            {
+                var schedules = await _scheduleRepository.GetAllSchedulesAsync();
+                var schedule = schedules.FirstOrDefault(s => s.Schedule_ID == id);
+                
+                if (schedule == null)
+                    return NotFound(new { message = $"Schedule with ID {id} not found." });
+                
+                return Ok(schedule);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Database error retrieving schedule.", error = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateSchedule([FromBody] Schedule schedule)
+        {
+            if (schedule == null)
+                return BadRequest(new { message = "Schedule data is required." });
+
+            try
+            {
+                await _scheduleRepository.CreateScheduleAsync(schedule);
+                return Ok(new { message = "Schedule created successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Database error creating schedule.", error = ex.Message });
+            }
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateSchedule(string id, [FromBody] Schedule schedule)
+        {
+            if (schedule == null)
+                return BadRequest(new { message = "Schedule data is required." });
+
+            if (schedule.Schedule_ID != id)
+                schedule.Schedule_ID = id;
+
+            try
+            {
+                await _scheduleRepository.UpdateScheduleAsync(schedule);
+                return Ok(new { message = "Schedule updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Database error updating schedule.", error = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteSchedule(string id)
+        {
+            try
+            {
+                await _scheduleRepository.DeleteScheduleAsync(id);
+                return Ok(new { message = "Schedule deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Database error deleting schedule.", error = ex.Message });
+            }
         }
 
         [HttpPost("import")]

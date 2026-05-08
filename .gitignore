@@ -75,3 +75,5 @@ Thumbs.db
 #.venv\Scripts\activate
 
 # python vision_node.py
+
+# python app.py
