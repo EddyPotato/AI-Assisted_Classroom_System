@@ -1,6 +1,11 @@
 import os
 
-REFERENCE_FACES_DIR = r"C:\Users\EdTech\OneDrive\Desktop\AI-Assisted_Classroom_System\campus-backend\ReferenceFaces"
+# This gets the folder where config.py lives
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# This moves up one folder, then into campus-backend/ReferenceFaces
+REFERENCE_FACES_DIR = os.path.join(BASE_DIR, "..", "campus-backend", "ReferenceFaces")
+
 MQTT_BROKER = "localhost"
 
 # Camera Hardware Settings
