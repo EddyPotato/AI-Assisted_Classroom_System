@@ -1,12 +1,24 @@
+# ============================================================================
+# AI-Assisted Classroom System - Campus Edge Node Dependencies
+# Python 3.10+ required
+# Installation: pip install -r requirements.txt
+# Note: dlib compilation takes 5-20 minutes on first install (Windows especially)
+# ============================================================================
+
+# ============================================================================
+# CORE DEPENDENCIES
+# ============================================================================
+
 # Camera and Image Processing
 opencv-python>=4.9.0
 numpy>=1.26.4
 Pillow>=10.0.0
 
-# AI Facial Recognition (REQUIRES Visual C++ Build Tools on Windows!)
-# Install CMake first: pip install cmake
-# Then install dlib (may take 5-10 minutes to compile)
-# Or use pre-built wheel: pip install dlib-19.24.2-cp311-cp311-win_amd64.whl
+# AI Facial Recognition
+# ⚠️  WINDOWS USERS: Install Visual C++ Build Tools + CMake before these!
+# https://visualstudio.microsoft.com/visual-cpp-build-tools/
+# Then: pip install cmake
+# Or use pre-built wheel: pip install dlib-19.24.2-cp310-cp310-win_amd64.whl
 face_recognition>=1.3.0
 dlib>=19.24.2
 scipy>=1.11.0
@@ -19,7 +31,44 @@ pyzbar>=0.1.9
 Flask>=3.0.3
 Flask-Cors>=4.0.1
 
-# Communication
+# Real-Time Communication & MQTT
 paho-mqtt>=1.6.1
 requests>=2.31.0
 python-dotenv>=1.0.1
+
+# ============================================================================
+# PRODUCTION DEPLOYMENT
+# ============================================================================
+
+# WSGI Application Server (for production instead of Flask development server)
+gunicorn>=21.0.0
+
+# Process Manager (keep Flask running, auto-restart, monitoring)
+supervisor>=4.2.0
+
+# Production-grade logging with JSON output
+python-json-logger>=2.0.0
+
+# ============================================================================
+# DEVELOPMENT & TESTING (Optional - uncomment if developing)
+# ============================================================================
+
+# Unit Testing Framework
+# pytest>=7.0.0
+# pytest-cov>=4.1.0
+
+# Code Quality & Linting
+# black>=23.0.0              # Code formatter
+# pylint>=2.17.0             # Linting
+# mypy>=1.0.0                # Static type checking
+# flake8>=6.0.0              # Style guide enforcement
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# - Face recognition compilation time: 5-10 min (Linux), 10-20 min (Windows/macOS)
+# - Use virtual environment: python -m venv venv && source venv/bin/activate
+# - Verify install: python -c "import cv2, face_recognition, pyzbar, flask"
+# - For Linux: sudo apt-get install python3-dev cmake build-essential libopenblas-dev
+# - For macOS: brew install cmake && brew install opencv (optional)
+# ============================================================================

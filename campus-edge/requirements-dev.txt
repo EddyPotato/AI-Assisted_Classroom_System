@@ -1,0 +1,72 @@
+# Development & Testing Dependencies for Campus Edge Node
+# 
+# Install with: pip install -r requirements.txt -r requirements-dev.txt
+# Or standalone: pip install -r requirements-dev.txt
+#
+# These are NOT needed for production deployment
+# Use these during development for testing, linting, and code quality
+
+# ============================================================================
+# Unit Testing
+# ============================================================================
+pytest>=7.0.0
+pytest-cov>=4.1.0      # Code coverage reporting
+pytest-timeout>=2.1.0  # Timeout handling for long-running tests
+
+# ============================================================================
+# Code Quality & Linting
+# ============================================================================
+black>=23.0.0          # Code formatter (opinionated, automatic formatting)
+pylint>=2.17.0         # Linting (finds errors, enforces standards)
+mypy>=1.0.0            # Static type checking
+flake8>=6.0.0          # Style guide enforcement
+isort>=5.12.0          # Import sorting
+
+# ============================================================================
+# Development Utilities
+# ============================================================================
+ipython>=8.0.0         # Enhanced interactive Python shell
+jupyter>=1.0.0         # Jupyter notebook support (optional)
+autopep8>=2.0.0        # Automatic PEP8 formatting
+
+# ============================================================================
+# Debugging & Profiling
+# ============================================================================
+python-debugpy>=1.6.0  # Debugger support
+memory-profiler>=0.61.0 # Memory profiling
+
+# ============================================================================
+# Documentation
+# ============================================================================
+sphinx>=5.0.0          # Documentation generator
+sphinx-rtd-theme>=1.0.0 # ReadTheDocs theme
+
+# ============================================================================
+# Installation & Environment
+# ============================================================================
+pip-tools>=6.8.0       # pip dependency management
+wheel>=0.40.0          # Wheel distribution format
+setuptools>=65.0.0     # Package setup utilities
+
+# ============================================================================
+# Notes
+# ============================================================================
+# Use with main requirements.txt:
+#   pip install -r requirements.txt
+#   pip install -r requirements-dev.txt
+#
+# Generate pinned versions:
+#   pip-compile requirements.txt
+#   pip-compile requirements-dev.txt
+#
+# Format code before commits:
+#   black .
+#   isort .
+#
+# Run linting:
+#   pylint campus_edge/
+#   mypy .
+#
+# Run tests with coverage:
+#   pytest --cov=. --cov-report=html
+# ============================================================================
