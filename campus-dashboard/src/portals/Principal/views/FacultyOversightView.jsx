@@ -14,13 +14,16 @@ export default function FacultyOversightView() {
           // Filter out guards/admins, keep only Faculty
           const profs = data.filter(u => u.Role === 'Faculty' || u.role === 'Faculty');
           
-          // Generate realistic mock "lates" for the UI demonstration
-          const mappedProfs = profs.map((prof, index) => {
-            let mockLates = 0;
-            if (index % 4 === 0) mockLates = 4; // High lates
-            else if (index % 3 === 0) mockLates = 2; // Medium lates
-            return { ...prof, lates: mockLates };
-          });
+          // Map the real database data handling casing differences from the C# API
+          const mappedProfs = profs.map(prof => ({
+            ...prof,
+            userId: prof.user_ID || prof.User_ID || 'UNKNOWN',
+            firstName: prof.first_Name || prof.First_Name || '',
+            middleName: prof.middle_Name || prof.Middle_Name || '',
+            lastName: prof.last_Name || prof.Last_Name || '',
+            facePath: prof.face_Reference_Path || prof.Face_Reference_Path || '',
+            lates: prof.lates_Count !== undefined ? prof.lates_Count : (prof.Lates_Count || 0)
+          }));
           
           setFaculty(mappedProfs);
         }
@@ -32,11 +35,6 @@ export default function FacultyOversightView() {
     };
     fetchFaculty();
   }, []);
-
-  const formatName = (first, middle, last) => {
-    const m = middle ? ` ${middle}` : '';
-    return `${last}, ${first}${m}`;
-  };
 
   const getLateBadge = (lates) => {
     if (lates === 0) return <span className="px-3 py-1 text-sm font-bold rounded-full bg-green-100 text-green-700 border border-green-200">0</span>;
@@ -62,21 +60,23 @@ export default function FacultyOversightView() {
             <tr>
               <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Professor ID</th>
               <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Photo</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Full Name</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Last Name</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">First Name</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Middle Name</th>
               <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Lates to Class</th>
               <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
-              <tr><td colSpan="5" className="p-8 text-center text-gray-500">Loading faculty records...</td></tr>
+              <tr><td colSpan="7" className="p-8 text-center text-gray-500">Loading faculty records...</td></tr>
             ) : faculty.map((prof) => (
-              <tr key={prof.User_ID} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">{prof.User_ID}</td>
+              <tr key={prof.userId} className="hover:bg-gray-50 transition-colors">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">{prof.userId}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {prof.Face_Reference_Path ? (
+                  {prof.facePath ? (
                     <img 
-                      src={`http://localhost:5106/ReferenceFaces/${prof.Face_Reference_Path.split('/').pop()}`} 
+                      src={`http://localhost:5106/ReferenceFaces/${prof.facePath.split('/').pop()}`} 
                       alt="Professor" 
                       className="h-10 w-10 rounded-lg object-cover border border-gray-200 shadow-sm"
                       onError={(e) => { e.target.onerror = null; e.target.src = ''; }}
@@ -87,9 +87,9 @@ export default function FacultyOversightView() {
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900 text-base">
-                  {formatName(prof.First_Name, prof.Middle_Name, prof.Last_Name)}
-                </td>
+                <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900">{prof.lastName}</td>
+                <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">{prof.firstName}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-600">{prof.middleName || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-center">
                   {getLateBadge(prof.lates)}
                 </td>

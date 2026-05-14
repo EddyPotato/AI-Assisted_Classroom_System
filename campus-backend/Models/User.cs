@@ -9,11 +9,11 @@ namespace campus_backend.Models
         public string? Password { get; set; } 
         public string Role { get; set; } = string.Empty;
         
-        // NEW FIELDS
         public string? Email { get; set; }
         public string? Contact_Number { get; set; }
         public string? Address { get; set; }
-        public string Status { get; set; } = "Active"; // Default to Active
+        public string Status { get; set; } = "Active"; 
         public string? Face_Reference_Path { get; set; }
+        public int Lates_Count { get; set; } = 0; // Tracking tardiness
     }
 }
