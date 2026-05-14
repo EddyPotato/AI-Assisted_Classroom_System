@@ -4,9 +4,8 @@ export function useAtRiskStudents() {
   const [atRiskStudents, setAtRiskStudents] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. Initial Load Effect (Linter-Safe)
   useEffect(() => {
-    let isMounted = true; // Prevents memory leaks if component unmounts quickly
+    let isMounted = true; 
 
     const fetchInitialData = async () => {
       try {
@@ -15,7 +14,7 @@ export function useAtRiskStudents() {
           const data = await response.json();
           if (isMounted) {
             setAtRiskStudents(data);
-            setLoading(false); // State is set deep inside an async boundary
+            setLoading(false); 
           }
         }
       } catch (error) {
@@ -25,14 +24,9 @@ export function useAtRiskStudents() {
     };
 
     fetchInitialData();
+    return () => { isMounted = false; };
+  }, []); 
 
-    // Cleanup function
-    return () => {
-      isMounted = false;
-    };
-  }, []); // Empty dependency array ensures this only runs once on mount
-
-  // 2. Manual Refresh Function (For the Button)
   const handleManualRefresh = async () => {
     setLoading(true);
     try {
@@ -48,10 +42,20 @@ export function useAtRiskStudents() {
     }
   };
 
-  // 3. Admin Actions
-  const handleExcuse = async (enrollmentId, studentName) => {
-    if (!window.confirm(`Are you sure you want to excuse absences for ${studentName}? This will reset their count to 0.`)) return;
-    
+  // --- NEW: Fetch detailed dates for the modal ---
+  const fetchAbsenceDetails = async (enrollmentId) => {
+    try {
+      const response = await fetch(`http://localhost:5106/api/principal/absences/${enrollmentId}`);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.error("Failed to fetch absence details", error);
+    }
+    return [];
+  };
+
+  const handleExcuse = async (enrollmentId) => {
     try {
       const response = await fetch(`http://localhost:5106/api/principal/excuse/${enrollmentId}`, { method: 'PUT' });
       if (response.ok) {
@@ -62,9 +66,7 @@ export function useAtRiskStudents() {
     }
   };
 
-  const handleDrop = async (enrollmentId, studentName, section) => {
-    if (!window.confirm(`DANGER: Are you sure you want to OFFICIALLY DROP ${studentName} from ${section}? This will remove them from the class roster permanently.`)) return;
-
+  const handleDrop = async (enrollmentId) => {
     try {
       const response = await fetch(`http://localhost:5106/api/principal/drop/${enrollmentId}`, { method: 'DELETE' });
       if (response.ok) {
@@ -79,6 +81,7 @@ export function useAtRiskStudents() {
     atRiskStudents,
     loading,
     fetchAtRiskStudents: handleManualRefresh,
+    fetchAbsenceDetails,
     handleExcuse,
     handleDrop
   };

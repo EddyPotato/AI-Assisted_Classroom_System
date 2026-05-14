@@ -1,22 +1,74 @@
-import { NavLink } from 'react-router-dom';
-import { CalendarDays } from 'lucide-react';
+import React from 'react';
+import { LayoutDashboard, Users, BookOpen, UserCheck, ShieldAlert, FileText, Settings } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-export default function Sidebar() {
-  const navStyle = ({ isActive }) => 
-    `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-      isActive 
-        ? 'bg-blue-50 text-blue-700 font-bold shadow-sm border border-blue-100' 
-        : 'text-gray-600 hover:bg-gray-50 font-medium border border-transparent'
-    }`;
+export default function Sidebar({ role }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const getNavLinks = () => {
+    switch (role) {
+      case 'Principal':
+        return [
+          { name: 'Dashboard', icon: LayoutDashboard, path: '/principal' },
+          { name: 'Interventions', icon: ShieldAlert, path: '/principal/interventions' },
+          { name: 'Academic Reports', icon: FileText, path: '/principal/reports' },
+          { name: 'Faculty Oversight', icon: UserCheck, path: '/principal/faculty' },
+        ];
+      case 'Registrar':
+        return [
+          { name: 'Dashboard', icon: LayoutDashboard, path: '/registrar' },
+          { name: 'Sections', icon: Users, path: '/registrar/sections' },
+          { name: 'Schedules', icon: BookOpen, path: '/registrar/schedules' },
+          { name: 'Directories', icon: UserCheck, path: '/registrar/users' },
+        ];
+      case 'Faculty':
+        return [
+          { name: 'Dashboard', icon: LayoutDashboard, path: '/faculty' },
+          { name: 'My Classes', icon: BookOpen, path: '/faculty/classes' },
+          { name: 'Attendance', icon: UserCheck, path: '/faculty/attendance' },
+        ];
+      case 'Guard':
+        return [
+          { name: 'Live Monitor', icon: LayoutDashboard, path: '/guard' },
+          { name: 'Access History', icon: FileText, path: '/guard/history' },
+        ];
+      case 'SystemAdmin':
+        return [
+          { name: 'System Status', icon: LayoutDashboard, path: '/admin' },
+          { name: 'Camera Config', icon: Settings, path: '/admin/cameras' },
+        ];
+      default:
+        return [];
+    }
+  };
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col md:flex shrink-0 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-      <nav className="p-4 space-y-2">
-        <NavLink to="/dashboard" className={navStyle}>
-          <CalendarDays size={20} /> My Schedule
-        </NavLink>
-        {/* Additional links can be added here later */}
+    // Changed h-screen to h-full so it respects the new Header position
+    <div className="w-64 bg-white text-gray-800 border-r border-gray-200 h-full flex flex-col shadow-sm z-20">
+      <nav className="flex-1 mt-6 overflow-y-auto">
+        <ul className="space-y-1 px-3">
+          {getNavLinks().map((link) => {
+            const Icon = link.icon;
+            const isActive = location.pathname === link.path || (location.pathname === '/' && link.name === 'Dashboard');
+            return (
+              <li key={link.name}>
+                <button
+                  onClick={() => navigate(link.path)}
+                  className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 ${
+                    isActive 
+                      ? 'bg-indigo-50 text-indigo-700 font-semibold' 
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-indigo-600 font-medium'
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-sm">{link.name}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </nav>
-    </aside>
+    </div>
   );
 }

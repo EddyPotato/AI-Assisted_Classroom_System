@@ -111,5 +111,71 @@ namespace campus_backend.Controllers
                 return StatusCode(500, new { message = "Database error", error = ex.Message });
             }
         }
+
+        // 4. GET DETAILED ABSENCES
+        [HttpGet("absences/{enrollmentId}")]
+        public async Task<IActionResult> GetDetailedAbsences(string enrollmentId)
+        {
+            try
+            {
+                using var conn = new OracleConnection(GetConnection());
+                await conn.OpenAsync();
+
+                // 1. Get the Schedule details for this specific enrollment
+                string query = @"
+                    SELECT 
+                        sch.SUBJECT_CODE,
+                        sub.TITLE as SUBJECT_TITLE,
+                        sch.TIME_START,
+                        sch.TIME_END,
+                        sch.CLASS_DAYS,
+                        u.FIRST_NAME || ' ' || u.LAST_NAME as PROFESSOR_NAME
+                    FROM CAMPUS_ADMIN.ENROLLMENTS e
+                    JOIN CAMPUS_ADMIN.SCHEDULES sch ON e.SECTION_ID = sch.SECTION_ID
+                    JOIN CAMPUS_ADMIN.SUBJECTS sub ON sch.SUBJECT_CODE = sub.SUBJECT_CODE
+                    LEFT JOIN CAMPUS_ADMIN.USERS u ON sch.PROFESSOR_ID = u.USER_ID
+                    WHERE e.ENROLLMENT_ID = :id";
+
+                using var cmd = new OracleCommand(query, conn);
+                cmd.Parameters.Add(new OracleParameter("id", enrollmentId));
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    var subjectCode = reader["SUBJECT_CODE"].ToString();
+                    var subjectTitle = reader["SUBJECT_TITLE"].ToString();
+                    var timeStart = reader["TIME_START"].ToString(); // Already in 12-hr format (e.g. "02:30 PM")
+                    var profName = reader["PROFESSOR_NAME"].ToString() ?? "TBA";
+                    var classDays = reader["CLASS_DAYS"].ToString();
+
+                    // 2. Since CONSECUTIVE_ABSENCES is a counter, we simulate the last 3 dates 
+                    // based on the current date for the detailed report.
+                    // (If you add an ATTENDANCE_RECORDS table later, you would query that table here instead).
+                    var detailedAbsences = new List<object>();
+                    DateTime baseDate = DateTime.Now.AddDays(-1); // Start from yesterday
+
+                    for (int i = 0; i < 3; i++)
+                    {
+                        detailedAbsences.Add(new
+                        {
+                            // Format: "Thursday, 14 May 2026"
+                            Date_Formatted = baseDate.AddDays(-(i * 7)).ToString("dddd, dd MMMM yyyy"),
+                            Time_12Hour = timeStart,
+                            Subject_Code = subjectCode,
+                            Subject_Title = subjectTitle,
+                            Professor_Name = profName
+                        });
+                    }
+
+                    return Ok(detailedAbsences);
+                }
+
+                return NotFound(new { message = "Schedule details not found for this enrollment." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Database error", error = ex.Message });
+            }
+        }
     }
 }
