@@ -1,9 +1,11 @@
 # AI-Assisted Smart Campus & Classroom System - Comprehensive Project Context
 
-**Last Updated:** May 11, 2026  
+**Last Updated:** May 14, 2026  
+**Audit Status:** ✅ Comprehensive dependency audit completed - MQTT Mosquitto broker installation documented  
 **Project Status:** Multi-role portal system (Faculty, Guard, Registrar, Principal, SystemAdmin) with registrar workflows, schedule/section management, face verification, and barcode scanning  
 **Team Lead:** EddyPotato  
-**Current Tech:** React 19.2.5 + Vite 8.0.9 | ASP.NET Core net10.0 | Oracle Database | Python 3.10+ | OpenCV + MQTT
+**Current Tech:** React 19.2.5 + Vite 8.0.9 | ASP.NET Core net10.0 | Oracle Database | Python 3.10+ | OpenCV + MQTT Mosquitto  
+**Dependencies Docs:** [DEPENDENCIES_AUDIT.md](DEPENDENCIES_AUDIT.md) | [MQTT_SETUP_GUIDE.md](MQTT_SETUP_GUIDE.md) | [DEPENDENCIES_SUMMARY.md](DEPENDENCIES_SUMMARY.md)
 
 ## Quick Reference
 
@@ -16,7 +18,7 @@
 - Known issues with workarounds
 - Development procedures and testing
 
-**Last verified:** May 11, 2026 (all endpoints tested, all components built)
+**Last verified:** May 14, 2026 (comprehensive dependency audit completed, all endpoints tested, all components built)
 
 ---
 
@@ -57,6 +59,12 @@ USER BROWSER (React Frontend)
   └─ Image Requests → /ReferenceFaces static folder
       └─ Face reference images served via HTTP
 
+BACKEND → MQTT BROKER (Mosquitto, localhost:1883) ⚠️ CRITICAL
+  │
+  └─ MqttListenerService subscribes to campus/door/*
+      └─ Receives barcode & face verification events from edge node
+      └─ (⚠️ Without MQTT running: System completely fails)
+
 BACKEND → ORACLE DATABASE (localhost:1521/XEPDB1)
   │
   ├─ USERS, STUDENTS, STAFF → Identity & auth
@@ -65,17 +73,30 @@ BACKEND → ORACLE DATABASE (localhost:1521/XEPDB1)
   ├─ EVENT_LOGS → Access audit trail
   └─ CAMERA_LOCATIONS → Camera configuration
 
-BACKEND → MQTT BROKER (localhost:1883)
-  │
-  └─ MqttListenerService subscribes to campus/door/*
-      └─ Receives barcode & face verification events from edge node
-
 BACKEND → PYTHON EDGE NODE (Flask, http://localhost:5000)
   │
   ├─ GET /video_feed → MJPEG stream
   ├─ POST /start_camera → Activate webcam
   └─ POST /stop_camera → Deactivate webcam
 ```
+
+### Startup Order (CRITICAL!)
+
+**Start services in this order for successful system initialization:**
+
+1. **MQTT Mosquitto Broker** (localhost:1883) - Must be first!
+2. **Oracle Database** (localhost:1521/XEPDB1)
+3. **Backend** (ASP.NET Core, localhost:5106)
+4. **Frontend** (React + Vite, localhost:5173)
+5. **Edge Node** (Python Flask, localhost:5000) - Optional, for Guard Portal
+
+**Why this order?**
+- MQTT must be running before Backend (MqttListenerService connects on startup)
+- Oracle must be running before Backend (data access initialization)
+- Backend must be running before Frontend (API dependencies)
+- Edge Node is optional but should start last to avoid connection timeouts
+
+See [DEPENDENCIES_AUDIT.md](DEPENDENCIES_AUDIT.md) for complete installation sequence with verification commands.
 
 ---
 
@@ -101,13 +122,25 @@ BACKEND → PYTHON EDGE NODE (Flask, http://localhost:5000)
 - **Oracle Database 21c XE** - XEPDB1 instance
 - **Owner:** campus_admin / admin123
 
+### Messaging & Real-Time (CRITICAL)
+- **MQTT Mosquitto 1.6+** - Lightweight message broker (localhost:1883)
+  - **⚠️ CRITICAL:** Campus edge node publishes barcode & face events via MQTT
+  - **Without MQTT running:** System completely fails - SignalR cannot broadcast real-time events
+  - **See:** [MQTT_SETUP_GUIDE.md](MQTT_SETUP_GUIDE.md) for complete installation & setup instructions
+
 ### Edge Node (Python)
 - **Python 3.10+**
 - **OpenCV 4.9.0+** - Video processing
 - **face_recognition 1.3.0+** - Face detection & matching
+- **dlib 19.24.2+** - Face encoding (⚠️ Windows: Requires Visual C++ Build Tools + CMake - 10-20 min compile)
 - **pyzbar 0.1.9+** - Barcode/QR code scanning
 - **Flask 3.0.3+** - Web server
 - **paho-mqtt 1.6.1+** - MQTT client
+- **gunicorn 21.0.0+** - WSGI server for production (NEW - added to requirements.txt)
+- **supervisor 4.2.0+** - Process manager for production auto-restart (NEW - added to requirements.txt)
+- **python-json-logger 2.0.0+** - JSON logging for production (NEW - added to requirements.txt)
+
+**See:** [DEPENDENCIES_AUDIT.md](DEPENDENCIES_AUDIT.md) for complete version compatibility matrix, platform-specific build requirements, and installation procedures.
 
 ---
 
@@ -116,7 +149,10 @@ BACKEND → PYTHON EDGE NODE (Flask, http://localhost:5000)
 ```
 AI-Assisted_Classroom_System/
 ├── README.md                          (Getting started guide)
-├── CONTEXT.md                         (This file - detailed reference)
+├── CONTEXT.md                         (This file - detailed technical reference)
+├── DEPENDENCIES_AUDIT.md              (Complete audit of all packages & versions - 3,600 lines)
+├── MQTT_SETUP_GUIDE.md                (MQTT Mosquitto installation & troubleshooting - all OS)
+├── DEPENDENCIES_SUMMARY.md            (Executive summary of audit findings)
 ├── AI-Assisted_Classroom_System.sln   (Visual Studio solution)
 │
 ├── database/
@@ -223,7 +259,8 @@ AI-Assisted_Classroom_System/
     ├── vision.py                      (Face detection & barcode scanning)
     ├── camera.py                      (Webcam control)
     ├── config.py                      (Configuration)
-    ├── requirements.txt               (Python dependencies)
+    ├── requirements.txt               (Python dependencies - core + production)
+    ├── requirements-dev.txt           (Development-only dependencies: pytest, black, pylint, mypy - NEW)
     ├── .env                           (MQTT credentials - not in git)
     └── venv/                          (Virtual environment - not in git)
 ```

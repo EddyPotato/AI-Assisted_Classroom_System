@@ -2,9 +2,10 @@
 
 **Complete, Production-Ready Multi-Role Campus Management Platform**
 
-**Status:** ✅ May 11, 2026 - All systems functional and tested  
-**Built With:** React 19.2.5 + Vite | ASP.NET Core 10 | Oracle | Python 3.10+ with OpenCV  
-**Team:** EddyPotato & Contributors
+**Status:** ✅ May 14, 2026 - All systems functional and tested | Full dependency audit completed  
+**Built With:** React 19.2.5 + Vite | ASP.NET Core 10 | Oracle | Python 3.10+ with OpenCV | MQTT Mosquitto  
+**Team:** EddyPotato & Contributors  
+**Documentation:** See [DEPENDENCIES_AUDIT.md](DEPENDENCIES_AUDIT.md) | [MQTT_SETUP_GUIDE.md](MQTT_SETUP_GUIDE.md) | [DEPENDENCIES_SUMMARY.md](DEPENDENCIES_SUMMARY.md)
 
 ---
 
@@ -122,6 +123,9 @@ A comprehensive intelligent campus management system integrating:
 AI-Assisted_Classroom_System/
 ├── README.md                                 # This file
 ├── CONTEXT.md                                # Comprehensive technical reference (for vibe coding)
+├── DEPENDENCIES_AUDIT.md                      # Complete dependency audit (all packages & versions)
+├── MQTT_SETUP_GUIDE.md                       # MQTT Mosquitto installation (critical component)
+├── DEPENDENCIES_SUMMARY.md                    # Executive summary of audit findings
 ├── AI-Assisted_Classroom_System.sln          # Visual Studio solution
 │
 ├── database/
@@ -191,6 +195,14 @@ AI-Assisted_Classroom_System/
 - **Python 3.10+**
 - **pip** (Python package manager)
 
+#### ⚠️ CRITICAL: MQTT Mosquitto Broker
+- **MQTT Mosquitto 1.6+** (lightweight message broker - **MUST be running for system to function**)
+- **Windows:** `choco install mosquitto` (Chocolatey) or download from https://mosquitto.org/download/
+- **Linux:** `sudo apt-get install mosquitto mosquitto-clients`
+- **macOS:** `brew install mosquitto`
+
+**Why Critical:** Campus edge node publishes real-time barcode scans and face verification events via MQTT to the backend. Without MQTT broker running, the entire real-time system fails. See [MQTT_SETUP_GUIDE.md](MQTT_SETUP_GUIDE.md) for complete installation & verification steps.
+
 ### Credentials
 
 **Oracle:**
@@ -211,6 +223,62 @@ Database: XEPDB1
 ---
 
 ## Installation & Setup
+
+### ⚠️ IMPORTANT: Installation Order
+
+**Install components in this exact sequence for successful system startup:**
+
+1. **System prerequisites** (Python, Node.js, .NET, Oracle) - One-time setup
+2. **MQTT Mosquitto broker** - CRITICAL, must be installed & running first
+3. **Database setup** - Oracle schema import
+4. **Backend setup** - .NET restore & build
+5. **Frontend setup** - npm install
+6. **Edge node setup** - Python virtual environment & requirements
+7. **Start services** in order: MQTT → Backend → Frontend → Edge Node
+
+**See:** [DEPENDENCIES_AUDIT.md](DEPENDENCIES_AUDIT.md#phase-1-system-prerequisites) for complete step-by-step guide with all verification commands.
+
+### 0. MQTT Mosquitto Setup (Required First!)
+
+**Quick Install:**
+
+```powershell
+# Windows
+choco install mosquitto
+
+# Linux (Ubuntu/Debian)
+sudo apt-get update && sudo apt-get install -y mosquitto mosquitto-clients
+
+# macOS
+brew install mosquitto
+```
+
+**Verify Installation:**
+```bash
+mosquitto --version          # Should show version 2.0.x
+netstat -an | grep 1883      # Should show LISTENING on port 1883
+```
+
+**Start MQTT Broker:**
+```bash
+# Windows (auto-starts as service)
+# Verify: Get-Service mosquitto
+
+# Linux
+sudo systemctl start mosquitto
+sudo systemctl enable mosquitto  # Auto-start on boot
+
+# macOS
+brew services start mosquitto
+```
+
+**Test MQTT Connection:**
+```bash
+mosquitto_sub -h localhost -p 1883 -t "campus/#"
+# Should connect and wait for messages
+```
+
+**See:** [MQTT_SETUP_GUIDE.md](MQTT_SETUP_GUIDE.md) for comprehensive setup, troubleshooting, and platform-specific instructions.
 
 ### 1. Database Setup
 
@@ -331,32 +399,62 @@ Running on http://localhost:5000
 
 ## Running the System
 
+### ⚠️ CRITICAL: Startup Order
+
+**MQTT Mosquitto MUST be started first. Services depend on it being available.**
+
 ### Quick Start (All Services)
 
-**Terminal 1 - Backend:**
+**Terminal 1 - MQTT Broker (Start First!):**
+```powershell
+# Windows
+net start mosquitto
+# Or if configured as auto-start service, verify it's running:
+Get-Service mosquitto
+
+# Linux
+sudo systemctl start mosquitto
+
+# macOS
+brew services start mosquitto
+
+# Verify
+mosquitto_sub -h localhost -p 1883 -t "campus/#"
+# Should connect successfully
+```
+
+**Terminal 2 - Backend:**
 ```powershell
 cd campus-backend
 dotnet run
+# Should show: Now listening on https://localhost:5106
 ```
 
-**Terminal 2 - Frontend:**
+**Terminal 3 - Frontend:**
 ```powershell
 cd campus-dashboard
 npm.cmd run dev
+# Should show: Local: http://localhost:5173
 ```
 
-**Terminal 3 - Edge Node (Optional):**
+**Terminal 4 - Edge Node (Optional, for Guard Portal):**
 ```powershell
 cd campus-edge
 venv\Scripts\activate
 python app.py
+# Should show: Running on http://localhost:5000
 ```
 
 ### Access the System
 
-1. **Frontend:** http://localhost:5173/login
+1. **Frontend:** http://localhost:5173/login (once MQTT + Backend + Frontend all running)
 2. **Backend API:** http://localhost:5106 (no web UI, API only)
-3. **Edge Node:** http://localhost:5000/video_feed (MJPEG stream)
+3. **Edge Node:** http://localhost:5000/video_feed (MJPEG stream, only if running)
+
+**Troubleshooting:**
+- If frontend won't connect: Verify MQTT broker is running (`netstat -an | grep 1883`)
+- If backend won't start: Verify MQTT broker is running and Oracle database is accessible
+- See [MQTT_SETUP_GUIDE.md](MQTT_SETUP_GUIDE.md) for detailed troubleshooting
 
 ### Login
 
