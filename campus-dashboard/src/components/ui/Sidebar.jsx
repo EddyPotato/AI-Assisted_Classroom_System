@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, BookOpen, UserCheck, ShieldAlert, FileText, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, UserCheck, ShieldAlert, Settings } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function Sidebar({ role }) {
@@ -12,7 +12,6 @@ export default function Sidebar({ role }) {
         return [
           { name: 'Dashboard', icon: LayoutDashboard, path: '/principal' },
           { name: 'Interventions', icon: ShieldAlert, path: '/principal/interventions' },
-          { name: 'Academic Reports', icon: FileText, path: '/principal/reports' },
           { name: 'Faculty Oversight', icon: UserCheck, path: '/principal/faculty' },
         ];
       case 'Registrar':
@@ -31,7 +30,7 @@ export default function Sidebar({ role }) {
       case 'Guard':
         return [
           { name: 'Live Monitor', icon: LayoutDashboard, path: '/guard' },
-          { name: 'Access History', icon: FileText, path: '/guard/history' },
+          { name: 'Access History', icon: ShieldAlert, path: '/guard/history' },
         ];
       case 'SystemAdmin':
         return [
@@ -44,8 +43,7 @@ export default function Sidebar({ role }) {
   };
 
   return (
-    // Changed h-screen to h-full so it respects the new Header position
-    <div className="w-64 bg-white text-gray-800 border-r border-gray-200 h-full flex flex-col shadow-sm z-20">
+    <div className="w-64 bg-white text-gray-800 border-r border-gray-200 h-full flex flex-col shadow-sm z-20 shrink-0">
       <nav className="flex-1 mt-6 overflow-y-auto">
         <ul className="space-y-1 px-3">
           {getNavLinks().map((link) => {
