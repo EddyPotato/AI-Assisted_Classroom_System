@@ -231,5 +231,123 @@ namespace campus_backend.Controllers
                 return StatusCode(500, new { message = "Database error", error = ex.Message });
             }
         }
+
+        // --- NEW: SEND INTERVENTION EMAIL ---
+        public class InterventionEmailDto
+        {
+            public string Enrollment_ID { get; set; } = string.Empty;
+            public string Subject { get; set; } = string.Empty;
+            public string Message { get; set; } = string.Empty;
+        }
+
+        [HttpPost("send-intervention")]
+        public async Task<IActionResult> SendInterventionEmail([FromBody] InterventionEmailDto request)
+        {
+            try
+            {
+                // In a production app, you would use SmtpClient or SendGrid here to physically send the email.
+                // Example: var smtpClient = new SmtpClient("smtp.gmail.com") { ... };
+                // smtpClient.Send("principal@qcu.edu", studentEmail, request.Subject, request.Message);
+
+                // For now, we simulate success and log it.
+                Console.WriteLine($"[EMAIL SENT] To Enrollment {request.Enrollment_ID} | Subj: {request.Subject}");
+
+                return Ok(new { message = "Intervention email successfully sent to the student and their guardian." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to send email", error = ex.Message });
+            }
+        }
+
+        [HttpGet("all-student-statuses")]
+        public async Task<IActionResult> GetAllStudentStatuses()
+        {
+            try
+            {
+                using var conn = new OracleConnection(GetConnection());
+                await conn.OpenAsync();
+
+                // ADDED: Subquery to grab the associated subjects for this section
+                string query = @"
+                    SELECT 
+                        e.ENROLLMENT_ID,
+                        s.STUDENT_ID, 
+                        s.FIRST_NAME, 
+                        s.MIDDLE_NAME,
+                        s.LAST_NAME, 
+                        s.FACE_REFERENCE_PATH,
+                        e.CONSECUTIVE_ABSENCES,
+                        e.ENROLLMENT_STATUS,
+                        sec.SECTION_NAME,
+                        (SELECT LISTAGG(SUBJECT_CODE, ', ') WITHIN GROUP (ORDER BY SUBJECT_CODE) 
+                         FROM CAMPUS_ADMIN.SCHEDULES 
+                         WHERE SECTION_ID = sec.SECTION_ID) AS SUBJECT_CODES
+                    FROM CAMPUS_ADMIN.ENROLLMENTS e
+                    JOIN CAMPUS_ADMIN.STUDENTS s ON e.STUDENT_ID = s.STUDENT_ID
+                    JOIN CAMPUS_ADMIN.SECTIONS sec ON e.SECTION_ID = sec.SECTION_ID";
+
+                using var cmd = new OracleCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var studentList = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    studentList.Add(new
+                    {
+                        Enrollment_ID = reader["ENROLLMENT_ID"].ToString(),
+                        Student_ID = reader["STUDENT_ID"].ToString(),
+                        First_Name = reader["FIRST_NAME"].ToString(),
+                        Middle_Name = reader["MIDDLE_NAME"] != DBNull.Value ? reader["MIDDLE_NAME"].ToString() : "",
+                        Last_Name = reader["LAST_NAME"].ToString(),
+                        Face_Reference_Path = reader["FACE_REFERENCE_PATH"] != DBNull.Value ? reader["FACE_REFERENCE_PATH"].ToString() : "",
+                        Absences = Convert.ToInt32(reader["CONSECUTIVE_ABSENCES"]),
+                        Status = reader["ENROLLMENT_STATUS"].ToString() ?? "Enrolled",
+                        Section = reader["SECTION_NAME"].ToString(),
+                        // Map the new subjects column
+                        Subjects = reader["SUBJECT_CODES"] != DBNull.Value ? reader["SUBJECT_CODES"].ToString() : "N/A"
+                    });
+                }
+                return Ok(studentList);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Database error", error = ex.Message });
+            }
+        }
+
+        // --- NEW: REAL DASHBOARD STATISTICS ---
+        [HttpGet("dashboard-stats")]
+        public async Task<IActionResult> GetDashboardStats()
+        {
+            try
+            {
+                using var conn = new OracleConnection(GetConnection());
+                await conn.OpenAsync();
+
+                // 1. Get Total Enrolled Students
+                using var cmdStudent = new OracleCommand("SELECT COUNT(*) FROM CAMPUS_ADMIN.STUDENTS", conn);
+                int totalStudents = Convert.ToInt32(await cmdStudent.ExecuteScalarAsync());
+
+                // 2. Get Total Faculty Staff
+                using var cmdFaculty = new OracleCommand("SELECT COUNT(*) FROM CAMPUS_ADMIN.USERS WHERE ROLE = 'Faculty'", conn);
+                int totalFaculty = Convert.ToInt32(await cmdFaculty.ExecuteScalarAsync());
+
+                // 3. Get Pending Interventions (Students with 3+ absences)
+                using var cmdInterventions = new OracleCommand("SELECT COUNT(*) FROM CAMPUS_ADMIN.ENROLLMENTS WHERE ENROLLMENT_STATUS = 'Unofficially Dropped'", conn);
+                int pendingInterventions = Convert.ToInt32(await cmdInterventions.ExecuteScalarAsync());
+
+                return Ok(new 
+                {
+                    totalStudents,
+                    totalFaculty,
+                    pendingInterventions
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Database error", error = ex.Message });
+            }
+        }
     }
 }

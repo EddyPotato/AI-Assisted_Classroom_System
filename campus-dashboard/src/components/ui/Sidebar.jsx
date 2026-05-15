@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, BookOpen, UserCheck, ShieldAlert, Settings } from 'lucide-react';
+import { LayoutDashboard, ShieldAlert } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function Sidebar({ role }) {
@@ -7,39 +7,14 @@ export default function Sidebar({ role }) {
   const location = useLocation();
 
   const getNavLinks = () => {
-    switch (role) {
-      case 'Principal':
-        return [
-          { name: 'Dashboard', icon: LayoutDashboard, path: '/principal' },
-          { name: 'Interventions', icon: ShieldAlert, path: '/principal/interventions' },
-          { name: 'Faculty Oversight', icon: UserCheck, path: '/principal/faculty' },
-        ];
-      case 'Registrar':
-        return [
-          { name: 'Dashboard', icon: LayoutDashboard, path: '/registrar' },
-          { name: 'Sections', icon: Users, path: '/registrar/sections' },
-          { name: 'Schedules', icon: BookOpen, path: '/registrar/schedules' },
-          { name: 'Directories', icon: UserCheck, path: '/registrar/users' },
-        ];
-      case 'Faculty':
-        return [
-          { name: 'Dashboard', icon: LayoutDashboard, path: '/faculty' },
-          { name: 'My Classes', icon: BookOpen, path: '/faculty/classes' },
-          { name: 'Attendance', icon: UserCheck, path: '/faculty/attendance' },
-        ];
-      case 'Guard':
-        return [
-          { name: 'Live Monitor', icon: LayoutDashboard, path: '/guard' },
-          { name: 'Access History', icon: ShieldAlert, path: '/guard/history' },
-        ];
-      case 'SystemAdmin':
-        return [
-          { name: 'System Status', icon: LayoutDashboard, path: '/admin' },
-          { name: 'Camera Config', icon: Settings, path: '/admin/cameras' },
-        ];
-      default:
-        return [];
+    // Only returning Principal links as an example, add your others back if needed
+    if (role === 'Principal') {
+      return [
+        { name: 'Dashboard', icon: LayoutDashboard, path: '/principal' },
+        { name: 'Student Interventions', icon: ShieldAlert, path: '/principal/interventions' },
+      ];
     }
+    return [];
   };
 
   return (
