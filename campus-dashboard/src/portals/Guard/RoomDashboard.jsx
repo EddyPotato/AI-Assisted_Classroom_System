@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import DashboardContent from './DashboardContent';
+import DashboardContent from '../Faculty/views/DashboardContent';
 
 export default function RoomDashboard({ roomState, occupancy, lastScanned }) {
   const [selectedRoom, setSelectedRoom] = useState(null);

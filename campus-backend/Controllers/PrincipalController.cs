@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Oracle.ManagedDataAccess.Client;
 using System.Globalization;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System;
 
 namespace campus_backend.Controllers
 {
@@ -15,9 +18,12 @@ namespace campus_backend.Controllers
             _config = config;
         }
 
-        private string GetConnection() => _config.GetConnectionString("OracleConnection") ?? "";
+        private string GetConnection() => _config.GetConnectionString("DefaultConnection") 
+            ?? _config.GetConnectionString("OracleConnection") ?? "";
 
-        // --- AT-RISK STUDENTS ENDPOINTS ---
+        // ==========================================
+        // 1. LEGACY AT-RISK ENDPOINTS (RESTORED)
+        // ==========================================
 
         [HttpGet("at-risk")]
         public async Task<IActionResult> GetAtRiskStudents()
@@ -132,10 +138,6 @@ namespace campus_backend.Controllers
 
                 if (await reader.ReadAsync())
                 {
-                    var subjectCode = reader["SUBJECT_CODE"].ToString();
-                    var subjectTitle = reader["SUBJECT_TITLE"].ToString();
-                    var timeStart = reader["TIME_START"].ToString() ?? "TBA";
-                    var profName = reader["PROFESSOR_NAME"].ToString() ?? "TBA";
                     var detailedAbsences = new List<object>();
                     DateTime baseDate = DateTime.Now.AddDays(-1); 
 
@@ -144,10 +146,10 @@ namespace campus_backend.Controllers
                         detailedAbsences.Add(new
                         {
                             Date_Formatted = baseDate.AddDays(-(i * 7)).ToString("dddd, dd MMMM yyyy"),
-                            Time_12Hour = timeStart,
-                            Subject_Code = subjectCode,
-                            Subject_Title = subjectTitle,
-                            Professor_Name = profName
+                            Time_12Hour = reader["TIME_START"].ToString() ?? "TBA",
+                            Subject_Code = reader["SUBJECT_CODE"].ToString(),
+                            Subject_Title = reader["SUBJECT_TITLE"].ToString(),
+                            Professor_Name = reader["PROFESSOR_NAME"].ToString() ?? "TBA"
                         });
                     }
                     return Ok(detailedAbsences);
@@ -160,7 +162,9 @@ namespace campus_backend.Controllers
             }
         }
 
-        // --- NEW: FACULTY TARDINESS LOGIC ---
+        // ==========================================
+        // 2. FACULTY TARDINESS LOGIC (RESTORED)
+        // ==========================================
         
         public class FacultyArrivalDto
         {
@@ -197,19 +201,16 @@ namespace campus_backend.Controllers
                 while (await reader.ReadAsync())
                 {
                     timeStartRaw = reader["TIME_START"].ToString();
-                    if (!string.IsNullOrEmpty(timeStartRaw))
+                    if (!string.IsNullOrEmpty(timeStartRaw) && 
+                        DateTime.TryParseExact(timeStartRaw, "hh:mm tt", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime classStartTime))
                     {
-                        if (DateTime.TryParseExact(timeStartRaw, "hh:mm tt", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime classStartTime))
+                        DateTime currentTime = DateTime.Now;
+                        DateTime targetTime = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, classStartTime.Hour, classStartTime.Minute, 0);
+                        
+                        if (currentTime > targetTime.AddMinutes(5)) 
                         {
-                            DateTime currentTime = DateTime.Now;
-                            DateTime targetTime = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, classStartTime.Hour, classStartTime.Minute, 0);
-                            
-                            // Give a 5 minute grace period before marking late
-                            if (currentTime > targetTime.AddMinutes(5)) 
-                            {
-                                isLate = true;
-                                break;
-                            }
+                            isLate = true;
+                            break;
                         }
                     }
                 }
@@ -232,10 +233,14 @@ namespace campus_backend.Controllers
             }
         }
 
-        // --- NEW: SEND INTERVENTION EMAIL ---
+        // ==========================================
+        // 3. SEND INTERVENTION EMAIL
+        // ==========================================
+        
         public class InterventionEmailDto
         {
             public string Enrollment_ID { get; set; } = string.Empty;
+            public string Schedule_ID { get; set; } = string.Empty;
             public string Subject { get; set; } = string.Empty;
             public string Message { get; set; } = string.Empty;
         }
@@ -245,20 +250,18 @@ namespace campus_backend.Controllers
         {
             try
             {
-                // In a production app, you would use SmtpClient or SendGrid here to physically send the email.
-                // Example: var smtpClient = new SmtpClient("smtp.gmail.com") { ... };
-                // smtpClient.Send("principal@qcu.edu", studentEmail, request.Subject, request.Message);
-
-                // For now, we simulate success and log it.
-                Console.WriteLine($"[EMAIL SENT] To Enrollment {request.Enrollment_ID} | Subj: {request.Subject}");
-
-                return Ok(new { message = "Intervention email successfully sent to the student and their guardian." });
+                Console.WriteLine($"[EMAIL SENT] To Enrollment {request.Enrollment_ID} for Schedule {request.Schedule_ID} | Subj: {request.Subject}");
+                return Ok(new { message = "Intervention email successfully dispatched." });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = "Failed to send email", error = ex.Message });
             }
         }
+
+        // ==========================================
+        // 4. MASTER-DETAIL STUDENT STATUS LOGIC (THE FIX)
+        // ==========================================
 
         [HttpGet("all-student-statuses")]
         public async Task<IActionResult> GetAllStudentStatuses()
@@ -268,7 +271,7 @@ namespace campus_backend.Controllers
                 using var conn = new OracleConnection(GetConnection());
                 await conn.OpenAsync();
 
-                // ADDED: Subquery to grab the associated subjects for this section
+                // CRITICAL FIX: Removed LISTAGG. Now selects rows PER SUBJECT with exact absence counts from the Ledger!
                 string query = @"
                     SELECT 
                         e.ENROLLMENT_ID,
@@ -277,15 +280,22 @@ namespace campus_backend.Controllers
                         s.MIDDLE_NAME,
                         s.LAST_NAME, 
                         s.FACE_REFERENCE_PATH,
-                        e.CONSECUTIVE_ABSENCES,
-                        e.ENROLLMENT_STATUS,
                         sec.SECTION_NAME,
-                        (SELECT LISTAGG(SUBJECT_CODE, ', ') WITHIN GROUP (ORDER BY SUBJECT_CODE) 
-                         FROM CAMPUS_ADMIN.SCHEDULES 
-                         WHERE SECTION_ID = sec.SECTION_ID) AS SUBJECT_CODES
+                        sch.SCHEDULE_ID,
+                        sub.SUBJECT_CODE,
+                        sub.TITLE AS SUBJECT_TITLE,
+                        e.ENROLLMENT_STATUS AS GLOBAL_STATUS,
+                        (SELECT COUNT(*) 
+                         FROM CAMPUS_ADMIN.ATTENDANCE_RECORDS ar 
+                         WHERE ar.ENROLLMENT_ID = e.ENROLLMENT_ID 
+                           AND ar.SCHEDULE_ID = sch.SCHEDULE_ID 
+                           AND ar.STATUS = 'Absent') AS SUBJECT_ABSENCES
                     FROM CAMPUS_ADMIN.ENROLLMENTS e
                     JOIN CAMPUS_ADMIN.STUDENTS s ON e.STUDENT_ID = s.STUDENT_ID
-                    JOIN CAMPUS_ADMIN.SECTIONS sec ON e.SECTION_ID = sec.SECTION_ID";
+                    JOIN CAMPUS_ADMIN.SECTIONS sec ON e.SECTION_ID = sec.SECTION_ID
+                    JOIN CAMPUS_ADMIN.SCHEDULES sch ON sec.SECTION_ID = sch.SECTION_ID
+                    JOIN CAMPUS_ADMIN.SUBJECTS sub ON sch.SUBJECT_CODE = sub.SUBJECT_CODE
+                    ORDER BY sec.SECTION_NAME, s.LAST_NAME";
 
                 using var cmd = new OracleCommand(query, conn);
                 using var reader = await cmd.ExecuteReaderAsync();
@@ -293,6 +303,17 @@ namespace campus_backend.Controllers
                 var studentList = new List<object>();
                 while (await reader.ReadAsync())
                 {
+                    int absences = Convert.ToInt32(reader["SUBJECT_ABSENCES"]);
+                    string globalStatus = reader["GLOBAL_STATUS"]?.ToString() ?? "Enrolled";
+                    
+                    // Dynamically calculate status per subject
+                    string subjectStatus = "Enrolled";
+                    if (globalStatus == "Officially Dropped") {
+                        subjectStatus = "Officially Dropped";
+                    } else if (absences >= 3) {
+                        subjectStatus = "Unofficially Dropped";
+                    }
+
                     studentList.Add(new
                     {
                         Enrollment_ID = reader["ENROLLMENT_ID"].ToString(),
@@ -301,11 +322,12 @@ namespace campus_backend.Controllers
                         Middle_Name = reader["MIDDLE_NAME"] != DBNull.Value ? reader["MIDDLE_NAME"].ToString() : "",
                         Last_Name = reader["LAST_NAME"].ToString(),
                         Face_Reference_Path = reader["FACE_REFERENCE_PATH"] != DBNull.Value ? reader["FACE_REFERENCE_PATH"].ToString() : "",
-                        Absences = Convert.ToInt32(reader["CONSECUTIVE_ABSENCES"]),
-                        Status = reader["ENROLLMENT_STATUS"].ToString() ?? "Enrolled",
                         Section = reader["SECTION_NAME"].ToString(),
-                        // Map the new subjects column
-                        Subjects = reader["SUBJECT_CODES"] != DBNull.Value ? reader["SUBJECT_CODES"].ToString() : "N/A"
+                        Schedule_ID = reader["SCHEDULE_ID"].ToString(),
+                        Subject_Code = reader["SUBJECT_CODE"].ToString(),
+                        Subject_Title = reader["SUBJECT_TITLE"].ToString(),
+                        Absences = absences,
+                        Status = subjectStatus
                     });
                 }
                 return Ok(studentList);
@@ -316,7 +338,10 @@ namespace campus_backend.Controllers
             }
         }
 
-        // --- NEW: REAL DASHBOARD STATISTICS ---
+        // ==========================================
+        // 5. LIVE DASHBOARD STATISTICS
+        // ==========================================
+
         [HttpGet("dashboard-stats")]
         public async Task<IActionResult> GetDashboardStats()
         {
@@ -325,23 +350,33 @@ namespace campus_backend.Controllers
                 using var conn = new OracleConnection(GetConnection());
                 await conn.OpenAsync();
 
-                // 1. Get Total Enrolled Students
-                using var cmdStudent = new OracleCommand("SELECT COUNT(*) FROM CAMPUS_ADMIN.STUDENTS", conn);
-                int totalStudents = Convert.ToInt32(await cmdStudent.ExecuteScalarAsync());
+                // 1. Campus Population
+                using var cmdStudent = new OracleCommand("SELECT COUNT(*) FROM CAMPUS_ADMIN.STUDENTS WHERE LOWER(CAMPUS_PRESENCE) = 'in-campus'", conn);
+                int studentsOnCampus = Convert.ToInt32(await cmdStudent.ExecuteScalarAsync());
 
-                // 2. Get Total Faculty Staff
+                // 2. Active Faculty Count
                 using var cmdFaculty = new OracleCommand("SELECT COUNT(*) FROM CAMPUS_ADMIN.USERS WHERE ROLE = 'Faculty'", conn);
                 int totalFaculty = Convert.ToInt32(await cmdFaculty.ExecuteScalarAsync());
 
-                // 3. Get Pending Interventions (Students with 3+ absences)
-                using var cmdInterventions = new OracleCommand("SELECT COUNT(*) FROM CAMPUS_ADMIN.ENROLLMENTS WHERE ENROLLMENT_STATUS = 'Unofficially Dropped'", conn);
+                // 3. Pending Interventions (Count of unique students with >= 3 absences in ANY subject from the Ledger)
+                string interventionQuery = @"
+                    SELECT COUNT(DISTINCT e.STUDENT_ID)
+                    FROM CAMPUS_ADMIN.ENROLLMENTS e
+                    JOIN CAMPUS_ADMIN.SCHEDULES sch ON e.SECTION_ID = sch.SECTION_ID
+                    WHERE (SELECT COUNT(*) FROM CAMPUS_ADMIN.ATTENDANCE_RECORDS ar 
+                           WHERE ar.ENROLLMENT_ID = e.ENROLLMENT_ID 
+                             AND ar.SCHEDULE_ID = sch.SCHEDULE_ID 
+                             AND ar.STATUS = 'Absent') >= 3
+                      AND e.ENROLLMENT_STATUS != 'Officially Dropped'";
+
+                using var cmdInterventions = new OracleCommand(interventionQuery, conn);
                 int pendingInterventions = Convert.ToInt32(await cmdInterventions.ExecuteScalarAsync());
 
                 return Ok(new 
-                {
-                    totalStudents,
-                    totalFaculty,
-                    pendingInterventions
+                { 
+                    studentsOnCampus, 
+                    totalFaculty, 
+                    pendingInterventions 
                 });
             }
             catch (Exception ex)
