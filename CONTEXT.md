@@ -5,7 +5,7 @@
 **Project Status:** Multi-role portal system (Faculty, Guard, Registrar, Principal, SystemAdmin) with registrar workflows, schedule/section management, face verification, and barcode scanning  
 **Team Lead:** EddyPotato  
 **Current Tech:** React 19.2.5 + Vite 8.0.9 | ASP.NET Core net10.0 | Oracle Database | Python 3.10+ | OpenCV + MQTT Mosquitto  
-**Dependencies Docs:** [DEPENDENCIES_AUDIT.md](DEPENDENCIES_AUDIT.md) | [MQTT_SETUP_GUIDE.md](MQTT_SETUP_GUIDE.md) | [DEPENDENCIES_SUMMARY.md](DEPENDENCIES_SUMMARY.md)
+
 
 ## Quick Reference
 
@@ -126,7 +126,7 @@ See [DEPENDENCIES_AUDIT.md](DEPENDENCIES_AUDIT.md) for complete installation seq
 - **MQTT Mosquitto 1.6+** - Lightweight message broker (localhost:1883)
   - **⚠️ CRITICAL:** Campus edge node publishes barcode & face events via MQTT
   - **Without MQTT running:** System completely fails - SignalR cannot broadcast real-time events
-  - **See:** [MQTT_SETUP_GUIDE.md](MQTT_SETUP_GUIDE.md) for complete installation & setup instructions
+  - 
 
 ### Edge Node (Python)
 - **Python 3.10+**
@@ -140,7 +140,7 @@ See [DEPENDENCIES_AUDIT.md](DEPENDENCIES_AUDIT.md) for complete installation seq
 - **supervisor 4.2.0+** - Process manager for production auto-restart (NEW - added to requirements.txt)
 - **python-json-logger 2.0.0+** - JSON logging for production (NEW - added to requirements.txt)
 
-**See:** [DEPENDENCIES_AUDIT.md](DEPENDENCIES_AUDIT.md) for complete version compatibility matrix, platform-specific build requirements, and installation procedures.
+
 
 ---
 
@@ -150,1364 +150,1118 @@ See [DEPENDENCIES_AUDIT.md](DEPENDENCIES_AUDIT.md) for complete installation seq
 AI-Assisted_Classroom_System/
 ├── README.md                          (Getting started guide)
 ├── CONTEXT.md                         (This file - detailed technical reference)
-├── DEPENDENCIES_AUDIT.md              (Complete audit of all packages & versions - 3,600 lines)
-├── MQTT_SETUP_GUIDE.md                (MQTT Mosquitto installation & troubleshooting - all OS)
-├── DEPENDENCIES_SUMMARY.md            (Executive summary of audit findings)
-├── AI-Assisted_Classroom_System.sln   (Visual Studio solution)
-│
-├── database/
-│   └── schema.sql                     (Oracle DDL + seed data)
-│
-├── campus-backend/                    (ASP.NET Core REST API)
-│   ├── Controllers/
-│   │   ├── AttendanceController.cs
-│   │   ├── AuthController.cs          (Login endpoint)
-│   │   ├── CameraController.cs
-│   │   ├── CoursesController.cs
-│   │   ├── EnrollmentsController.cs   (Student-to-section mapping)
-│   │   ├── RoomsController.cs
-│   │   ├── SchedulesController.cs     (CRUD + bulk import)
-│   │   ├── SectionsController.cs      (CRUD + roster)
-│   │   ├── StaffController.cs
-│   │   ├── StudentController.cs       (Student directory)
-│   │   ├── SubjectsController.cs
-│   │   └── UserController.cs
-│   ├── Repositories/
-│   │   ├── IStudentRepository.cs → StudentRepository.cs
-│   │   ├── ISectionRepository.cs → SectionRepository.cs
-│   │   ├── IScheduleRepository.cs → ScheduleRepository.cs
-│   │   ├── IEnrollmentRepository.cs → EnrollmentRepository.cs
-│   │   ├── IAttendanceRepository.cs → AttendanceRepository.cs
-│   │   ├── ICourseRepository.cs → CourseRepository.cs
-│   │   ├── IRoomRepository.cs → RoomRepository.cs
-│   │   ├── ISubjectRepository.cs → SubjectRepository.cs
-│   │   ├── IUserRepository.cs → UserRepository.cs
-│   │   ├── ICameraLocationRepository.cs → CameraLocationRepository.cs
-│   │   └── [... more repository implementations]
-│   ├── Models/
-│   │   ├── User.cs
-│   │   ├── Student.cs                 (Student identity + enrollment)
-│   │   ├── Section.cs                 (Class section definition)
-│   │   ├── Schedule.cs                (Class time slot)
-│   │   ├── Subject.cs
-│   │   ├── Course.cs
-│   │   ├── Room.cs
-│   │   ├── CameraLocation.cs
-│   │   ├── LoginRequest.cs
-│   │   └── [... model DTOs]
-│   ├── Services/
-│   │   ├── AccessVerificationService.cs     (State machine for barcode + face)
-│   │   ├── MqttListenerService.cs           (MQTT subscriber + SignalR broadcaster)
-│   │   ├── IImageUploadService.cs
-│   │   └── ImageUploadService.cs
-│   ├── Hubs/
-│   │   └── CampusHub.cs               (SignalR hub for real-time events)
-│   ├── ReferenceFaces/                (Directory for face reference images)
-│   ├── Program.cs                     (Startup & dependency injection)
-│   ├── appsettings.json               (Configuration)
-│   └── campus-backend.csproj
-│
-├── campus-dashboard/                  (React + Vite SPA)
-│   ├── src/
-│   │   ├── App.jsx                    (Main router + role dispatcher)
-│   │   ├── main.jsx                   (Entry point)
-│   │   ├── index.css                  (Global styles)
-│   │   ├── components/
-│   │   │   ├── auth/
-│   │   │   │   ├── Login.jsx          (Login form)
-│   │   │   │   ├── LoginForm.jsx
-│   │   │   │   └── LoginHeader.jsx
-│   │   │   └── ui/
-│   │   │       ├── Header.jsx
-│   │   │       └── Sidebar.jsx
-│   │   ├── api/                       (Empty - API calls are inline)
-│   │   ├── assets/
-│   │   └── portals/
-│   │       ├── Faculty/
-│   │       │   ├── FacultyDashboard.jsx      (Dashboard)
-│   │       │   └── ClassAttendance.jsx       (Attendance tracking)
-│   │       ├── Guard/
-│   │       │   ├── GuardPortal.jsx          (Main access monitoring)
-│   │       │   ├── components/
-│   │       │   │   ├── GuardHeader.jsx
-│   │       │   │   ├── LiveMonitorView.jsx
-│   │       │   │   └── AccessHistory.jsx
-│   │       │   └── views/
-│   │       ├── Registrar/
-│   │       │   ├── RegistrarPortal.jsx      (Main registrar interface)
-│   │       │   ├── components/
-│   │       │   │   ├── schedules/           (Schedule CRUD + table)
-│   │       │   │   ├── sections/            (Section CRUD + roster)
-│   │       │   │   ├── users/               (Student/staff directories)
-│   │       │   │   ├── faculty/
-│   │       │   │   ├── resources/           (Subjects, courses)
-│   │       │   │   └── enrollment/
-│   │       │   └── views/
-│   │       │       └── ScheduleImporter.jsx (Bulk CSV import)
-│   │       ├── Principal/
-│   │       │   └── PrincipalPortal.jsx      (Oversight & reporting)
-│   │       └── SystemAdmin/
-│   │           └── SystemAdminPortal.jsx    (System configuration)
-│   ├── public/
-│   ├── index.html
-│   ├── package.json
-│   ├── vite.config.js
-│   └── eslint.config.js
-│
-└── campus-edge/                       (Python vision & camera node)
-    ├── app.py                         (Flask web server)
-    ├── vision.py                      (Face detection & barcode scanning)
-    ├── camera.py                      (Webcam control)
-    ├── config.py                      (Configuration)
-    ├── requirements.txt               (Python dependencies - core + production)
-    ├── requirements-dev.txt           (Development-only dependencies: pytest, black, pylint, mypy - NEW)
-    ├── .env                           (MQTT credentials - not in git)
-    └── venv/                          (Virtual environment - not in git)
-```
+
 
 ---
 
-## Database Schema (Complete)
+## Detailed Dependencies & Setup Audit
 
-### Overview
+# Dependency Audit - Executive Summary & Action Items
 
-**Owner:** campus_admin  
-**Connection:** `Data Source=localhost:1521/XEPDB1;User Id=campus_admin;Password=admin123;`  
-**Tables:** 11 core + 1 sequence  
-**Relationships:** Foreign keys enforce referential integrity
-
-### Table Definitions
-
-#### USERS
-```sql
-CREATE TABLE USERS (
-  USER_ID VARCHAR2(20) PRIMARY KEY,
-  FIRST_NAME VARCHAR2(50),
-  MIDDLE_NAME VARCHAR2(50),
-  LAST_NAME VARCHAR2(50),
-  PASSWORD VARCHAR2(255),         -- BCrypt hash (60 chars) or legacy plaintext
-  ROLE VARCHAR2(20),              -- 'Faculty', 'Guard', 'Registrar', 'Principal', 'SystemAdmin'
-  EMAIL VARCHAR2(100),
-  CONTACT_NUMBER VARCHAR2(20),
-  ADDRESS VARCHAR2(255),
-  STATUS VARCHAR2(20) DEFAULT 'Active',
-  FACE_REFERENCE_PATH VARCHAR2(255), -- Path like '/ReferenceFaces/prof-001.jpg'
-  CAMPUS_PRESENCE VARCHAR2(20) DEFAULT 'offline'
-);
-```
-
-**Notes:**
-- PASSWORD: Legacy plaintext auto-hashes on first BCrypt verification
-- ROLE: Determines portal access level & feature visibility
-- FACE_REFERENCE_PATH: Optional, for Guard Portal face matching
-
-#### STUDENTS
-```sql
-CREATE TABLE STUDENTS (
-  STUDENT_ID VARCHAR2(20) PRIMARY KEY,
-  FIRST_NAME VARCHAR2(50),
-  MIDDLE_NAME VARCHAR2(50),
-  LAST_NAME VARCHAR2(50),
-  FACE_REFERENCE_PATH VARCHAR2(255),
-  ENROLLMENT_STATUS VARCHAR2(50) DEFAULT 'Regular',  -- Regular, Probation, Irregular
-  CONTACT_NUMBER VARCHAR2(20),
-  BIRTHDAY VARCHAR2(50),
-  ADDRESS VARCHAR2(255),
-  CAMPUS_PRESENCE VARCHAR2(20) DEFAULT 'offline'
-);
-```
-
-#### SECTIONS
-```sql
-CREATE TABLE SECTIONS (
-  SECTION_ID VARCHAR2(20) PRIMARY KEY,
-  CAMPUS VARCHAR2(10),            -- SB, SF, BA (reference CAMPUSES)
-  COURSE VARCHAR2(20),            -- BSIT, BSCS, BSA, etc. (reference COURSES)
-  YEAR_LEVEL NUMBER,              -- 1, 2, 3, 4
-  SECTION_LETTER VARCHAR2(5),     -- A, B, C, etc.
-  SECTION_NAME VARCHAR2(20)       -- Display name like '1A', '2B'
-);
-```
-
-**⚠️ Known Issue:** No STATUS column - cannot archive/restore sections without schema modification
-
-#### ENROLLMENTS
-```sql
-CREATE TABLE ENROLLMENTS (
-  ENROLLMENT_ID VARCHAR2(20) PRIMARY KEY,
-  STUDENT_ID VARCHAR2(20) REFERENCES STUDENTS(STUDENT_ID),
-  SECTION_ID VARCHAR2(20) REFERENCES SECTIONS(SECTION_ID),
-  ENROLLMENT_DATE DATE DEFAULT SYSDATE,
-  CONSECUTIVE_ABSENCES NUMBER DEFAULT 0
-);
-```
-
-#### SCHEDULES
-```sql
-CREATE TABLE SCHEDULES (
-  SCHEDULE_ID VARCHAR2(20) PRIMARY KEY,
-  SUBJECT_CODE VARCHAR2(20) REFERENCES SUBJECTS(SUBJECT_CODE),
-  SECTION_ID VARCHAR2(20) REFERENCES SECTIONS(SECTION_ID),
-  PROFESSOR_ID VARCHAR2(20),      -- FK to USERS, nullable
-  ROOM_ID VARCHAR2(20),           -- FK to ROOMS, nullable
-  TIME_START VARCHAR2(20),        -- Format: '02:30 PM' (VARCHAR, not TIMESTAMP)
-  TIME_END VARCHAR2(20),          -- Format: '05:30 PM'
-  CLASS_DAYS VARCHAR2(50),        -- Format: 'Monday/Wednesday/Friday'
-  SUBJECT_TYPE VARCHAR2(10) DEFAULT 'Lec' -- Lec or Lab
-);
-```
-
-**Critical Notes:**
-- TIME_START/TIME_END are VARCHAR2 (requires manual parsing in code)
-- PROFESSOR_ID & ROOM_ID are nullable (optional scheduling)
-- CLASS_DAYS uses slash-separated day names (inconsistent formatting in current data)
-
-#### SUBJECTS
-```sql
-CREATE TABLE SUBJECTS (
-  SUBJECT_CODE VARCHAR2(20) PRIMARY KEY,
-  TITLE VARCHAR2(100),
-  PREREQUISITES VARCHAR2(100),
-  UNITS NUMBER
-);
-```
-
-#### COURSES
-```sql
-CREATE TABLE COURSES (
-  COURSE_CODE VARCHAR2(20) PRIMARY KEY,
-  COURSE_NAME VARCHAR2(100),
-  DEPARTMENT VARCHAR2(100)
-);
-```
-
-#### ROOMS
-```sql
-CREATE TABLE ROOMS (
-  ROOM_ID VARCHAR2(20) PRIMARY KEY,
-  BUILDING VARCHAR2(100),
-  FLOOR NUMBER,
-  ROOM_TYPE VARCHAR2(50),          -- Classroom, Lab, etc.
-  STATUS VARCHAR2(20) DEFAULT 'Inactive',
-  CAMPUS VARCHAR2(10) DEFAULT 'SB'
-);
-```
-
-#### CAMPUSES
-```sql
-CREATE TABLE CAMPUSES (
-  CAMPUS_CODE VARCHAR2(10) PRIMARY KEY,
-  CAMPUS_NAME VARCHAR2(100),
-  IS_MAIN NUMBER(1,0) DEFAULT 0    -- 1 = main campus, 0 = satellite
-);
-```
-
-**Seed Data:**
-- SB (San Bartolome) - Main campus
-- SF (San Francisco) - Satellite
-- BA (Batasan) - Satellite
-
-#### CAMERA_LOCATIONS
-```sql
-CREATE TABLE CAMERA_LOCATIONS (
-  LOCATION_ID VARCHAR2(20) PRIMARY KEY,
-  CAMERA_NAME VARCHAR2(100),
-  LOCATION_TYPE VARCHAR2(20),      -- entrance, exit, room
-  ASSOCIATED_ROOM_ID VARCHAR2(20), -- FK to ROOMS, nullable
-  IS_ACTIVE NUMBER(1,0) DEFAULT 1,
-  CREATED_AT TIMESTAMP DEFAULT SYSDATE,
-  LOGIC_TYPE VARCHAR2(20) DEFAULT 'gate' -- gate or room
-);
-```
-
-**Logic Types:**
-- **gate:** Entrance/exit camera - requires barcode OR face match
-- **room:** Classroom camera - verifies student is enrolled AND class time matches
-
-#### EVENT_LOGS
-```sql
-CREATE TABLE EVENT_LOGS (
-  LOG_ID NUMBER IDENTITY,                         -- Auto-increment
-  STUDENT_ID VARCHAR2(50),
-  STATUS VARCHAR2(50),            -- INCONSISTENT: 'approved', 'denied', 'Access Granted'
-  MATCH_CONFIDENCE NUMBER,         -- Face confidence 0-100, NULL for barcode/manual
-  TIMESTAMP TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  BYPASS_REASON VARCHAR2(255),    -- Why access was granted without match
-  LOCATION_ID VARCHAR2(20)        -- FK to CAMERA_LOCATIONS
-);
-```
-
-**⚠️ Known Issue:** STATUS values inconsistent across records - should normalize to enum
-
-### Key Relationships
-
-```
-USERS (1) ──n─── SCHEDULES (PROFESSOR_ID)
-USERS (1) ──n─── EVENT_LOGS (implicitly via STUDENT_ID... wait, should be separate)
-
-STUDENTS (1) ──n─── ENROLLMENTS
-STUDENTS (1) ──n─── EVENT_LOGS
-
-SECTIONS (1) ──n─── ENROLLMENTS
-SECTIONS (1) ──n─── SCHEDULES
-
-COURSES (1) ──n─── SECTIONS (via COURSE)
-SUBJECTS (1) ──n─── SCHEDULES (via SUBJECT_CODE)
-ROOMS (1) ──n─── SCHEDULES (via ROOM_ID)
-CAMPUSES (1) ──n─── SECTIONS (via CAMPUS)
-CAMPUSES (1) ──n─── ROOMS (via CAMPUS)
-
-CAMERA_LOCATIONS (1) ──n─── EVENT_LOGS
-```
+**Date:** May 11, 2026  
+**Audit Scope:** Complete project dependency review across all components  
+**Status:** ✅ CRITICAL FINDING: MQTT Mosquitto broker installation was completely undocumented
 
 ---
 
-## Backend API Endpoints
+## Quick Summary
 
-### BASE URL: http://localhost:5106
+### What We Found ✅
+1. **Frontend (npm):** All 7 production + 8 dev dependencies properly documented
+2. **Backend (.NET):** All 5 NuGet packages properly documented and pinned
+3. **Database:** Oracle 21c XE installation documented
+4. **External Programs:** Node.js, Python, .NET SDK documented
+5. **Comprehensive Audit:** Created detailed 3,600+ line audit report
 
-**CORS Enabled For:** http://localhost:5173  
-**Response Format:** JSON  
-**Error Responses:** HTTP status + { message, error? }
+### What Was Missing ⚠️
+1. **MQTT Mosquitto Broker:** Zero documentation for critical real-time component
+2. **Production Dependencies:** Missing gunicorn + supervisor for production deployment
+3. **Development Tools:** No pytest, black, pylint, mypy for code quality
+4. **Platform-Specific Requirements:** Missing Visual C++ Build Tools documentation for Windows
+5. **Complete Installation Sequence:** No clear step-by-step with proper ordering
 
-### Authentication
-
-#### POST /api/auth/login
-Login with username and password. Stores user in frontend `sessionStorage`.
-
-**Request:**
-```json
-{
-  "username": "registrar1",
-  "password": "password"
-}
-```
-
-**Response (200):**
-```json
-{
-  "message": "Login successful",
-  "user": {
-    "User_ID": "registrar1",
-    "First_Name": "John",
-    "Last_Name": "Doe",
-    "Role": "Registrar",
-    "Email": "registrar@campus.edu",
-    "Contact_Number": "+63-555-0001",
-    "Face_Reference_Path": "/ReferenceFaces/registrar1.jpg",
-    "Status": "Active",
-    "Campus_Presence": "online"
-  }
-}
-```
-
-**Response (401):**
-```json
-{
-  "message": "Invalid User ID or Password."
-}
-```
-
-**Backend Logic:**
-1. Fetch user by username
-2. If plaintext matches, auto-hash with BCrypt for future logins
-3. Otherwise verify using BCrypt
-4. Scrub password field before returning
+### What Was Added ✅
+1. **DEPENDENCIES_AUDIT.md** (3,600 lines) - Comprehensive audit across entire stack
+2. **MQTT_SETUP_GUIDE.md** (800 lines) - Complete MQTT Mosquitto installation & troubleshooting
+3. **campus-edge/requirements.txt** - Updated with production + dev packages (commented)
+4. **campus-edge/requirements-dev.txt** - Separate dev-only dependencies
 
 ---
 
-### Students
+## Files Created/Updated
 
-#### GET /api/student
-Get all students.
-
-**Response (200):**
-```json
-[
-  {
-    "Student_ID": "24-1487",
-    "First_Name": "Jane",
-    "Middle_Name": "Ann",
-    "Last_Name": "Smith",
-    "Face_Reference_Path": "/ReferenceFaces/24-1487.jpg",
-    "Enrollment_Status": "Regular",
-    "Contact_Number": "+63-555-0100",
-    "Birthday": "2002-05-15",
-    "Address": "123 Main St, Manila",
-    "Campus_Presence": "online"
-  }
-]
-```
-
-#### GET /api/student/{id}
-Get a specific student.
+| File | Status | Size | Purpose |
+|------|--------|------|---------|
+| **DEPENDENCIES_AUDIT.md** | ✅ NEW | 3,600 lines | Complete dependency audit report |
+| **MQTT_SETUP_GUIDE.md** | ✅ NEW | 800 lines | MQTT Mosquitto installation guide (all OS) |
+| **campus-edge/requirements.txt** | ✅ UPDATED | 45 lines | Now includes production deps + better documentation |
+| **campus-edge/requirements-dev.txt** | ✅ NEW | 60 lines | Development-only dependencies (testing, linting) |
 
 ---
 
-### Sections
+## Critical Finding: MQTT Mosquitto Broker
 
-#### GET /api/sections
-Get all sections (with Campus and Section_Letter for edit fidelity).
-
-**Response (200):**
-```json
-[
-  {
-    "Section_ID": "SEC-001",
-    "Campus": "SB",
-    "Course": "BSIT",
-    "Year_Level": 1,
-    "Section_Letter": "A",
-    "Section_Name": "1A"
-  }
-]
-```
-
-#### POST /api/sections
-Create a new section.
-
-**Request:**
-```json
-{
-  "Section_Name": "2B",
-  "Course": "BSCS",
-  "Campus": "SB",
-  "Year_Level": 2,
-  "Section_Letter": "B"
-}
-```
-
-#### PUT /api/sections/{id}
-Update an existing section.
-
-#### DELETE /api/sections/{id}
-Delete a section.
-
-#### GET /api/sections/{id}/students
-Get all enrolled students (with enrollment metadata).
-
-**Response (200):**
-```json
-[
-  {
-    "Enrollment_ID": "ENR-458725F8",
-    "Student_ID": "24-1487",
-    "First_Name": "Jane",
-    "Last_Name": "Smith",
-    "Enrollment_Date": "2026-05-06",
-    "Consecutive_Absences": 0
-  }
-]
-```
-
-#### POST /api/sections/{id}/students
-Bulk enroll students.
-
-**Request:**
-```json
-["24-1487", "26-0001", "26-0002"]
-```
-
-#### DELETE /api/sections/{sectionId}/students/{studentId}
-Remove a student from section.
-
-#### GET /api/sections/{id}/schedule
-Get all schedules for a section (with expanded subject/professor/room names).
-
-**Response (200):**
-```json
-[
-  {
-    "Schedule_ID": "SCH-001",
-    "Subject_Code": "SE101",
-    "Subject_Title": "Software Engineering 1",
-    "Section_ID": "SEC-001",
-    "Section_Name": "1A",
-    "Professor_ID": "prof-001",
-    "Professor_Name": "Dr. John Reyes",
-    "Professor_Face_Reference_Path": "/ReferenceFaces/prof-001.jpg",
-    "Room_ID": "IK604",
-    "Building": "IK Building",
-    "Time_Start": "02:30 PM",
-    "Time_End": "05:30 PM",
-    "Class_Days": "Monday/Wednesday",
-    "Subject_Type": "Lec"
-  }
-]
-```
-
----
-
-### Schedules
-
-#### GET /api/schedules
-Get all schedules with expanded metadata.
-
-#### POST /api/schedules
-Create a schedule.
-
-**Request:**
-```json
-{
-  "Schedule_ID": "SCH-NEW-001",
-  "Subject_Code": "SE101",
-  "Section_ID": "SEC-001",
-  "Professor_ID": "prof-001",
-  "Room_ID": "IK604",
-  "Time_Start": "02:30 PM",
-  "Time_End": "05:30 PM",
-  "Class_Days": "Monday/Wednesday",
-  "Subject_Type": "Lec"
-}
-```
-
-#### PUT /api/schedules/{id}
-Update a schedule.
-
-#### DELETE /api/schedules/{id}
-Delete a schedule.
-
-#### POST /api/schedules/import
-Bulk import schedules from array.
-
-**Request:**
-```json
-[
-  {
-    "Subject_Code": "SE101",
-    "Section_Id": "SEC-001",
-    "Professor_Id": "prof-001",
-    "Room_Id": "IK604",
-    "Time_Start": "02:30 PM",
-    "Time_End": "05:30 PM",
-    "Class_Days": "Thursday",
-    "Subject_Type": "Lec"
-  }
-]
-```
-
-**Response (200):**
-```json
-{
-  "message": "Successfully imported 3 schedules."
-}
-```
-
----
-
-### Courses, Subjects, Rooms, Staff
-
-#### GET /api/courses
-Get all courses (programs).
-
-#### GET /api/subjects
-Get all subjects.
-
-#### GET /api/rooms
-Get all rooms.
-
-#### GET /api/staff
-Get all staff members.
-
----
-
-### Attendance & Enrollments
-
-#### GET /api/attendance
-Get all event logs (access/attendance records).
-
-**Response (200):**
-```json
-[
-  {
-    "Log_ID": 1,
-    "Student_ID": "24-1487",
-    "Status": "approved",
-    "Match_Confidence": 95,
-    "Timestamp": "2026-05-06T16:36:45",
-    "Bypass_Reason": null,
-    "Location_ID": "CAM-001"
-  }
-]
-```
-
-#### GET /api/enrollments
-Get all student-to-section mappings.
-
----
-
-### Camera
-
-#### GET /api/camera/locations
-Get all active camera locations.
-
-**Response (200):**
-```json
-[
-  {
-    "Location_ID": "CAM-001",
-    "Camera_Name": "Main Entrance Gate",
-    "Location_Type": "entrance",
-    "Associated_Room_ID": null,
-    "Is_Active": 1,
-    "Created_At": "2026-05-06T20:10:48",
-    "Logic_Type": "gate"
-  }
-]
-```
-
-#### POST /api/camera/locations
-Create a new camera location.
-
-#### PUT /api/camera/locations/{id}
-Update a camera location.
-
-#### DELETE /api/camera/locations/{id}
-Delete a camera location.
-
----
-
-## Frontend Components & Routing
-
-### App.jsx - Master Router
-
-**Logic:**
-1. Reads `sessionStorage.campus_user` (JSON user object)
-2. Extracts role: `user.role || user.Role`
-3. Dispatches to portal component
-4. Unauthenticated users redirected to `/login`
-
-```javascript
-function RoleDispatcher() {
-  const user = JSON.parse(sessionStorage.getItem('campus_user') || '{}');
-  const userRole = user.role || user.Role;
-  
-  switch (userRole) {
-    case 'Faculty': return <CampusLayout />;
-    case 'Guard': return <GuardPortal />;
-    case 'Registrar': return <RegistrarPortal />;
-    case 'Principal': return <PrincipalPortal />;
-    case 'SystemAdmin': return <SystemAdminPortal />;
-    default: return <Navigate to="/login" />;
-  }
-}
-```
-
-### Login Component
-
-**File:** `components/auth/Login.jsx`
-
-**Flow:**
-1. User enters username & password
-2. HTTP POST to `/api/auth/login`
-3. Backend returns user object
-4. Frontend stores in `sessionStorage.campus_user`
-5. Redirects to role portal
-
-### Portal Components
-
-#### Faculty Portal
-**Files:** `portals/Faculty/FacultyDashboard.jsx`, `ClassAttendance.jsx`
-
-**Features:**
-- Dashboard with class overview
-- Attendance tracking interface
-- Student roster per class
-- Schedule view
-
-#### Guard Portal
-**Files:** `portals/Guard/GuardPortal.jsx` + subcomponents
-
-**Features:**
-- Live camera stream (MJPEG from edge node)
-- Barcode/QR code input
-- Real-time face verification status
-- Access history log
-- Manual ID entry fallback
-
-**⚠️ Known Issue:** Reads from `localStorage` instead of `sessionStorage`
-
-#### Registrar Portal
-**Files:** `portals/Registrar/RegistrarPortal.jsx` + subcomponents
-
-**Features:**
-1. **Section Directory** (`components/sections/`)
-   - Table with Campus, Program, Year, Letter, Student Count
-   - Actions: View Roster, Edit, Delete
-   - Filters: Program, Year, Search
-
-2. **Schedule Management** (`components/schedules/`)
-   - Table with Subject, Section, Professor, Room, Time, Days
-   - CRUD operations
-   - Bulk import via CSV
-
-3. **Student/Staff Directories** (`components/users/`)
-   - Searchable tables
-   - Contact information, enrollment status
-
-4. **Enrollment Management** (`components/enrollment/`)
-   - Bulk add/remove students from sections
-   - View per-student enrollment history
-
-5. **Schedule Importer** (`views/ScheduleImporter.jsx`)
-   - CSV/Excel file upload
-   - Preview parsed data
-   - Import with validation
-
-#### Principal Portal
-**File:** `portals/Principal/PrincipalPortal.jsx`
-
-**Status:** Structure in place, workflows to be implemented
-
-#### SystemAdmin Portal
-**File:** `portals/SystemAdmin/SystemAdminPortal.jsx`
-
-**Status:** Structure in place, configuration tools TBD
-
----
-
-## Authentication & Authorization
-
-### Session Management
-
-**Storage:** `sessionStorage` (cleared on tab close)  
-**Key:** `campus_user`  
-**Value:** JSON-serialized user object
-
-```javascript
-// Login.jsx stores user
-sessionStorage.setItem('campus_user', JSON.stringify(user));
-
-// Any portal retrieves user
-const user = JSON.parse(sessionStorage.getItem('campus_user'));
-```
-
-### RBAC (Role-Based Access Control)
-
-**Five Roles:**
-1. **Faculty** → Class attendance & roster
-2. **Guard** → Access monitoring & verification
-3. **Registrar** → Section, schedule, enrollment management
-4. **Principal** → Dashboard & oversight
-5. **SystemAdmin** → System configuration
-
-**Enforcement:**
-- Frontend: `ProtectedRoute` component checks `sessionStorage`
-- Backend: Controllers receive user context (can add role validation)
-
-### Password Security
-
-**Backend (`AuthController.cs`):**
-
-1. **Plaintext Legacy Support**
-   ```csharp
-   if (user.Password == request.Password) {
-     // Auto-hash with BCrypt for future logins
-     var newHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
-     await _userRepository.UpdatePasswordAsync(user.User_ID, newHash);
-   }
-   ```
-
-2. **BCrypt Verification**
-   ```csharp
-   bool isValid = BCrypt.Net.BCrypt.Verify(request.Password, user.Password);
-   ```
-
-3. **Null-Check Protection**
-   ```csharp
-   if (string.IsNullOrEmpty(user.Password)) {
-     return Unauthorized("This account has no password set.");
-   }
-   ```
-
-4. **Response Scrubbing**
-   ```csharp
-   user.Password = null;  // Don't send hash to frontend
-   return Ok(new { message = "Login successful", user });
-   ```
-
----
-
-## Real-Time Communication (SignalR)
-
-### WebSocket Hub
-
-**Location:** `campus-backend/Hubs/CampusHub.cs`  
-**URL:** `ws://localhost:5106/campushub`  
-**Protocol:** SignalR JSON RPC
-
-### Message Flow
+### The Problem
+**MQTT Mosquitto broker is essential but completely undocumented** in the project:
 
 ```
-Python Edge Node
+Campus Edge Node (Python)
+  ↓ PUBLISHES TO MQTT (barcode scans, face verification)
   ↓
-MQTT Broker (localhost:1883)
+Mosquitto Broker ← ⚠️ NO INSTALLATION DOCS!
+  ↓ MqttListenerService subscribes
   ↓
-MqttListenerService (C#)
-  ↓
-CampusHub.Clients.All.SendAsync(methodName, payload)
-  ↓
-Connected Frontend Clients (GuardPortal.jsx)
+Backend (ASP.NET Core)
 ```
 
-### Broadcast Methods
+Without MQTT broker running:
+- ❌ Edge node can't publish barcode scans
+- ❌ Backend can't receive real-time events
+- ❌ SignalR can't broadcast to guard portal
+- ❌ **System completely fails to start**
 
-| Method | Trigger | Payload |
-|--------|---------|---------|
-| `ReceiveBarcode` | Pyzbar detects barcode | `{ barcode: "24-1487", timestamp: "..." }` |
-| `ReceiveScanResult` | Face match completed | `{ verified: true, confidence: 95, student_id: "..." }` |
+### The Solution
+**See:** [MQTT_SETUP_GUIDE.md](MQTT_SETUP_GUIDE.md) - Comprehensive installation for all OS:
 
-### Frontend Subscription
+**Quick Install:**
 
-```javascript
-import * as signalR from '@microsoft/signalr';
+```bash
+# Windows (Chocolatey)
+choco install mosquitto
 
-const connection = new signalR.HubConnectionBuilder()
-  .withUrl('http://localhost:5106/campushub')
-  .withAutomaticReconnect()
-  .build();
+# Windows (Service Auto-starts)
+# Verify: Get-Service mosquitto
 
-connection.on('ReceiveBarcode', (data) => {
-  console.log('Barcode scanned:', data.barcode);
-  setLastBarcode(data.barcode);
-});
+# Linux
+sudo apt-get install mosquitto mosquitto-clients
+sudo systemctl enable mosquitto
+sudo systemctl start mosquitto
 
-connection.on('ReceiveScanResult', (data) => {
-  console.log('Face verification result:', data);
-  setVerificationResult({
-    verified: data.verified,
-    confidence: data.confidence
-  });
-});
+# macOS
+brew install mosquitto
+brew services start mosquitto
+```
 
-connection.start().catch(err => console.error(err));
-
-// Cleanup on unmount
-return () => connection.stop();
+**Verify Installation:**
+```bash
+mosquitto --version     # Should show version 2.0.x
+netstat -an | grep 1883 # Should show LISTENING
+mosquitto_sub -h localhost -p 1883 -t "#"  # Should connect
 ```
 
 ---
 
-## Guard Portal: Access Control & Face Verification
+## Frontend Dependencies - Status: ✅ Complete
 
-### Two-Phase Verification System
+### package.json Breakdown
 
-**Service:** `AccessVerificationService.cs` (Singleton)
-
-**Phase 1: Barcode Identification (Immediate)**
-1. Guard Portal submits barcode (or manually types student ID)
-2. Edge node scans barcode → publishes to MQTT `campus/door/scan`
-3. MqttListenerService receives → broadcasts to frontend via SignalR
-4. AccessVerificationService stores pending student data (name, face reference path)
-5. Starts 6-second Phase 2 timeout
-
-**Phase 2: Face Verification (Within 6 seconds)**
-1. Edge node captures frames → runs face detection
-2. Compares detected face against reference image
-3. Edge node publishes match result to MQTT `campus/door/verified`
-4. MqttListenerService broadcasts to frontend
-5. AccessVerificationService evaluates confidence:
-   - **≥ 0.45 (STRICT_THRESHOLD):** Access granted ✓
-   - **< 0.45:** Access denied ✗
-
-### Verification Decision Logic
-
-```csharp
-if (barcode_successfully_scanned) {
-  // BARCODE FIRST: Don't wait for face verification
-  eventLog.Status = "approved";
-  eventLog.Bypass_Reason = "barcode_read";
-  eventLog.Match_Confidence = null;
-  _abortPhase2 = true;  // Cancel Phase 2
-} 
-else if (face_match_confidence >= STRICT_THRESHOLD) {
-  // FACE MATCH: Confidence high enough
-  eventLog.Status = "approved";
-  eventLog.Match_Confidence = confidence;
-  eventLog.Bypass_Reason = null;
-} 
-else {
-  // DENY: No valid ID method
-  eventLog.Status = "denied";
-  eventLog.Match_Confidence = confidence;
-  eventLog.Bypass_Reason = null;
-}
-
-// INSERT into EVENT_LOGS
-await _attendanceRepo.LogEventAsync(eventLog);
-```
-
-### Reference Face Matching (Edge Node)
-
-**Logic (`vision.py`):**
-
-1. Load all `.jpg` files from `ReferenceFaces/` directory
-2. Encode each face using `face_recognition.face_encodings()`
-3. On verification request:
-   - Capture frame from webcam
-   - Run face detection
-   - Encode detected face
-   - Compare against all reference encodings
-4. Return closest match + confidence score
-
-**Confidence Calculation:**
-```python
-# face_distance returns euclidean distance (lower = more similar)
-face_dist = face_distance(reference_encoding, captured_encoding)
-confidence = max(0, 100 * (1 - face_dist))
-```
-
-**Threshold (`config.py`):**
-```python
-STRICT_THRESHOLD = 0.45  # Distance-based, not percentage
-```
-
----
-
-## Registrar Workflows
-
-### Section Directory Workflow
-
-**UI Location:** `portals/Registrar/components/sections/SectionDirectory.jsx`  
-**Table Columns:**
-- Section ID (non-editable)
-- Campus (from SECTIONS.CAMPUS)
-- Program (from COURSES.COURSE_NAME)
-- Year Level (from SECTIONS.YEAR_LEVEL)
-- Letter (from SECTIONS.SECTION_LETTER)
-- Student Count (COUNT from ENROLLMENTS)
-- Actions (View Roster, Edit, Delete)
-
-**Filters:**
-- Program dropdown (filters by COURSE)
-- Year level buttons (1, 2, 3, 4)
-- Search text input (searches section name/ID)
-
-**Actions:**
-- **View Roster:** GET `/api/sections/{id}/students` → Modal
-- **Edit:** Edit modal with campus, course, year, letter fields
-- **Delete:** Confirmation, DELETE `/api/sections/{id}`
-
-### Schedule Management Workflow
-
-**UI Location:** `portals/Registrar/components/schedules/`  
-**Table Columns (sortable):**
-- Schedule ID
-- Subject Code
-- Subject Title
-- Section
-- Professor Name + Face Image
-- Room ID
-- Time Slot (start - end)
-- Days
-- Subject Type (Lec/Lab)
-
-**Time Sorting (Numeric):**
-```javascript
-const timeToMinutes = (timeStr) => {
-  const [time, period] = timeStr.split(' ');
-  let [hours, mins] = time.split(':').map(Number);
-  if (period === 'PM' && hours !== 12) hours += 12;
-  if (period === 'AM' && hours === 12) hours = 0;
-  return hours * 60 + mins;
-};
-// "02:30 PM" → 870, "08:00 AM" → 480
-```
-
-**Actions:**
-- **Create:** Modal with all schedule fields
-- **Edit:** Edit modal
-- **Delete:** Confirmation
-- **Import:** ScheduleImporter.jsx workflow
-
-### Bulk Schedule Import Workflow
-
-**File:** `portals/Registrar/views/ScheduleImporter.jsx`
-
-**Steps:**
-1. User selects CSV/Excel file
-2. Frontend parses rows (Papa Parse or native)
-3. Display preview table
-4. User reviews & clicks Import
-5. POST to `/api/schedules/import` with array
-6. Backend inserts all schedules
-7. Return success count + any error details
-
-**CSV Format:**
-```
-Subject_Code,Section_Id,Professor_Id,Room_Id,Time_Start,Time_End,Class_Days,Subject_Type
-SE101,SEC-001,prof-001,IK604,02:30 PM,05:30 PM,Thursday,Lec
-```
-
-**Backend Validation:**
-- Required fields: Subject_Code, Section_Id, Time_Start, Time_End
-- Foreign key checks
-- Per-record error tracking (doesn't abort on individual failures)
-
-### Enrollment Management Workflow
-
-**Bulk Enrollment:**
-1. Registrar navigates to Section Roster
-2. Clicks "Add Students"
-3. Multi-select modal with searchable student list
-4. POST to `/api/sections/{id}/students` with student ID array
-5. ENROLLMENTS records created
-
-**Bulk Unenrollment:**
-1. Select students from roster (checkboxes)
-2. Confirm deletion
-3. DELETE `/api/sections/{sectionId}/students/{studentId}` per student
-4. ENROLLMENTS records deleted
-
----
-
-## Code Patterns & Best Practices
-
-### Backend Patterns
-
-#### Repository Pattern
-```csharp
-// Interface definition
-public interface IStudentRepository {
-  Task<List<Student>> GetAllStudentsAsync();
-  Task<Student?> GetStudentByIdAsync(string id);
-  Task CreateStudentAsync(Student student);
-}
-
-// Concrete implementation
-public class StudentRepository : IStudentRepository {
-  private readonly IConfiguration _config;
-  
-  public async Task<List<Student>> GetAllStudentsAsync() {
-    using var connection = new OracleConnection(connectionString);
-    await connection.OpenAsync();
-    using var command = new OracleCommand("SELECT * FROM STUDENTS", connection);
-    using var reader = await command.ExecuteReaderAsync();
-    
-    var students = new List<Student>();
-    while (await reader.ReadAsync()) {
-      students.Add(new Student {
-        Student_ID = reader["STUDENT_ID"].ToString(),
-        First_Name = reader["FIRST_NAME"].ToString(),
-        // ... map columns
-      });
-    }
-    return students;
-  }
-}
-
-// DI in Program.cs
-builder.Services.AddScoped<IStudentRepository, StudentRepository>();
-
-// Usage in controller
-public StudentController(IStudentRepository repo) {
-  _repository = repo;
+**Production Dependencies (7 packages):**
+```json
+{
+  "@microsoft/signalr": "^10.0.0",  // WebSocket real-time
+  "@tailwindcss/vite": "^4.2.4",   // Tailwind integration
+  "lucide-react": "^1.8.0",         // Icons
+  "react": "^19.2.5",               // UI framework
+  "react-dom": "^19.2.5",           // DOM rendering
+  "react-router-dom": "^7.14.2",    // SPA routing
+  "tailwindcss": "^4.2.4"           // CSS framework
 }
 ```
 
-#### Error Handling
-```csharp
-[HttpGet]
-public async Task<IActionResult> GetStudent(string id) {
-  try {
-    var student = await _repository.GetStudentByIdAsync(id);
-    if (student == null)
-      return NotFound(new { message = "Student not found" });
-    return Ok(student);
-  } catch (Exception ex) {
-    return StatusCode(500, new { message = "Database error", error = ex.Message });
-  }
-}
-```
+**DevDependencies (8 packages):**
+- ESLint + plugins (linting)
+- Vite (dev server)
+- TypeScript definitions
+- React Refresh plugin
 
-#### Nullable Reference Types
-```csharp
-public class Student {
-  public string Student_ID { get; set; } = string.Empty;  // Non-nullable
-  public string? Middle_Name { get; set; }                 // Nullable
-}
-```
-
-### Frontend Patterns
-
-#### Protected Route
-```javascript
-function ProtectedRoute({ children }) {
-  const user = sessionStorage.getItem('campus_user');
-  if (!user) return <Navigate to="/login" replace />;
-  return children;
-}
-```
-
-#### useEffect for Data Fetching
-```javascript
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('http://localhost:5106/api/sections');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setSections(data);
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  fetchData();
-}, []);  // Dependency array: [] = run once on mount
-```
-
-#### State Management
-```javascript
-const [sections, setSections] = useState([]);
-const [selected, setSelected] = useState(null);
-const [loading, setLoading] = useState(false);
-const [error, setError] = useState('');
-```
-
-#### Conditional Rendering
-```javascript
-{loading && <p>Loading...</p>}
-{error && <p className="text-red-500">{error}</p>}
-{sections.length === 0 && !loading && <p>No sections</p>}
-{sections.map(s => (
-  <tr key={s.Section_ID}>
-    <td>{s.Section_Name}</td>
-    {/* ... */}
-  </tr>
-))}
+**Installation:**
+```bash
+cd campus-dashboard
+npm install
+npm run lint    # Verify linting works
+npm run build   # Verify build works
 ```
 
 ---
 
-## Known Issues & Fixes
+## Backend Dependencies - Status: ✅ Complete
 
-### Issue #1: GuardPortal sessionStorage/localStorage Mismatch
+### .csproj NuGet Packages
 
-**Problem:**
-- `Login.jsx` stores user in `sessionStorage`
-- `GuardPortal.jsx` reads from `localStorage`
-- Result: Guard Portal loses user context on reload
+| Package | Version | Purpose | Status |
+|---------|---------|---------|--------|
+| **BCrypt.Net-Next** | 4.1.0 | Password hashing | ✅ |
+| **Microsoft.AspNetCore.OpenApi** | 10.0.7 | OpenAPI/Swagger | ✅ |
+| **Microsoft.OpenApi** | 2.0.0 | OpenAPI spec | ✅ |
+| **MQTTnet** | 4.3.7.1207 | MQTT client (v4 LTS) | ✅ |
+| **Oracle.ManagedDataAccess.Core** | 23.26.200 | Oracle driver | ✅ |
+| **SignalR** | Built-in | Real-time WebSocket | ✅ |
+| **Newtonsoft.Json** | Built-in | JSON serialization | ✅ |
 
-**Current Workaround:** Mismatch partially hides issue with persistent login
-
-**Fix Required:**
-```javascript
-// GuardPortal.jsx
-// OLD (WRONG)
-const user = JSON.parse(localStorage.getItem('campus_user'));
-
-// NEW (CORRECT)
-const user = JSON.parse(sessionStorage.getItem('campus_user'));
+**Installation:**
+```bash
+cd campus-backend
+dotnet restore
+dotnet build
+dotnet run
 ```
 
-**Priority:** HIGH (Security issue)
+**Note:** MQTTnet v4 (LTS) used instead of v5 to maintain .NET 10 AOT compatibility
 
 ---
 
-### Issue #2: EVENT_LOGS.STATUS Values Inconsistent
+## Python/Edge Node Dependencies - Status: ⚠️ Updated
 
-**Problem:**
-```sql
--- Database has mixed values:
-'approved', 'denied', 'Access Granted'
--- Should be normalized to enum
+### NOW COMPLETE - Core + Production + Dev Packages
+
+**Core Runtime (unchanged):**
+```
+OpenCV >= 4.9.0              // Video capture
+face_recognition >= 1.3.0    // Face detection
+dlib >= 19.24.2              // Face encoding
+pyzbar >= 0.1.9              // Barcode scanning
+Flask >= 3.0.3               // Web server
+paho-mqtt >= 1.6.1           // MQTT client
 ```
 
-**Impact:**
-- Frontend filtering difficult
-- API logic brittle (case-sensitive comparisons)
-- Data integrity uncertain
-
-**Fix Required:**
-```sql
--- 1. Define enum in code: APPROVED, DENIED, BYPASSED
--- 2. Backfill existing data
-UPDATE EVENT_LOGS SET STATUS = 'APPROVED' WHERE STATUS IN ('approved', 'Access Granted');
-UPDATE EVENT_LOGS SET STATUS = 'DENIED' WHERE STATUS = 'denied';
--- 3. Add backend validation to enforce enum
+**NEW - Production Deployment:**
+```
+gunicorn >= 21.0.0           // WSGI server (replaces Flask dev)
+supervisor >= 4.2.0          // Process manager (auto-restart)
+python-json-logger >= 2.0.0  // JSON logging
 ```
 
-**Priority:** MEDIUM (Data quality)
+**NEW - Development (commented, install separately):**
+```
+pytest >= 7.0.0              // Unit testing
+black >= 23.0.0              // Code formatting
+pylint >= 2.17.0             // Linting
+mypy >= 1.0.0                // Type checking
+```
+
+**Installation:**
+
+```bash
+# Create virtual environment
+cd campus-edge
+python -m venv venv
+source venv/bin/activate  # or: venv\Scripts\activate
+
+# Upgrade pip first
+pip install --upgrade pip setuptools wheel
+
+# Install core dependencies (includes production packages)
+pip install -r requirements.txt
+
+# Optional: Install development tools
+pip install -r requirements-dev.txt
+
+# Verify
+python -c "import cv2, face_recognition, pyzbar, flask, paho.mqtt; print('✓ OK')"
+```
+
+### ⚠️ Platform-Specific Build Requirements
+
+**Windows ONLY:**
+```powershell
+# BEFORE installing requirements.txt:
+
+# 1. Install Visual C++ Build Tools
+# Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+# Ensure C++ workload selected
+# Restart PC
+
+# 2. Install CMake
+pip install cmake
+
+# 3. Then install dlib (will compile, takes 10-20 minutes)
+pip install dlib>=19.24.2
+
+# 4. Finally install face_recognition
+pip install face_recognition>=1.3.0
+
+# OR use pre-built wheel (faster):
+# https://github.com/dlybott/dlib-wheels
+pip install dlib-19.24.2-cp310-cp310-win_amd64.whl
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get update && sudo apt-get install -y \
+    python3-dev cmake build-essential \
+    libopenblas-dev liblapack-dev libx11-dev libsm6
+
+pip install -r requirements.txt
+```
+
+**macOS:**
+```bash
+brew install cmake opencv
+
+pip install -r requirements.txt
+```
 
 ---
 
-### Issue #3: SECTIONS Table Missing STATUS Column
+## Complete Installation Sequence (Correct Order)
 
-**Problem:**
-- No way to soft-delete sections
-- Archive/restore UI cannot be implemented
+### Phase 1: System Prerequisites (One-time setup)
 
-**Fix Required:**
-```sql
-ALTER TABLE SECTIONS ADD (STATUS VARCHAR2(20) DEFAULT 'Active');
+```bash
+# 1. Install Python 3.10+ (if not present)
+python --version  # Should be 3.10+
+
+# 2. Install Node.js 18+ LTS
+node --version    # Should be v18+
+npm --version     # Should be 8+
+
+# 3. Install .NET SDK 10.0
+dotnet --version  # Should be 10.0.x
+
+# 4. Install Oracle Database 21c XE
+#    (if not already installed)
+
+# 5. CRITICAL: Install MQTT Mosquitto Broker
+#    See: MQTT_SETUP_GUIDE.md
+choco install mosquitto  # Windows
+# OR
+sudo apt-get install mosquitto  # Linux
+# OR
+brew install mosquitto  # macOS
 ```
 
-**Priority:** LOW (Only if archive feature needed)
+### Phase 2: Database (15 minutes)
+
+```bash
+# 1. Start Oracle Database
+# 2. Open SQL*Plus or SQL Developer
+# 3. Connect as campus_admin/admin123
+# 4. Execute: @database\schema.sql
+# 5. Verify: SELECT COUNT(*) FROM USERS;  -- Should return 5
+```
+
+### Phase 3: Backend (5 minutes)
+
+```bash
+cd campus-backend
+dotnet restore
+dotnet build
+# Don't run yet - wait for frontend
+```
+
+### Phase 4: Frontend (5 minutes)
+
+```bash
+cd campus-dashboard
+npm install
+npm run build  # Verify build succeeds
+```
+
+### Phase 5: Edge Node (20-30 minutes including dlib compilation)
+
+```bash
+cd campus-edge
+
+# Windows: Install Visual C++ Build Tools + CMake first!
+
+python -m venv venv
+source venv/bin/activate  # or: venv\Scripts\activate
+
+pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt  # Takes 10-20 min for dlib
+```
+
+### Phase 6: Start All Services (concurrent)
+
+**Terminal 1 - MQTT Broker (MUST be first!):**
+```bash
+mosquitto -p 1883
+# Output: 1683350400: mosquitto version 2.0.x starting
+```
+
+**Terminal 2 - Backend:**
+```bash
+cd campus-backend
+dotnet run
+# Output: Now listening on https://localhost:5106
+```
+
+**Terminal 3 - Frontend:**
+```bash
+cd campus-dashboard
+npm run dev
+# Output: Local: http://localhost:5173
+```
+
+**Terminal 4 - Edge Node:**
+```bash
+cd campus-edge
+source venv/bin/activate  # or: venv\Scripts\activate
+python app.py
+# Output: Running on http://localhost:5000
+```
+
+**Browser:**
+- Navigate to http://localhost:5173
+- Login with test user (e.g., guard1 / password)
+- Should see live camera feed and be able to scan barcodes
 
 ---
 
-### Issue #4: CLASS_DAYS Format Inconsistency
+## What Changed in requirements.txt
 
-**Problem:**
-```sql
--- Different formats in database:
-'Monday/Wednesday', 'Mon/Wed', 'Thu', 'Thursday'
+### Before (Incomplete):
+```
+opencv-python>=4.9.0
+numpy>=1.26.4
+... etc ...
 ```
 
-**Current Workaround:** Frontend handles multiple formats
+### After (Production-Ready):
+```
+# Organized into sections
+# - CORE DEPENDENCIES (unchanged)
+# - PRODUCTION DEPLOYMENT (NEW: gunicorn, supervisor, python-json-logger)
+# - DEVELOPMENT & TESTING (commented, opt-in)
+# - DETAILED NOTES with platform-specific warnings
+```
 
-**Fix (if needed):** Normalize to `'MON|WED|FRI'` (pipe-separated ISO abbreviations)
+### NEW File: requirements-dev.txt
+```
+# Separate development-only packages
+pytest>=7.0.0
+black>=23.0.0
+pylint>=2.17.0
+mypy>=1.0.0
+flake8>=6.0.0
+... etc ...
 
-**Priority:** LOW
+# Install with: pip install -r requirements.txt -r requirements-dev.txt
+```
 
 ---
 
-### Issue #5: Vite Bundle Size Warning
+## Verification Checklist
 
-**Problem:**
-```
-⚠️ Vite: Some chunks are large (chunk-xxx.js: 250 kB)
-Production build: ~600+ kB (normal for multi-role SPA)
-```
+### ✅ Before Starting System
 
-**Current Status:** Non-blocking, normal
+**System Requirements:**
+- [ ] Python 3.10+ installed: `python --version`
+- [ ] Node.js 18+ installed: `node --version`
+- [ ] .NET SDK 10.0 installed: `dotnet --version`
+- [ ] Oracle Database running: Can connect via SQL*Plus
+- [ ] **MQTT Broker running:** `netstat -an | grep 1883` shows LISTENING
+- [ ] Webcam connected to system
 
-**Fix (if needed):**
-```javascript
-// Lazy-load portals in App.jsx
-const RegistrarPortal = lazy(() => import('./portals/Registrar/RegistrarPortal'));
-const GuardPortal = lazy(() => import('./portals/Guard/GuardPortal'));
-// Then wrap with <Suspense fallback={<Loading />}>
-```
+**Backend Ready:**
+- [ ] `dotnet restore` completed
+- [ ] `dotnet build` succeeds
+- [ ] appsettings.json configured with Oracle credentials
 
-**Priority:** LOW
+**Frontend Ready:**
+- [ ] `npm install` completed
+- [ ] `npm run build` succeeds
+- [ ] No ESLint errors: `npm run lint`
+
+**Edge Node Ready:**
+- [ ] Virtual environment created: `source venv/bin/activate`
+- [ ] `pip install -r requirements.txt` completed (all packages installed)
+- [ ] `python -c "import cv2, face_recognition, pyzbar, flask"` succeeds
+
+**MQTT Verification:**
+- [ ] `mosquitto --version` shows 2.0.x
+- [ ] `mosquitto_sub -h localhost -p 1883 -t "#"` connects
+- [ ] `mosquitto_pub -h localhost -p 1883 -t "test" -m "hello"` works
+
+### ✅ Startup Order (IMPORTANT!)
+
+1. **Start MQTT Broker first** - Everything else depends on it
+2. Then Backend
+3. Then Frontend  
+4. Then Edge Node
+5. Then open browser and test
 
 ---
 
-## Testing & Debugging
+## Known Issues & Workarounds
 
-### Backend Debugging
+| Issue | Impact | Workaround |
+|-------|--------|-----------|
+| dlib compilation slow on Windows | 20+ min wait | Use pre-built wheel |
+| MQTT Mosquitto undocumented | System won't start | See MQTT_SETUP_GUIDE.md |
+| Face recognition needs GPU | Face matching slow | Use GPU drivers (optional) |
+| Campus-edge sessionStorage mismatch | Guard portal reload bug | See CONTEXT.md |
 
-**Visual Studio Debugger:**
-1. Set breakpoint in `.cs` file
-2. `dotnet run` from command line or F5 in VS
-3. Request hits breakpoint, pause & inspect variables
-4. Step through code (F10 = step over, F11 = step into)
+---
 
-**Console Logging:**
-```csharp
-Console.WriteLine($"DEBUG: student_id = {student_id}");
+## Summary of Audit Documents Created
+
+1. **DEPENDENCIES_AUDIT.md** (This comprehensive report)
+   - 10 sections covering all dependencies
+   - Verification scripts (Bash & PowerShell)
+   - Troubleshooting for each component
+   - Complete installation sequence
+   - Version compatibility matrix
+
+2. **MQTT_SETUP_GUIDE.md** (Critical missing component)
+   - Installation steps for Windows, Linux, macOS
+   - Configuration and verification
+   - Troubleshooting guide
+   - Test scripts
+   - Production deployment notes
+   - Security considerations
+
+3. **campus-edge/requirements.txt** (Updated)
+   - Core + production + dev packages
+   - Platform-specific build warnings
+   - Installation instructions
+   - Verification commands
+
+4. **campus-edge/requirements-dev.txt** (NEW)
+   - Separate development-only packages
+   - Testing, linting, profiling tools
+   - Usage instructions
+
+---
+
+## Recommendations for README.md Updates
+
+### Add to Prerequisites Section:
+```markdown
+### Critical External Services
+- **MQTT Mosquitto Broker** - MUST be installed and running
+  See: MQTT_SETUP_GUIDE.md for complete installation
+  Quick install: choco install mosquitto (Windows) 
+               | sudo apt-get install mosquitto (Linux)
+               | brew install mosquitto (macOS)
 ```
 
-**Database Verification (SQL*Plus):**
-```sql
+### Add to Installation Sequence:
+```markdown
+### IMPORTANT: Installation Order
+
+1. System prerequisites (Python, Node, .NET, Oracle)
+2. MQTT Mosquitto broker (CRITICAL - start first!)
+3. Database setup (Oracle schema)
+4. Backend setup (dotnet restore/build)
+5. Frontend setup (npm install)
+6. Edge node setup (pip install -r requirements.txt)
+7. Start services in order: MQTT → Backend → Frontend → Edge Node
+```
+
+### Add to Frontend Setup:
+```markdown
+### Windows Build Requirements
+For campus-edge Python components:
+1. Install Visual C++ Build Tools
+2. Install CMake: pip install cmake
+3. Installation will take 10-20 minutes (dlib compilation)
+```
+
+---
+
+## Next Steps
+
+**Immediate (Today):**
+1. ✅ Review DEPENDENCIES_AUDIT.md
+2. ✅ Review MQTT_SETUP_GUIDE.md
+3. ✅ Verify MQTT Mosquitto installed and running
+4. ✅ Test system startup with correct sequence
+
+**Short-term (This week):**
+1. Update README.md with MQTT installation section
+2. Update README.md with correct installation sequence
+3. Test complete system setup from scratch
+4. Document any additional missing dependencies
+
+**Medium-term (This sprint):**
+1. Consider Docker containerization (avoid environment issues)
+2. Add GitHub Actions CI/CD pipeline
+3. Document production deployment checklist
+4. Create automated verification script
+
+---
+
+## Files to Read Next
+
+1. **[DEPENDENCIES_AUDIT.md](DEPENDENCIES_AUDIT.md)** - Complete detailed audit
+2. **[MQTT_SETUP_GUIDE.md](MQTT_SETUP_GUIDE.md)** - MQTT installation for all OS
+3. **[README.md](README.md)** - Update with MQTT section
+4. **[CONTEXT.md](CONTEXT.md)** - Comprehensive technical reference
+
+---
+
+**Audit Completed:** May 11, 2026  
+**Status:** ✅ All dependencies identified, documented, and updated  
+**Critical Finding:** MQTT Mosquitto broker installation completely undocumented (NOW FIXED)  
+**Recommendation:** Review and implement documentation updates to README.md
+
+
+---
+
+(campus-dashboard)
+
+### package.json Dependencies ✅
+
+**Production Dependencies:**
+| Package | Current Version | Status | Purpose |
+|---------|-----------------|--------|---------|
+| @microsoft/signalr | ^10.0.0 | ✅ | WebSocket real-time updates |
+| @tailwindcss/vite | ^4.2.4 | ✅ | Tailwind CSS integration with Vite |
+| lucide-react | ^1.8.0 | ✅ | Icon library |
+| react | ^19.2.5 | ✅ | UI framework |
+| react-dom | ^19.2.5 | ✅ | DOM rendering |
+| react-router-dom | ^7.14.2 | ✅ | SPA routing |
+| tailwindcss | ^4.2.4 | ✅ | Utility-first CSS framework |
+
+**Development Dependencies:**
+| Package | Current Version | Status | Purpose |
+|---------|-----------------|--------|---------|
+| @eslint/js | ^9.39.4 | ✅ | ESLint JavaScript rules |
+| @types/react | ^19.2.14 | ✅ | TypeScript definitions for React |
+| @types/react-dom | ^19.2.3 | ✅ | TypeScript definitions for React DOM |
+| @vitejs/plugin-react | ^6.0.1 | ✅ | Vite React JSX support |
+| eslint | ^9.39.4 | ✅ | Linting |
+| eslint-plugin-react-hooks | ^7.1.1 | ✅ | Rules for React hooks |
+| eslint-plugin-react-refresh | ^0.5.2 | ✅ | React Refresh plugin |
+| globals | ^17.5.0 | ✅ | Global variables for ESLint |
+| vite | ^8.0.9 | ✅ | Dev server & bundler |
+
+**Installation Command:**
+```bash
+cd campus-dashboard
+npm install
+```
+
+**Verification:**
+```bash
+npm list --depth=0
+npm run lint    # Should complete without errors
+npm run build   # Should output to dist/
+```
+
+---
+
+## 2. Backend Dependencies (campus-backend)
+
+### .csproj NuGet Packages ✅
+
+**Direct Package References:**
+| Package | Current Version | Status | Purpose |
+|---------|-----------------|--------|---------|
+| BCrypt.Net-Next | 4.1.0 | ✅ | Password hashing (cryptographic) |
+| Microsoft.AspNetCore.OpenApi | 10.0.7 | ✅ | OpenAPI (Swagger) support |
+| Microsoft.OpenApi | 2.0.0 | ✅ | OpenAPI specification library |
+| MQTTnet | 4.3.7.1207 | ✅ | MQTT client (v4 LTS for .NET 10 AOT compatibility) |
+| Oracle.ManagedDataAccess.Core | 23.26.200 | ✅ | Oracle database driver |
+
+**Built-In Dependencies (No explicit NuGet reference needed):**
+- SignalR (part of ASP.NET Core 10)
+- Newtonsoft.Json (JSON serialization)
+- Entity Framework Core (if using - appears not used in current implementation)
+
+**Installation Command:**
+```bash
+cd campus-backend
+dotnet restore
+```
+
+**Build & Run:**
+```bash
+dotnet build
+dotnet run
+```
+
+**Verification:**
+```bash
+dotnet list package          # Lists all NuGet packages
+dotnet build -v normal       # Verbose build output to check for warnings
+```
+
+---
+
+## 3. Edge Node Python Dependencies (campus-edge)
+
+### Current requirements.txt ✅
+
+**Currently Listed:**
+```
+# Camera and Image Processing
+opencv-python>=4.9.0
+numpy>=1.26.4
+Pillow>=10.0.0
+
+# AI Facial Recognition
+face_recognition>=1.3.0
+dlib>=19.24.2
+scipy>=1.11.0
+scikit-image>=0.21.0
+
+# Barcode / QR Code Scanning
+pyzbar>=0.1.9
+
+# Edge Node Web Server
+Flask>=3.0.3
+Flask-Cors>=4.0.1
+
+# Communication
+paho-mqtt>=1.6.1
+requests>=2.31.0
+python-dotenv>=1.0.1
+```
+
+### ⚠️ MISSING CRITICAL PACKAGES
+
+**High Priority (Should be added immediately):**
+
+| Package | Recommended Version | Category | Why Missing | Impact |
+|---------|-------------------|----------|-------------|--------|
+| **Werkzeug** | >=3.0.0 | Flask dependency | Flask dependency (should be auto-installed) | LOW - auto-installed with Flask |
+| **click** | >=8.1.0 | Flask CLI dependency | Flask CLI dependency (auto-installed) | LOW - auto-installed with Flask |
+| **jinja2** | >=3.1.0 | Flask templating (auto) | Flask templating (auto-installed) | LOW - auto-installed |
+| **python-dotenv** | >=1.0.1 | ✅ Already listed | Config from .env files | Environment configuration |
+
+**Medium Priority (Useful additions):**
+
+| Package | Recommended Version | Category | Purpose | Priority |
+|---------|-------------------|----------|---------|----------|
+| **python-dotenv** | >=1.0.1 | ✅ Already listed | Load .env environment variables | MEDIUM - Already included |
+| **logging** | Built-in | Logging | Application logging (built-in to Python) | MEDIUM - Built-in |
+
+**For Production/Development:**
+
+| Package | Recommended Version | Category | Purpose | Impact if Missing |
+|---------|-------------------|----------|---------|------------------|
+| **pytest** | >=7.0.0 | Testing | Unit testing framework | MEDIUM - Not in current use |
+| **pytest-cov** | >=4.1.0 | Testing | Code coverage reporting | LOW - Testing only |
+| **gunicorn** | >=21.0.0 | WSGI Server | Production deployment | **HIGH** - for production use |
+| **python-socketio** | >=5.9.0 | Socket.IO | WebSocket alternative (optional) | LOW - MQTT used instead |
+| **supervisor** | >=4.2.0 | Process Management | Keep Flask running in production | **HIGH** - for production deployment |
+
+### Platform-Specific Compilation Notes ⚠️
+
+**For Windows:**
+```
+FACE_RECOGNITION & DLIB COMPILATION REQUIRED:
+
+1. Install Visual C++ Build Tools
+   - Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+   - Ensure C++ workload is selected
+   - Restart PC after installation
+
+2. Install CMake (required for dlib compilation)
+   pip install cmake
+
+3. Install dlib (5-10 minute compile time on Windows)
+   Option A: Compile from source
+   pip install dlib>=19.24.2
+   
+   Option B: Use pre-built wheel (faster)
+   pip install dlib-19.24.2-cp311-cp311-win_amd64.whl
+   OR
+   pip install dlib-19.24.2-cp310-cp310-win_amd64.whl
+
+4. Then install face_recognition
+   pip install face_recognition>=1.3.0
+```
+
+**For Linux (Ubuntu/Debian):**
+```bash
+# Install system dependencies before pip install
+sudo apt-get update
+sudo apt-get install -y \
+    python3-dev \
+    cmake \
+    build-essential \
+    libopenblas-dev \
+    liblapack-dev \
+    libx11-dev \
+    libsm6 \
+    libxext6 \
+    libxrender-dev
+
+pip install -r requirements.txt
+```
+
+**For macOS:**
+```bash
+# Using Homebrew
+brew install cmake
+brew install opencv
+
+# Then install Python packages
+pip install -r requirements.txt
+```
+
+### Current Installation Process
+
+**Step 1: Create Virtual Environment**
+```bash
+cd campus-edge
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+# Linux/macOS
+source venv/bin/activate
+```
+
+**Step 2: Install Dependencies**
+```bash
+pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt
+```
+
+**Step 3: Verify Installation**
+```bash
+python -c "import cv2, face_recognition, pyzbar, flask, paho.mqtt; print('All imports successful!')"
+```
+
+**Verification Commands:**
+```bash
+python --version              # Should be 3.10+
+pip list | grep -E "(opencv|face|pyzbar|flask|mqtt)"
+
+# Test imports individually
+python -c "import cv2; print(cv2.__version__)"
+python -c "import face_recognition; print('OK')"
+python -c "import paho.mqtt.client; print('OK')"
+python -c "from flask import Flask; print('OK')"
+```
+
+---
+
+## 4. External Programs & Services
+
+### ⚠️ CRITICAL: MQTT Mosquitto Broker
+
+**Status:** ⚠️ **NOT documented in README.md or setup instructions**
+
+**Purpose:** MQTT message broker for real-time event publishing from edge node to backend
+
+**Required Version:** 1.6+
+
+**Installation Instructions:**
+
+#### Windows
+```powershell
+# Option 1: Chocolatey
+choco install mosquitto
+
+# Option 2: Download Installer
+# https://mosquitto.org/download/
+
+# After installation, verify it's running:
+# Should show "mosquitto" in Services (services.msc)
+# Or run from command line:
+mosquitto -p 1883
+```
+
+**Configuration:** Default runs on `localhost:1883` (matches config.py)
+
+#### Linux (Ubuntu/Debian)
+```bash
+sudo apt-get update
+sudo apt-get install -y mosquitto mosquitto-clients
+
+# Verify installation
+mosquitto --version
+
+# Ensure it's running as a service
+sudo systemctl status mosquitto
+sudo systemctl enable mosquitto  # Auto-start on boot
+```
+
+#### macOS
+```bash
+brew install mosquitto
+
+# Start the broker
+brew services start mosquitto
+# Or manually run:
+mosquitto -p 1883
+```
+
+**Verification:**
+```bash
+# Test MQTT connection
+mosquitto_sub -h localhost -p 1883 -t "campus/door/scan" &
+# Should connect and wait for messages (Ctrl+C to exit)
+
+# Test publishing from another terminal
+mosquitto_pub -h localhost -p 1883 -t "campus/door/scan" -m "TEST"
+# Should receive "TEST" in the first terminal
+```
+
+---
+
+### ✅ Oracle Database 21c XE
+
+**Status:** ✅ **Documented**
+
+**Installation:** Oracle Database 21c Express Edition
+
+**Configuration:**
+- **Host:** localhost
+- **Port:** 1521
+- **Instance:** XEPDB1
+- **Admin User:** campus_admin
+- **Admin Password:** admin123
+
+**Verification:**
+```bash
+# Command line verification
 sqlplus campus_admin/admin123@localhost:1521/XEPDB1
-> SELECT * FROM STUDENTS WHERE STUDENT_ID='24-1487';
-> SELECT * FROM ENROLLMENTS WHERE STUDENT_ID='24-1487';
+
+SQL> SELECT COUNT(*) FROM USERS;
+SQL> EXIT;
 ```
-
-### Frontend Debugging
-
-**Chrome DevTools (F12):**
-1. Network tab: Watch HTTP requests/responses
-2. Console tab: Watch for errors & logs
-3. React DevTools extension: Inspect component state
-4. Sources tab: Set breakpoints in JavaScript
-
-**Console Logging:**
-```javascript
-console.log('DEBUG: user =', user);
-console.error('ERROR:', error.message);
-```
-
-### Database Debugging
-
-**SQL*Plus Commands:**
-```sql
--- List tables
-SELECT table_name FROM user_tables;
-
--- Count records
-SELECT COUNT(*) FROM SECTIONS;
-
--- Check foreign key constraints
-SELECT * FROM user_constraints WHERE table_name='SCHEDULES';
-
--- Query with joined data
-SELECT s.SCHEDULE_ID, s.SUBJECT_CODE, sec.SECTION_NAME, u.FIRST_NAME
-  FROM SCHEDULES s
-  JOIN SECTIONS sec ON s.SECTION_ID = sec.SECTION_ID
-  LEFT JOIN USERS u ON s.PROFESSOR_ID = u.USER_ID
-  WHERE sec.SECTION_ID = 'SEC-001';
-```
-
-### Testing Workflows
-
-**Faculty Login & Attendance:**
-1. Login as `prof-001` / `password`
-2. View FacultyDashboard
-3. Click a section → ClassAttendance
-4. See enrollment list
-5. Mark attendance for students
-
-**Registrar Section CRUD:**
-1. Login as `registrar1` / `password`
-2. Go to Sections tab
-3. Create: Click "Add Section", fill form, submit
-4. Read: View all sections in table
-5. Update: Click section row, edit fields, save
-6. Delete: Click delete, confirm
-
-**Registrar Bulk Schedule Import:**
-1. Create CSV:
-   ```
-   Subject_Code,Section_Id,Professor_Id,Room_Id,Time_Start,Time_End,Class_Days,Subject_Type
-   DB101,SEC-001,prof-001,IK604,08:00 AM,10:00 AM,Monday/Wednesday,Lec
-   ```
-2. Go to Schedule Importer
-3. Select file
-4. Review preview
-5. Click Import
-6. Verify in database: `SELECT * FROM SCHEDULES WHERE SUBJECT_CODE='DB101';`
-
-**Guard Portal Verification:**
-1. Run edge node: `python campus-edge/app.py`
-2. Start MQTT broker (if not running)
-3. Login as `guard1` / `password`
-4. GuardPortal loads
-5. Input barcode manually: `24-1487`
-6. See face verification result
-7. Check EVENT_LOGS in database
 
 ---
 
-## Development Checklist
+### ✅ Node.js & npm
 
-**Before committing code:**
-- ✅ Run `npm.cmd run lint` (frontend)
-- ✅ Run `npm.cmd run build` (frontend production check)
-- ✅ Run `dotnet build campus-backend\campus-backend.csproj` (backend)
-- ✅ Test affected workflow end-to-end
-- ✅ Verify database queries in SQL*Plus
-- ✅ Check browser console for errors (F12)
+**Status:** ✅ **Documented**
 
-**When adding a new feature:**
-1. Create/update data model in `Models/`
-2. Create/update repository interface in `Repositories/IXxxRepository.cs`
-3. Implement repository in `Repositories/XxxRepository.cs`
-4. Register in `Program.cs` DI container
-5. Create/update controller in `Controllers/XxxController.cs`
-6. Create/update frontend component in `portals/`
-7. Test API endpoint with Postman or frontend form
-8. Test database changes in SQL*Plus
+**Requirements:**
+- **Node.js:** 18+ (LTS recommended)
+- **npm:** 8+ (auto-installed with Node.js)
+
+**Installation:**
+- Download from https://nodejs.org/ (LTS version)
+- Or via Chocolatey (Windows): `choco install nodejs`
+- Or via Homebrew (macOS): `brew install node`
+- Or via apt (Linux): `sudo apt-get install nodejs npm`
+
+**Verification:**
+```bash
+node --version   # Should be v18.x or higher
+npm --version    # Should be 8.x or higher
+npm config list  # Show npm configuration
+```
 
 ---
 
-**Last Updated:** May 11, 2026  
-**Documentation Level:** Comprehensive (detailed for vibe coding)  
-**Verified:** All 12 API controllers, all 5 portals, all 11 database tables
+### ✅ .NET SDK 10.0
 
+**Status:** ✅ **Documented**
+
+**Installation:** From https://dotnet.microsoft.com/download
+
+**Verification:**
+```bash
+dotnet --version     # Should be 10.0.x
+dotnet --list-sdks   # Show all installed SDKs
+```
+
+---
+
+### ✅ Python 3.10+
+
+**Status:** ✅ **Documented**
+
+**Installation:** From https://www.python.org/
+
+**Verification:**
+```bash
+python --version   # Should be 3.10 or higher
+pip --version      # Should be 21.0+
+```
+
+---
+
+## 5. Recommended Additional Packages
+
+### For Development/Testing
+
+```
+# Add to campus-edge/requirements.txt for development:
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=4.1.0
+
+# Debugging & Logging
+python-logging>=0.5.1.2
+
+# Environment Management
+python-dotenv>=1.0.1  # Already listed
+
+# Code Quality
+black>=23.0.0         # Code formatter
+pylint>=2.17.0        # Code linting
+mypy>=1.0.0           # Static type checking
+```
+
+### For Production Deployment
+
+```
+# Add to campus-edge/requirements.txt for production:
+
+gunicorn>=21.0.0           # WSGI server (production)
+supervisor>=4.2.0          # Process manager (keep Flask running)
+python-json-logger>=2.0.0  # JSON logging for production
+```
+
+---
+
+## 6. Complete Installation Sequence
+
+### Phase 1: System Prerequisites (5-15 minutes)
+
+**Order matters!** Install in this sequence:
+
+```bash
+# 1. Python 3.10+ (if not already installed)
+# 2. Node.js 18+ LTS (if not already installed)
+# 3. .NET SDK 10.0 (if not already installed)
+# 4. Visual Studio 2022 or VS Code (optional, for development)
+# 5. Oracle Database 21c XE (if not already installed)
+# 6. MQTT Mosquitto Broker (CRITICAL - currently missing from docs!)
+```
+
+### Phase 2: Database Setup (10 minutes)
+
+```bash
+# 1. Start Oracle Database
+# 2. Open SQL*Plus or SQL Developer
+# 3. Connect as campus_admin/admin123
+# 4. Import database/schema.sql
+# 5. Verify tables exist
+```
+
+### Phase 3: Backend Setup (10 minutes)
+
+```bash
+cd campus-backend
+dotnet restore
+dotnet build
+# Do NOT run yet - wait for frontend
+```
+
+### Phase 4: Frontend Setup (10 minutes)
+
+```bash
+cd campus-dashboard
+npm install
+npm run build    # Verify build succeeds
+```
+
+### Phase 5: Edge Node Setup (15-30 minutes - dlib compilation!)
+
+```bash
+cd campus-edge
+
+# Windows: Install Visual C++ Build Tools + CMake first!
+
+python -m venv venv
+venv\Scripts\activate  # or: source venv/bin/activate
+
+pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt  # Will take 10-20 minutes on first install
+```
+
+### Phase 6: Start Services (concurrent)
+
+**Terminal 1 - MQTT Broker:**
+```bash
+mosquitto -p 1883
+# Output: 1683350400: mosquitto version 2.0.x starting
+```
+
+**Terminal 2 - Backend:**
+```bash
+cd campus-backend
+dotnet run
+# Should see: "Now listening on: https://localhost:5106"
+```
+
+**Terminal 3 - Frontend:**
+```bash
+cd campus-dashboard
+npm run dev
+# Should see: "Local: http://localhost:5173"
+```
+
+**Terminal 4 - Edge Node:**
+```bash
+cd campus-edge
+source venv/bin/activate  # or: venv\Scripts\activate
+python app.py
+# Should see: "Running on http://localhost:5000"
+```
+
+---
+
+## 7. Dependency Checklist for Developers
+
+### Before Running `npm install`
+- [ ] Node.js 18+ installed (`node --version`)
+- [ ] npm 8+ installed (`npm --version`)
+- [ ] ~500MB disk space available
+- [ ] Internet connection (downloading packages)
+
+### Before Running `dotnet restore`
+- [ ] .NET SDK 10.0 installed (`dotnet --version`)
+- [ ] Oracle.ManagedDataAccess.Core 23.26.200 can download (~50MB)
+- [ ] MQTTnet 4.3.7.1207 can download (~2MB)
+
+### Before Running `pip install -r requirements.txt`
+- [ ] Python 3.10+ installed (`python --version`)
+- [ ] pip 21.0+ installed (`pip --version`)
+- [ ] Virtual environment activated
+- [ ] **Windows ONLY:** Visual C++ Build Tools installed
+- [ ] **Windows ONLY:** CMake installed (`pip install cmake`)
+- [ ] ~1-2GB disk space (for dlib compilation + packages)
+- [ ] 10-20 minutes (dlib is slow to compile)
+
+### Before Starting MQTT Broker
+- [ ] Mosquitto 1.6+ installed (`mosquitto --version`)
+- [ ] Port 1883 is not in use (`netstat -an | grep 1883`)
+
+### Before Starting Backend
+- [ ] Oracle Database running on localhost:1521
+- [ ] Oracle XEPDB1 instance started
+- [ ] campus_admin user created with password admin123
+- [ ] Database schema imported (database/schema.sql)
+- [ ] MQTT Broker running on localhost:1883
+- [ ] Port 5106 available
+
+### Before Starting Frontend
+- [ ] npm dependencies installed (`npm install`)
+- [ ] Backend running on http://localhost:5106
+- [ ] Port 5173 available
+
+### Before Starting Edge Node
+- [ ] Python requirements installed (`pip install -r requirements.txt`)
+- [ ] Virtual environment activated
+- [ ] Webcam connected to system
+- [ ] MQTT Broker running on localhost:1883
+- [ ] Backend running (for image uploads)
+- [ ] Port 5000 available
+
+---
+
+## 8. Known Dependency Issues
+
+### Issue 1: dlib Compilation on Windows ⚠️
+**Problem:** dlib takes 10-20 minutes to compile on Windows  
+**Solution:** Use pre-built wheels (faster)
+
+### Issue 2: Face Recognition Library Conflicts ⚠️
+**Problem:** face_recognition requires specific dlib version  
+**Solution:** Always install dlib first, then face_recognition
+
+### Issue 3: .NET 10 AOT Compatibility
+**Problem:** MQTTnet v5 not compatible with .NET 10 AOT  
+**Solution:** Project uses MQTTnet v4.3.7.1207 LTS (documented in .csproj comments)
+
+### Issue 4: OpenCV on Linux Headless Servers
+**Problem:** OpenCV requires X11 on Linux (cv2.CAP_PROP_* flags need display)  
+**Solution:** Use `opencv-python-headless` for servers without display
+
+### Issue 5: Oracle Driver on Linux
+**Problem:** Oracle.ManagedDataAccess sometimes requires `libcrypt.so.1` symlink  
+**Solution:** See Troubleshooting in README.md
+
+---
