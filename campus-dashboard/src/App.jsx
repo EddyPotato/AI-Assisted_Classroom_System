@@ -7,9 +7,9 @@ import Login from './components/auth/Login';
 // Import all of your Portals
 import FacultyPortal from './portals/Faculty/FacultyPortal';
 import PrincipalPortal from './portals/Principal/PrincipalPortal';
-// import GuardPortal from './portals/Guard/GuardPortal';
-// import RegistrarPortal from './portals/Registrar/RegistrarPortal';
-// import SystemAdminPortal from './portals/SystemAdmin/SystemAdminPortal'; 
+import GuardPortal from './portals/Guard/GuardPortal';
+import RegistrarPortal from './portals/Registrar/RegistrarPortal';
+import SystemAdminPortal from './portals/SystemAdmin/SystemAdminPortal'; 
 
 // Authentication Wrapper
 function ProtectedRoute({ children }) {
@@ -57,11 +57,9 @@ export default function App() {
         {/* PORTAL ROUTES (The /* allows the Portals to handle their own internal navigation) */}
         <Route path="/faculty/*" element={<ProtectedRoute><FacultyPortal /></ProtectedRoute>} />
         <Route path="/principal/*" element={<ProtectedRoute><PrincipalPortal /></ProtectedRoute>} />
-        
-        {/* Uncomment these when you add the wrappers for the others */}
-        {/* <Route path="/guard/*" element={<ProtectedRoute><GuardPortal /></ProtectedRoute>} /> */}
-        {/* <Route path="/registrar/*" element={<ProtectedRoute><RegistrarPortal /></ProtectedRoute>} /> */}
-        {/* <Route path="/admin/*" element={<ProtectedRoute><SystemAdminPortal /></ProtectedRoute>} /> */}
+        <Route path="/guard/*" element={<ProtectedRoute><GuardPortal /></ProtectedRoute>} />
+        <Route path="/registrar/*" element={<ProtectedRoute><RegistrarPortal /></ProtectedRoute>} />
+        <Route path="/admin/*" element={<ProtectedRoute><SystemAdminPortal /></ProtectedRoute>} />
 
         {/* FALLBACK */}
         <Route path="*" element={<Navigate to="/" replace />} />
