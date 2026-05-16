@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, Plus, Users, LibrarySquare, Loader2, Layers, GraduationCap, ChevronDown, ChevronUp, CheckCircle2, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
+import { Search, Plus, Users, LibrarySquare, Loader2, Layers, GraduationCap, ChevronDown, ChevronUp, CheckCircle2, Edit2, Trash2, ArrowUpDown, AlertCircle } from 'lucide-react';
 import SectionRoster from './SectionRoster';
 import SectionForm from './SectionForm';
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
 import { useSectionsLogic } from './hooks/useSectionsLogic';
 
-export default function SectionsTab() {
+// THE FIX: Accept termId from the RegistrarPortal
+export default function SectionsTab({ termId }) {
   const [selectedSection, setSelectedSection] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingSection, setEditingSection] = useState(null);
@@ -68,12 +69,25 @@ export default function SectionsTab() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // STRICT BLOCK: Prevent accessing sections and enrollments without an active term
+  if (!termId) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 flex flex-col items-center justify-center h-96 text-center animate-in fade-in">
+        <AlertCircle size={48} className="text-amber-500 mb-4" />
+        <h2 className="text-xl font-black text-slate-800">No Academic Term Selected</h2>
+        <p className="text-slate-500 max-w-md mt-2">
+          Please select an active School Year and Semester from the header dropdown to view section rosters and process student enrollments.
+        </p>
+      </div>
+    );
+  }
+
   if (selectedSection) {
     return (
       <SectionRoster 
         section={selectedSection} 
+        termId={termId} // THE FIX: Pass termId down so enrollments are correctly stamped!
         onBack={() => setSelectedSection(null)} 
-        // THE FIX: Pass the actions down to the roster view!
         onEdit={() => { setSelectedSection(null); setEditingSection(selectedSection); setShowForm(true); }}
         onDelete={() => handleActionClick(selectedSection, 'hard_delete')}
       />
@@ -113,7 +127,7 @@ export default function SectionsTab() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
         <div>
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Academic Sections</h2>
-          <p className="text-slate-500 mt-1 font-medium">Manage cohorts and handle student rosters.</p>
+          <p className="text-slate-500 mt-1 font-medium">Manage cohorts and handle student rosters for <span className="font-bold text-primary-600">{termId}</span>.</p>
         </div>
         
         <div className="flex items-center gap-4">

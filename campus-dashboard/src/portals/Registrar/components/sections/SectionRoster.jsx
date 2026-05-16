@@ -11,19 +11,21 @@ import FaceZoomModal from '../users/FaceZoomModal';
 import StudentListTab from './StudentListTab';
 import SchedulesTab from './SchedulesTab';
 
-export default function SectionRoster({ section, onBack, onEdit, onDelete }) {
+// THE FIX: Accept termId from the parent SectionsTab
+export default function SectionRoster({ section, termId, onBack, onEdit, onDelete }) {
   const [activeTab, setActiveTab] = useState('students');
   const [searchQuery, setSearchQuery] = useState('');
   const [zoomedImage, setZoomedImage] = useState(null);
   const [cacheBuster] = useState(() => Date.now());
 
-  // Using your awesome custom hooks
-  const enrollment = useEnrollmentLogic(section.section_ID);
-  const schedule = useScheduleLogic(section.section_ID);
+  // THE FIX: Pass termId down to the custom hooks to ensure all queries are semester-bound
+  const enrollment = useEnrollmentLogic(section.section_ID, termId);
+  const schedule = useScheduleLogic(section.section_ID, termId);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSearchQuery('');
+    
     // Safely close forms when switching tabs
     if (tab === 'students') {
       schedule.setShowScheduleForm(false);
@@ -44,7 +46,7 @@ export default function SectionRoster({ section, onBack, onEdit, onDelete }) {
         isOpen={enrollment.confirmModal.isOpen}
         type="danger"
         title="Remove Student"
-        message={`Remove ${enrollment.confirmModal.student?.first_Name} from this section?`}
+        message={`Remove ${enrollment.confirmModal.student?.first_Name} from this section's active roster?`}
         onConfirm={enrollment.executeRemoveStudent}
         onCancel={() => enrollment.setConfirmModal({ isOpen: false, student: null })}
       />
@@ -52,12 +54,12 @@ export default function SectionRoster({ section, onBack, onEdit, onDelete }) {
         isOpen={schedule.confirmSchedModal.isOpen}
         type="danger"
         title="Remove Subject"
-        message="Remove this subject and schedule from the section?"
+        message="Remove this subject and schedule from the section for this semester?"
         onConfirm={schedule.executeDeleteSchedule}
         onCancel={() => schedule.setConfirmSchedModal({ isOpen: false, scheduleId: null })}
       />
 
-      {/* THE FIX: Upgraded Header with Action Buttons */}
+      {/* Header with Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
         
         {/* Left Side: Title & Back Button */}
@@ -66,8 +68,12 @@ export default function SectionRoster({ section, onBack, onEdit, onDelete }) {
             <ArrowLeft size={20} strokeWidth={2.5} />
           </button>
           <div>
-            <h2 className="text-2xl font-black text-slate-800 tracking-tight">{section.section_Name}</h2>
-            <p className="text-sm font-bold text-slate-500">Block Section Master Roster</p>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+              {section.section_Name}
+            </h2>
+            <p className="text-sm font-bold text-slate-500">
+              Block Section Master Roster • <span className="text-primary-600">{termId}</span>
+            </p>
           </div>
         </div>
 
@@ -109,7 +115,7 @@ export default function SectionRoster({ section, onBack, onEdit, onDelete }) {
               : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-transparent'
           }`}
         >
-          <BookOpen size={18} /> Schedules <span className="ml-1 bg-white border border-slate-200 text-xs px-2 py-0.5 rounded-full text-slate-600">{schedule.scheduleData.length}</span>
+          <BookOpen size={18} /> Schedules <span className="ml-1 bg-white border border-slate-200 text-xs px-2 py-0.5 rounded-full text-slate-600">{schedule.scheduleData?.length || 0}</span>
         </button>
       </div>
 
@@ -117,6 +123,7 @@ export default function SectionRoster({ section, onBack, onEdit, onDelete }) {
       {activeTab === 'students' && enrollment.showAddStudentsView ? (
         <AddStudentsView
           section={section}
+          termId={termId}
           currentEnrollees={enrollment.enrolledStudents}
           onBack={() => enrollment.setShowAddStudentsView(false)}
           onAdd={(newStudents) => {
@@ -128,6 +135,7 @@ export default function SectionRoster({ section, onBack, onEdit, onDelete }) {
         <ScheduleForm
           schedule={schedule.editingSchedule}
           sectionId={section.section_ID}
+          termId={termId} // THE FIX: Pass termId to the form so schedules are stamped
           onBack={() => { schedule.setShowScheduleForm(false); schedule.setEditingSchedule(null); }}
           onSuccess={() => { schedule.setShowScheduleForm(false); schedule.setEditingSchedule(null); schedule.fetchSchedule(); }}
         />

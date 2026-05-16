@@ -1,34 +1,50 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, ArrowLeft, CheckSquare, Square, Camera, UserPlus, CheckCircle2, Loader2 } from 'lucide-react';
+import { Search, ArrowLeft, CheckSquare, Square, Camera, UserPlus, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 
-export default function AddStudentsView({ section, onBack, onAdd, currentEnrollees = [] }) {
+export default function AddStudentsView({ section, termId, onBack, onAdd, currentEnrollees = [] }) {
   const [allStudents, setAllStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [cacheBuster] = useState(() => Date.now());
 
+  // THE FIX: Logic moved entirely into useEffect using the microtask yield pattern
   useEffect(() => {
     let isMounted = true;
-    
-    // THE FIX: Removed the redundant setIsLoading(true) here!
-    
-    fetch('http://localhost:5106/api/student')
-      .then(res => {
-        if (!res.ok) throw new Error(`Server returned ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
-        if (isMounted && Array.isArray(data)) setAllStudents(data);
-      })
-      .catch(err => console.error("Failed to fetch students for view", err))
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-    
-    return () => { isMounted = false; };
-  }, []); // Clean dependency array
+
+    const loadStudents = async () => {
+      await Promise.resolve(); // Force execution into the async microtask queue
+      if (!isMounted) return;
+
+      try {
+        const response = await fetch('http://localhost:5000/api/student');
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+        const data = await response.json();
+        
+        if (isMounted) {
+          setAllStudents(Array.isArray(data) ? data : []);
+          setError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error("Failed to fetch students for view:", err);
+          setError(err.message || 'An unexpected error occurred while fetching the student registry.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadStudents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const availableStudents = useMemo(() => {
     const currentIds = currentEnrollees.map(s => s.student_ID);
@@ -65,10 +81,18 @@ export default function AddStudentsView({ section, onBack, onAdd, currentEnrolle
             <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
               <UserPlus className="text-blue-600" /> Add Students to Section
             </h2>
-            <p className="text-sm font-bold text-slate-500">Select students to enroll in {section?.section_Name}.</p>
+            <p className="text-sm font-bold text-slate-500">
+              Select students to enroll in {section?.section_Name} for <span className="text-blue-600">{termId}</span>.
+            </p>
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl flex items-center gap-3 font-bold text-sm shadow-sm">
+          <AlertCircle size={20} /> {error}
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 w-full flex flex-col h-[75vh]">
         
@@ -104,7 +128,7 @@ export default function AddStudentsView({ section, onBack, onAdd, currentEnrolle
                 >
                   <div className="shrink-0 w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-sm bg-slate-100 flex items-center justify-center">
                     {student.face_Reference_Path && !student.face_Reference_Path.includes("C:") ? (
-                      <img src={`http://localhost:5106/ReferenceFaces/${student.face_Reference_Path}?t=${cacheBuster}`} alt="face" className="w-full h-full object-cover" />
+                      <img src={`http://localhost:5000/ReferenceFaces/${student.face_Reference_Path}?t=${cacheBuster}`} alt="face" className="w-full h-full object-cover" />
                     ) : (
                       <Camera size={20} className="text-slate-400" />
                     )}
