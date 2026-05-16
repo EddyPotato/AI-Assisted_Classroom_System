@@ -2,10 +2,12 @@
 
 **Complete, Production-Ready Multi-Role Campus Management Platform**
 
-**Status:** ✅ May 14, 2026 - All systems functional and tested | Full dependency audit completed  
+**Status:** ✅ May 16, 2026 - All systems functional and tested | Full dependency audit completed  
 **Built With:** React 19.2.5 + Vite | ASP.NET Core 10 | Oracle | Python 3.10+ with OpenCV | MQTT Mosquitto  
 **Team:** EddyPotato & Contributors  
 **Documentation:** See [CONTEXT.md](CONTEXT.md)
+
+> **Version Info:** This documentation refers to `presentation-stable` branch. For commit-specific reference, see [Version Tracking](#version-tracking) section below.
 
 ---
 
@@ -23,6 +25,20 @@
 10. [Troubleshooting](#troubleshooting)
 11. [Development](#development)
 12. [Deployment](#deployment)
+
+---
+
+## Version Tracking
+
+| Aspect | Value |
+|--------|-------|
+| **Branch** | `presentation-stable` |
+| **Default Branch** | `main` |
+| **Documentation Date** | May 16, 2026 |
+| **Last Status Update** | May 16, 2026 |
+| **Repository** | [github.com/EddyPotato/AI-Assisted_Classroom_System](https://github.com/EddyPotato/AI-Assisted_Classroom_System) |
+
+> **📌 For specific commit reference:** Use `git log --oneline` in the repository to find the exact commit hash. This documentation is accurate as of the latest commit on `presentation-stable`.
 
 ---
 
