@@ -7,7 +7,7 @@
 **Team:** EddyPotato & Contributors  
 **Documentation:** See [CONTEXT.md](CONTEXT.md)
 
-> **Version Info:** This documentation refers to `presentation-stable` branch. For commit-specific reference, see [Version Tracking](#version-tracking) section below.
+> **Version Info:** This documentation refers to `main` branch. For commit-specific reference, see [Version Tracking](#version-tracking) section below.
 
 ---
 
@@ -32,13 +32,13 @@
 
 | Aspect | Value |
 |--------|-------|
-| **Branch** | `presentation-stable` |
+| **Branch** | `main` |
 | **Default Branch** | `main` |
 | **Documentation Date** | May 16, 2026 |
 | **Last Status Update** | May 16, 2026 |
 | **Repository** | [github.com/EddyPotato/AI-Assisted_Classroom_System](https://github.com/EddyPotato/AI-Assisted_Classroom_System) |
 
-> **📌 For specific commit reference:** Use `git log --oneline` in the repository to find the exact commit hash. This documentation is accurate as of the latest commit on `presentation-stable`.
+> **📌 For specific commit reference:** Use `git log --oneline` in the repository to find the exact commit hash. This documentation is accurate as of the latest commit on `main`.
 
 ---
 

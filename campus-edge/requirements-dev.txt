@@ -1,10 +1,10 @@
-# Development & Testing Dependencies for Campus Edge Node
-# 
+# ============================================================================
+# DEVELOPMENT & TESTING DEPENDENCIES ONLY
+# ============================================================================
 # Install with: pip install -r requirements.txt -r requirements-dev.txt
-# Or standalone: pip install -r requirements-dev.txt
-#
-# These are NOT needed for production deployment
-# Use these during development for testing, linting, and code quality
+# 
+# ⚠️ DO NOT use in production - these are testing/linting tools only
+# For production deployment, use: pip install -r requirements.txt
 
 # ============================================================================
 # Unit Testing

@@ -50,11 +50,12 @@ supervisor>=4.2.0
 python-json-logger>=2.0.0
 
 # ============================================================================
-# DEVELOPMENT & TESTING (Optional - uncomment if developing)
+# DEVELOPMENT & TESTING DEPENDENCIES
 # ============================================================================
-
-# Unit Testing Framework
-# pytest>=7.0.0
+# 
+# These are in requirements-dev.txt
+# Install with: pip install -r requirements.txt -r requirements-dev.txt
+# For production: pip install -r requirements.txt (only)
 # pytest-cov>=4.1.0
 
 # Code Quality & Linting

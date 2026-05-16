@@ -1,13 +1,13 @@
 # AI-Assisted Smart Campus & Classroom System - Comprehensive Project Context
 
 **Last Updated:** May 16, 2026  
-**Branch:** `presentation-stable` | **Default:** `main`  
+**Branch:** `main`  
 **Audit Status:** ✅ Comprehensive dependency audit completed - MQTT Mosquitto broker installation documented  
 **Project Status:** Multi-role portal system (Faculty, Guard, Registrar, Principal, SystemAdmin) with registrar workflows, schedule/section management, face verification, and barcode scanning  
 **Team Lead:** EddyPotato  
 **Current Tech:** React 19.2.5 + Vite 8.0.9 | ASP.NET Core net10.0 | Oracle Database | Python 3.10+ | OpenCV + MQTT Mosquitto  
 
-> **📌 Version Reference:** For exact commit where this documentation applies, run `git log --oneline presentation-stable` and check the timestamp against "Last Updated" date above. All features/endpoints documented here are verified as of that commit.
+> **📌 Version Reference:** For exact commit where this documentation applies, run `git log --oneline main` and check the timestamp against "Last Updated" date above. All features/endpoints documented here are verified as of that commit.
 
 
 ## Quick Reference
