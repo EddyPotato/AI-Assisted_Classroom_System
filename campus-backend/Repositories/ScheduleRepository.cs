@@ -21,14 +21,15 @@ namespace campus_backend.Repositories
         }
 
         // --- GET ALL SCHEDULES ---
-        public async Task<IEnumerable<Schedule>> GetAllSchedulesAsync()
+        public async Task<IEnumerable<Schedule>> GetAllSchedulesAsync(string termId = null)
         {
             var schedules = new List<Schedule>();
 
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
+                // THE FIX: Included s.TERM_ID and added a WHERE clause filter for the active academic term
                 string sql = @"
-                    SELECT s.Schedule_ID, s.Subject_Code, s.Subject_Type, sub.Title AS Subject_Title,
+                    SELECT s.Schedule_ID, s.Term_ID, s.Subject_Code, s.Subject_Type, sub.Title AS Subject_Title,
                             s.Section_ID, sec.Section_Name,
                             s.Professor_ID, 
                             u.First_Name || CASE WHEN u.MIDDLE_NAME IS NOT NULL THEN ' ' || u.MIDDLE_NAME ELSE '' END || ' ' || u.Last_Name AS Professor_Name,
@@ -39,10 +40,13 @@ namespace campus_backend.Repositories
                     LEFT JOIN Subjects sub ON s.Subject_Code = sub.Subject_Code
                     LEFT JOIN Sections sec ON s.Section_ID = sec.Section_ID
                     LEFT JOIN Users u ON s.Professor_ID = u.User_ID
-                    LEFT JOIN Rooms r ON s.Room_ID = r.Room_ID";
+                    LEFT JOIN Rooms r ON s.Room_ID = r.Room_ID
+                    WHERE (s.Term_ID = :termId OR :termId IS NULL)";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
+                    cmd.Parameters.Add(new OracleParameter("termId", string.IsNullOrEmpty(termId) ? (object)DBNull.Value : termId));
+
                     await con.OpenAsync();
                     using (OracleDataReader reader = (OracleDataReader)await cmd.ExecuteReaderAsync())
                     {
@@ -51,6 +55,7 @@ namespace campus_backend.Repositories
                             schedules.Add(new Schedule
                             {
                                 Schedule_ID = reader["Schedule_ID"].ToString(),
+                                Term_ID = reader["Term_ID"]?.ToString(), // NEW
                                 Subject_Code = reader["Subject_Code"].ToString(),
                                 Subject_Type = reader["Subject_Type"] != DBNull.Value ? reader["Subject_Type"].ToString() : "Lec",
                                 Subject_Title = reader["Subject_Title"].ToString(),
@@ -80,13 +85,15 @@ namespace campus_backend.Repositories
                 Random rnd = new Random();
                 string newId = $"SCH-{rnd.Next(1000, 9999)}";
                 
+                // THE FIX: Inject TERM_ID into the database insert
                 string sql = @"
-                    INSERT INTO Schedules (Schedule_ID, Subject_Code, Subject_Type, Section_ID, Professor_ID, Room_ID, Time_Start, Time_End, Class_Days) 
-                    VALUES (:id, :subj, :type, :sec, :prof, :room, :tstart, :tend, :days)";
+                    INSERT INTO Schedules (Schedule_ID, Term_ID, Subject_Code, Subject_Type, Section_ID, Professor_ID, Room_ID, Time_Start, Time_End, Class_Days) 
+                    VALUES (:id, :term, :subj, :type, :sec, :prof, :room, :tstart, :tend, :days)";
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
                     cmd.Parameters.Add(new OracleParameter("id", newId));
+                    cmd.Parameters.Add(new OracleParameter("term", string.IsNullOrEmpty(schedule.Term_ID) ? DBNull.Value : schedule.Term_ID));
                     cmd.Parameters.Add(new OracleParameter("subj", schedule.Subject_Code));
                     cmd.Parameters.Add(new OracleParameter("type", string.IsNullOrEmpty(schedule.Subject_Type) ? "Lec" : schedule.Subject_Type));
                     cmd.Parameters.Add(new OracleParameter("sec", schedule.Section_ID));
@@ -111,7 +118,8 @@ namespace campus_backend.Repositories
             {
                 string sql = @"
                     UPDATE Schedules 
-                    SET Subject_Code = :subj, 
+                    SET Term_ID = :term,
+                        Subject_Code = :subj, 
                         Subject_Type = :type, 
                         Section_ID = :sec, 
                         Professor_ID = :prof, 
@@ -123,6 +131,7 @@ namespace campus_backend.Repositories
 
                 using (OracleCommand cmd = new OracleCommand(sql, con))
                 {
+                    cmd.Parameters.Add(new OracleParameter("term", string.IsNullOrEmpty(schedule.Term_ID) ? DBNull.Value : schedule.Term_ID));
                     cmd.Parameters.Add(new OracleParameter("subj", schedule.Subject_Code));
                     cmd.Parameters.Add(new OracleParameter("type", string.IsNullOrEmpty(schedule.Subject_Type) ? "Lec" : schedule.Subject_Type));
                     cmd.Parameters.Add(new OracleParameter("sec", schedule.Section_ID));
@@ -158,7 +167,7 @@ namespace campus_backend.Repositories
         }
 
         // --- BULK IMPORT SCHEDULES ---
-        public async Task<int> BulkImportSchedulesAsync(List<BulkScheduleDto> schedules)
+        public async Task<int> BulkImportSchedulesAsync(List<BulkScheduleDto> schedules, string termId)
         {
             using var connection = new OracleConnection(_connectionString);
             await connection.OpenAsync();
@@ -173,19 +182,18 @@ namespace campus_backend.Repositories
                     if (string.IsNullOrWhiteSpace(s.Subject_Code) || string.IsNullOrWhiteSpace(s.Section_Id) || string.IsNullOrWhiteSpace(s.Time_Start))
                         continue; 
 
-                    // 1. Generate unique ID
                     string newSchedId = $"SCH-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}";
 
-                    // 2. Insert Command
                     var cmd = new OracleCommand(@"
                         INSERT INTO CAMPUS_ADMIN.SCHEDULES 
-                        (SCHEDULE_ID, SUBJECT_CODE, SECTION_ID, PROFESSOR_ID, ROOM_ID, TIME_START, TIME_END, CLASS_DAYS, SUBJECT_TYPE) 
-                        VALUES (:id, :subj, :sec, :prof, :room, :tstart, :tend, :days, :type)", connection);
+                        (SCHEDULE_ID, TERM_ID, SUBJECT_CODE, SECTION_ID, PROFESSOR_ID, ROOM_ID, TIME_START, TIME_END, CLASS_DAYS, SUBJECT_TYPE) 
+                        VALUES (:id, :term, :subj, :sec, :prof, :room, :tstart, :tend, :days, :type)", connection);
                     
                     cmd.BindByName = true;
                     cmd.Transaction = transaction;
                     
                     cmd.Parameters.Add(new OracleParameter("id", newSchedId));
+                    cmd.Parameters.Add(new OracleParameter("term", string.IsNullOrEmpty(termId) ? DBNull.Value : termId));
                     cmd.Parameters.Add(new OracleParameter("subj", s.Subject_Code.Trim()));
                     cmd.Parameters.Add(new OracleParameter("sec", s.Section_Id.Trim()));
                     cmd.Parameters.Add(new OracleParameter("prof", string.IsNullOrWhiteSpace(s.Professor_Id) ? DBNull.Value : s.Professor_Id.Trim()));
@@ -225,15 +233,20 @@ namespace campus_backend.Repositories
             string currentDay = DateTime.Now.ToString("ddd");
             DateTime now = DateTime.Now;
 
-            // Fetch all classes for the student in this room today
+            // THE FIX: Strictly join with ACADEMIC_TERMS to ensure the schedule and enrollment are for the ACTIVE term only!
             var schedCmd = new OracleCommand(@"
                 SELECT s.TIME_START, s.TIME_END, s.SUBJECT_CODE, 
                        sec.SECTION_NAME, u.LAST_NAME, u.FIRST_NAME 
                 FROM CAMPUS_ADMIN.SCHEDULES s
                 JOIN CAMPUS_ADMIN.ENROLLMENTS e ON s.SECTION_ID = e.SECTION_ID
+                JOIN CAMPUS_ADMIN.ACADEMIC_TERMS term ON s.TERM_ID = term.TERM_ID
                 LEFT JOIN CAMPUS_ADMIN.SECTIONS sec ON s.SECTION_ID = sec.SECTION_ID
                 LEFT JOIN CAMPUS_ADMIN.USERS u ON s.PROFESSOR_ID = u.USER_ID
-                WHERE s.ROOM_ID = :room AND e.STUDENT_ID = :sid AND s.CLASS_DAYS LIKE '%' || :day || '%'", connection);
+                WHERE s.ROOM_ID = :room 
+                  AND e.STUDENT_ID = :sid 
+                  AND s.CLASS_DAYS LIKE '%' || :day || '%'
+                  AND term.IS_ACTIVE = 1 
+                  AND e.TERM_ID = term.TERM_ID", connection);
             
             schedCmd.Parameters.Add(new OracleParameter("room", roomId));
             schedCmd.Parameters.Add(new OracleParameter("sid", studentId));
@@ -258,7 +271,7 @@ namespace campus_backend.Repositories
                 }
             }
 
-            if (classList.Count == 0) return ("Denied", "No scheduled class here today.");
+            if (classList.Count == 0) return ("Denied", "No scheduled class here today for the current semester.");
 
             classList.Sort((a, b) => a.Start.CompareTo(b.Start));
 
@@ -266,7 +279,6 @@ namespace campus_backend.Repositories
             {
                 if (now >= c.Start && now <= c.End)
                 {
-                    // THE FIX: Check if the student has ALREADY logged an 'approved' scan for THIS room during THIS specific class time today.
                     var dupCmd = new OracleCommand(@"
                         SELECT COUNT(*) FROM CAMPUS_ADMIN.EVENT_LOGS el
                         JOIN CAMPUS_ADMIN.CAMERA_LOCATIONS cl ON el.LOCATION_ID = cl.LOCATION_ID
@@ -285,8 +297,6 @@ namespace campus_backend.Repositories
 
                     if (logCount > 0)
                     {
-                        // Returning "Early" is a clever trick! It triggers the exact same logic block in AccessVerificationService 
-                        // that safely aborts Phase 2, shows the duplicate warning UI window, and displays our custom message.
                         return ("Early", "ATTENDANCE ALREADY RECORDED: You are already marked present/late for this session.");
                     }
 

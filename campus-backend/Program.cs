@@ -22,6 +22,7 @@ builder.Services.AddScoped<campus_backend.Repositories.ISubjectRepository, campu
 builder.Services.AddScoped<campus_backend.Repositories.ICourseRepository, campus_backend.Repositories.CourseRepository>();
 builder.Services.AddScoped<campus_backend.Repositories.ICameraLocationRepository, campus_backend.Repositories.CameraLocationRepository>();
 builder.Services.AddScoped<campus_backend.Repositories.IAttendanceRepository, campus_backend.Repositories.AttendanceRepository>();
+builder.Services.AddScoped<campus_backend.Repositories.IAcademicTermRepository, campus_backend.Repositories.AcademicTermRepository>();
 
 // ==========================================
 // 2. SERVICES

@@ -20,11 +20,12 @@ namespace campus_backend.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetSchedules()
+        // THE FIX: Accept termId from query string to filter schedules by active semester
+        public async Task<IActionResult> GetSchedules([FromQuery] string? termId = null)
         {
             try
             {
-                var schedules = await _scheduleRepository.GetAllSchedulesAsync();
+                var schedules = await _scheduleRepository.GetAllSchedulesAsync(termId);
                 return Ok(schedules);
             }
             catch (Exception ex)
@@ -34,11 +35,11 @@ namespace campus_backend.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetScheduleById(string id)
+        public async Task<IActionResult> GetScheduleById(string id, [FromQuery] string? termId = null)
         {
             try
             {
-                var schedules = await _scheduleRepository.GetAllSchedulesAsync();
+                var schedules = await _scheduleRepository.GetAllSchedulesAsync(termId);
                 var schedule = schedules.FirstOrDefault(s => s.Schedule_ID == id);
                 
                 if (schedule == null)
@@ -104,15 +105,19 @@ namespace campus_backend.Controllers
         }
 
         [HttpPost("import")]
-        public async Task<IActionResult> ImportSchedules([FromBody] List<BulkScheduleDto> schedules)
+        // THE FIX: Require termId during import so imported schedules are tied to the specific term
+        public async Task<IActionResult> ImportSchedules([FromQuery] string termId, [FromBody] List<BulkScheduleDto> schedules)
         {
+            if (string.IsNullOrEmpty(termId))
+                return BadRequest(new { message = "Academic Term ID is required for import." });
+
             if (schedules == null || schedules.Count == 0)
                 return BadRequest(new { message = "No schedules provided for import." });
 
             try
             {
-                int successCount = await _scheduleRepository.BulkImportSchedulesAsync(schedules);
-                return Ok(new { message = $"Successfully imported {successCount} schedules." });
+                int successCount = await _scheduleRepository.BulkImportSchedulesAsync(schedules, termId);
+                return Ok(new { message = $"Successfully imported {successCount} schedules for term {termId}." });
             }
             catch (Exception ex)
             {

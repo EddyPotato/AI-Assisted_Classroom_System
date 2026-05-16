@@ -6,16 +6,17 @@ namespace campus_backend.Repositories
 {
     public interface IScheduleRepository
     {
-        Task<IEnumerable<Schedule>> GetAllSchedulesAsync();
+        // THE FIX: Added termId parameter so the Registrar only fetches schedules for a specific School Year/Semester
+        Task<IEnumerable<Schedule>> GetAllSchedulesAsync(string termId = null);
+        
         Task CreateScheduleAsync(Schedule schedule);
         Task UpdateScheduleAsync(Schedule schedule);
         Task DeleteScheduleAsync(string id);
-        Task<int> BulkImportSchedulesAsync(List<BulkScheduleDto> schedules);
         
-        // Legacy boolean check (kept for backward compatibility in other parts of the system if any)
+        // THE FIX: Added termId to ensure bulk imported schedules are stamped with the correct academic term
+        Task<int> BulkImportSchedulesAsync(List<BulkScheduleDto> schedules, string termId);
+        
         Task<bool> IsStudentInClassNowAsync(string studentId, string roomId);
-        
-        // NEW: Advanced State Machine Checker returning Status and HCI Message
         Task<(string Status, string Message)> CheckStudentClassAccessAsync(string studentId, string roomId);
     }
 }

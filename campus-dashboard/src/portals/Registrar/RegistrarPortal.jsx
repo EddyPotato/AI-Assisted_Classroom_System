@@ -1,21 +1,53 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Database, LogOut, Calendar, GraduationCap, Layers, BookOpen, UploadCloud } from 'lucide-react';
+import { 
+  Users, Database, LogOut, Calendar, GraduationCap, 
+  Layers, BookOpen, UploadCloud, CalendarDays 
+} from 'lucide-react';
 
 import SectionsTab from './components/sections/SectionsTab';
 import SchedulesTab from './components/schedules/SchedulesTab';
 import UserDirectoryTab from './components/users/UserDirectoryTab';
 import StaffDirectoryTab from './components/faculty/StaffDirectoryTab';
 import ResourceDirectoryTab from './components/resources/ResourceDirectoryTab';
-// Import the new Schedule Importer component
 import ScheduleImporter from './views/ScheduleImporter';
 
 export default function RegistrarPortal() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('schedules');
   
+  // Real Data State Management
+  const [terms, setTerms] = useState([]);
+  const [selectedTermId, setSelectedTermId] = useState('');
+  const [isLoadingTerms, setIsLoadingTerms] = useState(true);
+  
   const userString = localStorage.getItem('campus_user');
   const user = userString ? JSON.parse(userString) : null;
+
+  // Asynchronously fetch REAL Academic Terms from the database
+  useEffect(() => {
+    const fetchTerms = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/terms');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const data = await response.json();
+        setTerms(data);
+        
+        // Auto-select the currently active semester on login
+        const activeTerm = data.find(t => t.is_Active) || data[0];
+        if (activeTerm) {
+          setSelectedTermId(activeTerm.term_ID);
+        }
+      } catch (error) {
+        console.error("Failed to fetch Academic Terms from database:", error);
+      } finally {
+        setIsLoadingTerms(false);
+      }
+    };
+
+    fetchTerms();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('campus_user');
@@ -38,8 +70,33 @@ export default function RegistrarPortal() {
           <Database className="text-primary-600" size={24} />
           <h1 className="text-xl font-black text-slate-800 tracking-tight">Registrar Operations</h1>
         </div>
+        
         <div className="flex items-center gap-4">
-          <div className="text-right hidden sm:block">
+          
+          {/* Global Academic Term Selector */}
+          <div className="hidden md:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 shadow-inner">
+            <CalendarDays size={16} className="text-primary-600" />
+            <select
+              value={selectedTermId}
+              onChange={(e) => setSelectedTermId(e.target.value)}
+              disabled={isLoadingTerms || terms.length === 0}
+              className="bg-transparent font-bold text-sm text-slate-700 focus:outline-none cursor-pointer disabled:opacity-50"
+            >
+              {isLoadingTerms ? (
+                <option>Loading Terms...</option>
+              ) : terms.length === 0 ? (
+                <option>No Terms Available</option>
+              ) : (
+                terms.map(t => (
+                  <option key={t.term_ID} value={t.term_ID}>
+                    {t.school_Year} • {t.semester} {t.is_Active ? '(Active)' : ''}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          <div className="text-right hidden sm:block ml-4 border-l border-slate-200 pl-4">
             <p className="text-sm font-bold text-slate-800">
               {user?.First_Name || user?.first_Name || 'Admin'} {user?.Last_Name || user?.last_Name || ''}
             </p>
@@ -56,58 +113,34 @@ export default function RegistrarPortal() {
           
           {/* TAB NAVIGATION */}
           <div className="flex p-1.5 space-x-2 bg-slate-200/50 rounded-xl w-max border border-slate-200/80 overflow-x-auto scrollbar-hide">
-            <button 
-              onClick={() => setActiveTab('schedules')} 
-              className={tabButtonStyle('schedules')}
-            >
+            <button onClick={() => setActiveTab('schedules')} className={tabButtonStyle('schedules')}>
               <Calendar size={18} /> Schedule Directory
             </button>
-
-            {/* NEW: Master Schedule Import Tab */}
-            <button
-              onClick={() => setActiveTab('import')}
-              className={tabButtonStyle('import')}
-            >
+            <button onClick={() => setActiveTab('import')} className={tabButtonStyle('import')}>
               <UploadCloud size={18} /> Master Import
             </button>
-
-            <button 
-              onClick={() => setActiveTab('resources')} 
-              className={tabButtonStyle('resources')}
-            >
+            <button onClick={() => setActiveTab('resources')} className={tabButtonStyle('resources')}>
               <BookOpen size={18} /> Resource Directory
             </button>
-
-            <button 
-              onClick={() => setActiveTab('sections')} 
-              className={tabButtonStyle('sections')}
-            >
+            <button onClick={() => setActiveTab('sections')} className={tabButtonStyle('sections')}>
               <Layers size={18} /> Section Directory
             </button>
-
-            <button 
-              onClick={() => setActiveTab('users')} 
-              className={tabButtonStyle('users')}
-            >
+            <button onClick={() => setActiveTab('users')} className={tabButtonStyle('users')}>
               <Users size={18} /> Student Directory
             </button>
-            
-            <button 
-              onClick={() => setActiveTab('faculty')} 
-              className={tabButtonStyle('faculty')}
-            >
+            <button onClick={() => setActiveTab('faculty')} className={tabButtonStyle('faculty')}>
               <GraduationCap size={18} /> Staff Directory
             </button>
           </div>
 
           {/* TAB CONTENT RENDERING */}
           <div className="animate-in fade-in duration-300">
-            {activeTab === 'schedules' && <SchedulesTab />}
-            {activeTab === 'import' && <ScheduleImporter />}
-            {activeTab === 'resources' && <ResourceDirectoryTab />}
-            {activeTab === 'sections' && <SectionsTab />}
-            {activeTab === 'users' && <UserDirectoryTab />}
-            {activeTab === 'faculty' && <StaffDirectoryTab />}
+            {activeTab === 'schedules' && <SchedulesTab termId={selectedTermId} />}
+            {activeTab === 'import' && <ScheduleImporter termId={selectedTermId} />}
+            {activeTab === 'resources' && <ResourceDirectoryTab termId={selectedTermId} />}
+            {activeTab === 'sections' && <SectionsTab termId={selectedTermId} />}
+            {activeTab === 'users' && <UserDirectoryTab termId={selectedTermId} />}
+            {activeTab === 'faculty' && <StaffDirectoryTab termId={selectedTermId} />}
           </div>
 
         </div>
