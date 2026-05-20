@@ -1,6 +1,16 @@
 # 🚀 AI-Assisted Classroom System: Deployment Guide
 
-This guide allows anyone to download, configure, and run the campus system with a single click, regardless of the operating system.
+This guide allows anyone to download, configure, and run the campus system.
+
+## Phase 0: System Prerequisites (Downloads)
+If this is a completely fresh Windows laptop, you must download and install these base programs first. **During the Python installation, you MUST check the box that says "Add python.exe to PATH".**
+
+1. **Git:** [Download Here](https://git-scm.com/downloads)
+2. **Node.js (v20+ LTS):** [Download Here](https://nodejs.org/en/download/)
+3. **Python (3.12+):** [Download Here](https://www.python.org/downloads/)
+4. **.NET 10 SDK:** [Download Here](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+5. **Oracle Database XE:** [Download Here](https://www.oracle.com/database/technologies/xe-downloads.html)
+6. **Mosquitto MQTT Broker:** [Download Here](https://mosquitto.org/download/)
 
 ## Phase 1: Database Initialization
 Before running the system, the host machine must have the database server running.
@@ -24,7 +34,7 @@ Before running the system, the host machine must have the database server runnin
    `cd AI-Assisted_Classroom_System`
 
 ## Phase 3: The 1-Click Boot Sequence
-The system features an OS-Aware orchestrator. It will automatically detect your operating system, install necessary dependencies (Node.js modules, Python libraries, .NET builds), and configure the codebase to match your hardware.
+The system features an OS-Aware orchestrator. It will automatically detect your operating system, install necessary project dependencies (npm modules, Python AI libraries, .NET builds), and configure the codebase to match your hardware.
 
 **For Windows Laptops/Desktops:**
 1. Double-click the **`start_windows.bat`** file inside the folder.
@@ -39,3 +49,13 @@ The system features an OS-Aware orchestrator. It will automatically detect your 
 ## Phase 4: System Shutdown & Updates
 * **To shut down:** Close the browser and close the black terminal windows (or press `CTRL+C` on Linux). 
 * **To update:** Open a terminal in the folder, type `git pull origin main`, and run your launcher script again. The system will automatically adapt to any new changes.
+
+## Phase 5: Known Issues & Troubleshooting
+
+**Error: "Please install face_recognition_models with this command..."**
+This is a false-flag error caused by modern Python (v3.12) stripping out legacy packaging tools (`pkg_resources`). 
+**The Fix:**
+1. Open the terminal and navigate into the edge node: `cd campus-edge`
+2. Activate the virtual environment: `venv\Scripts\activate` (Windows) or `source venv/bin/activate` (Linux)
+3. Manually downgrade the packaging tools: `pip install "setuptools<70" --force-reinstall`
+4. Restart the system.

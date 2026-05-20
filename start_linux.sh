@@ -1,7 +1,7 @@
 #!/bin/bash
 # File: start_linux.sh
-# Version: v2.2
-# Changes: Fixed sudo password prompts, added MySQL health checks, improved dependency handling.
+# Version: v2.3
+# Changes: Enforced legacy setuptools installation to prevent face_recognition pkg_resources crash.
 
 echo "==================================================="
 echo "Booting Linux Environment"
@@ -17,38 +17,25 @@ fi
 # 1. Execute the Forward Mutator
 python3 scripts/make_linux_compatible.py
 
-# 2. FIX: Check if MariaDB is running before attempting to seed
+# 2. Check if MariaDB is running before attempting to seed
 if [ -f "database/schema_mariadb.sql" ]; then
     echo "[WAIT] Checking MariaDB service..."
-    
-    # Check if MySQL daemon is running
     if ! pgrep -x "mysqld" > /dev/null; then
         echo "[WARNING] MariaDB/MySQL daemon is not running."
         echo "[INFO] Attempting to start MariaDB service..."
-        # Try to start MariaDB (may require sudo password)
         if sudo systemctl start mysql 2>/dev/null || sudo service mysql start 2>/dev/null; then
             echo "[SUCCESS] MariaDB service started."
-            sleep 2  # Wait for service to fully initialize
+            sleep 2
         else
             echo "[ERROR] Failed to start MariaDB. Please start it manually:"
             echo "       sudo systemctl start mysql  # For systemd"
             echo "       sudo service mysql start    # For SysVinit"
-            exit 1
         fi
     fi
-    
-    # FIX: Seed the database WITHOUT sudo password prompts
-    echo "[WAIT] Seeding MariaDB database..."
-    
-    # Try socket authentication first (works on Pi without password)
-    if mysql -e "SELECT 1" &>/dev/null; then
-        # Root has socket auth - no password needed
-        echo "[INFO] Using socket authentication (no password)..."
-        mysql -e "CREATE DATABASE IF NOT EXISTS campus_admin;"
-        mysql campus_admin < database/schema_mariadb.sql
-    elif sudo mysql -e "SELECT 1" &>/dev/null 2>&1; then
-        # Fallback: use sudo (will still require password if not cached)
-        echo "[INFO] Using sudo authentication (may prompt for password)..."
+
+    # Seed Database
+    if sudo mysql -e "SELECT 1" &>/dev/null 2>&1; then
+        echo "[INFO] Using passwordless root auth..."
         sudo mysql -e "CREATE DATABASE IF NOT EXISTS campus_admin;"
         sudo mysql campus_admin < database/schema_mariadb.sql
     else
@@ -65,13 +52,14 @@ fi
 
 if [ ! -d "campus-edge/venv" ]; then
     echo "[WAIT] Configuring Python AI Environment..."
-    (cd campus-edge && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt) || { echo "[ERROR] Python setup failed"; exit 1; }
+    # Injects the setuptools downgrade before processing the main requirements
+    (cd campus-edge && python3 -m venv venv && source venv/bin/activate && pip install "setuptools<70" --force-reinstall && pip install -r requirements.txt) || { echo "[ERROR] Python setup failed"; exit 1; }
 fi
 
 # 4. Launch Services
 echo "[START] Launching all services..."
 echo "       Frontend: http://localhost:5173"
-echo "       Backend:  http://localhost:5000"
+echo "       Backend:  http://localhost:5106"
 echo "       Edge Node: Running in background"
 echo ""
 echo "Press Ctrl+C to stop all services..."
