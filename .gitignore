@@ -1,3 +1,7 @@
+# File: .gitignore
+# Version: v1.1
+# Changes: Appended Auto-Generated Database Build Files section at the bottom.
+
 # Logs
 logs
 *.log
@@ -72,10 +76,5 @@ env/
 .DS_Store
 Thumbs.db
 
-# .venv\Scripts\activate
-
-# python vision_node.py
-
-# python app.py
-
-# pip install -r requirements.txt
+# Auto-Generated Database Build Files
+database/schema_mariadb.sql

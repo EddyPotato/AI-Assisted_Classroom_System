@@ -9,12 +9,9 @@ namespace campus_backend.Repositories
 
         public SubjectRepository(IConfiguration configuration)
         {
-            // THE FIX: Automatically hunts for the correct connection string name 
-            // used by your other repositories in appsettings.json
             _connectionString = configuration.GetConnectionString("DefaultConnection") 
                 ?? configuration.GetConnectionString("OracleConnection")
-                ?? configuration.GetConnectionString("OracleDb")
-                ?? throw new InvalidOperationException("Connection string not found. Please check appsettings.json for your exact connection string name.");
+                ?? throw new InvalidOperationException("Connection string not found. Ensure 'DefaultConnection' or 'OracleConnection' is configured in appsettings.json");
         }
 
         public async Task<IEnumerable<Subject>> GetAllSubjectsAsync()

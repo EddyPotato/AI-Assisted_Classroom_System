@@ -15,8 +15,7 @@ namespace campus_backend.Repositories
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection")
                 ?? configuration.GetConnectionString("OracleConnection")
-                ?? configuration.GetConnectionString("OracleDb")
-                ?? throw new InvalidOperationException("Oracle connection string is missing.");
+                ?? throw new InvalidOperationException("Connection string not found. Ensure 'DefaultConnection' or 'OracleConnection' is configured in appsettings.json");
         }
 
         public async Task<IEnumerable<CameraLocation>> GetAllActiveLocationsAsync()
