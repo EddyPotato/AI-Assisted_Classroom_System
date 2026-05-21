@@ -41,6 +41,8 @@ IF NOT EXIST "campus-edge\venv" (
 
 :: Boot Sequence
 echo [WAIT] Launching Server Terminals...
+echo [WAIT] Closing any previous backend instance to avoid dotnet build file locks...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-Process campus-backend -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*AI-Assisted_Classroom_System*campus-backend*' } | Stop-Process -Force"
 start "Frontend" cmd /k "cd campus-dashboard && npm run dev"
 start "Backend" cmd /k "cd campus-backend && dotnet run"
 start "Edge Node" cmd /k "cd campus-edge && call venv\Scripts\activate.bat && python app.py"

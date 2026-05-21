@@ -119,7 +119,7 @@ namespace campus_backend.Repositories
             }
         }
 
-        public async Task UpdateUserAsync(User user)
+        public async Task<int> UpdateUserAsync(User user)
         {
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
@@ -143,21 +143,43 @@ namespace campus_backend.Repositories
                     cmd.Parameters.Add(new OracleParameter("id", user.User_ID));
 
                     await con.OpenAsync();
-                    await cmd.ExecuteNonQueryAsync();
+                    return await cmd.ExecuteNonQueryAsync();
                 }
             }
         }
 
-        public async Task DeleteUserAsync(string id)
+        public async Task<int> DeleteUserAsync(string id)
         {
             using (OracleConnection con = new OracleConnection(_connectionString))
             {
-                string sql = "DELETE FROM USERS WHERE USER_ID = :id";
-                using (OracleCommand cmd = new OracleCommand(sql, con))
+                await con.OpenAsync();
+                using (OracleTransaction tx = con.BeginTransaction())
                 {
-                    cmd.Parameters.Add(new OracleParameter("id", id));
-                    await con.OpenAsync();
-                    await cmd.ExecuteNonQueryAsync();
+                    try
+                    {
+                        string unassignSchedulesSql = "UPDATE SCHEDULES SET PROFESSOR_ID = NULL WHERE PROFESSOR_ID = :id";
+                        using (OracleCommand unassignCmd = new OracleCommand(unassignSchedulesSql, con))
+                        {
+                            unassignCmd.Transaction = tx;
+                            unassignCmd.Parameters.Add(new OracleParameter("id", id));
+                            await unassignCmd.ExecuteNonQueryAsync();
+                        }
+
+                        string deleteSql = "DELETE FROM USERS WHERE USER_ID = :id";
+                        using (OracleCommand deleteCmd = new OracleCommand(deleteSql, con))
+                        {
+                            deleteCmd.Transaction = tx;
+                            deleteCmd.Parameters.Add(new OracleParameter("id", id));
+                            int rowsAffected = await deleteCmd.ExecuteNonQueryAsync();
+                            await tx.CommitAsync();
+                            return rowsAffected;
+                        }
+                    }
+                    catch
+                    {
+                        await tx.RollbackAsync();
+                        throw;
+                    }
                 }
             }
         }

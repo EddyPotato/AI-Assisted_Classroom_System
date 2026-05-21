@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5106';
+
 export function useEnrollmentLogic(sectionId, termId) {
   const [enrolledStudents, setEnrolledStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,7 +28,7 @@ export function useEnrollmentLogic(sectionId, termId) {
       }
 
       try {
-        const res = await fetch(`http://localhost:5000/api/sections/${sectionId}/students?termId=${termId}`);
+        const res = await fetch(`${API_BASE_URL}/api/sections/${sectionId}/students?termId=${encodeURIComponent(termId)}`);
         if (!res.ok) throw new Error('Failed to fetch section roster for the active term.');
         const data = await res.json();
         
@@ -59,7 +61,7 @@ export function useEnrollmentLogic(sectionId, termId) {
 
     try {
       await Promise.all(newStudents.map(s => 
-        fetch(`http://localhost:5000/api/enrollments/bulk`, {
+        fetch(`${API_BASE_URL}/api/enrollments/bulk`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -87,7 +89,7 @@ export function useEnrollmentLogic(sectionId, termId) {
     setError(null);
 
     try {
-      const url = `http://localhost:5000/api/sections/${sectionId}/students/${confirmModal.student.student_ID}?termId=${termId}`;
+      const url = `${API_BASE_URL}/api/sections/${sectionId}/students/${confirmModal.student.student_ID}?termId=${encodeURIComponent(termId)}`;
       const response = await fetch(url, { method: 'DELETE' });
 
       if (!response.ok) {

@@ -55,19 +55,27 @@ namespace campus_backend.Controllers
             var existingUser = await _userRepository.GetUserByIdAsync(id);
             if (existingUser == null) return NotFound("User not found.");
 
+            user.User_ID = id;
+            user.Face_Reference_Path = existingUser.Face_Reference_Path;
+            user.Lates_Count = existingUser.Lates_Count;
+
             if (Photo != null)
             {
                 user.Face_Reference_Path = await _imageService.UploadFaceReferenceAsync(Photo, user.Last_Name, user.User_ID, "staff_face.jpg");
             }
 
-            await _userRepository.UpdateUserAsync(user);
+            int rowsAffected = await _userRepository.UpdateUserAsync(user);
+            if (rowsAffected == 0) return NotFound("User not found.");
+
             return Ok(new { message = "User updated successfully" });
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(string id)
         {
-            await _userRepository.DeleteUserAsync(id);
+            int rowsAffected = await _userRepository.DeleteUserAsync(id);
+            if (rowsAffected == 0) return NotFound("User not found.");
+
             return Ok(new { message = "User deleted successfully" });
         }
     }

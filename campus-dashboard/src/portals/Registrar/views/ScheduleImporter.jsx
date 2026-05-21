@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { UploadCloud, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5106';
+
 export default function ScheduleImporter({ termId }) {
   const [rawText, setRawText] = useState('');
   const [parsedData, setParsedData] = useState([]);
@@ -45,7 +47,7 @@ export default function ScheduleImporter({ termId }) {
     setStatus(null);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/schedules/import?termId=${termId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/schedules/import?termId=${encodeURIComponent(termId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsedData)

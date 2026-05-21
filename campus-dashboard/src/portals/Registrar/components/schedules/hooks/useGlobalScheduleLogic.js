@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5106';
+const SCHEDULES_ENDPOINT = `${API_BASE_URL}/api/schedules`;
+
 export function useGlobalScheduleLogic(termId) {
   const [schedules, setSchedules] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,7 +29,7 @@ export function useGlobalScheduleLogic(termId) {
 
       try {
         // Fetch schedules strictly filtered by the active academic term
-        const response = await fetch(`http://localhost:5000/api/schedules?termId=${termId}`);
+        const response = await fetch(`${SCHEDULES_ENDPOINT}?termId=${encodeURIComponent(termId)}`);
         if (!response.ok) throw new Error('Failed to fetch schedules from the server.');
         const data = await response.json();
         
@@ -59,7 +62,7 @@ export function useGlobalScheduleLogic(termId) {
 
   const createSchedule = async (scheduleData) => {
     try {
-      const response = await fetch('http://localhost:5000/api/schedules', {
+      const response = await fetch(SCHEDULES_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // Enforce the active term explicitly on creation
@@ -81,7 +84,7 @@ export function useGlobalScheduleLogic(termId) {
 
   const updateSchedule = async (id, scheduleData) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/schedules/${id}`, {
+      const response = await fetch(`${SCHEDULES_ENDPOINT}/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...scheduleData, Term_ID: termId })
@@ -102,7 +105,7 @@ export function useGlobalScheduleLogic(termId) {
 
   const deleteSchedule = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/schedules/${id}`, {
+      const response = await fetch(`${SCHEDULES_ENDPOINT}/${id}`, {
         method: 'DELETE'
       });
       

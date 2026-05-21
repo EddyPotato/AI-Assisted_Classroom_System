@@ -12,6 +12,9 @@ import StaffDirectoryTab from './components/faculty/StaffDirectoryTab';
 import ResourceDirectoryTab from './components/resources/ResourceDirectoryTab';
 import ScheduleImporter from './views/ScheduleImporter';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5106';
+const TERMS_ENDPOINT = `${API_BASE_URL}/api/terms`;
+
 export default function RegistrarPortal() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('schedules');
@@ -28,7 +31,7 @@ export default function RegistrarPortal() {
   useEffect(() => {
     const fetchTerms = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/terms');
+        const response = await fetch(TERMS_ENDPOINT);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
         const data = await response.json();

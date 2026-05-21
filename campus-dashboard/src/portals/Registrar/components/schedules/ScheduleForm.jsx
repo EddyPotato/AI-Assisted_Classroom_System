@@ -1,5 +1,25 @@
 import { useState, useEffect } from 'react';
-import { XCircle, Calendar, Save, AlertCircle, Loader2 } from 'lucide-react';
+import { XCircle, Calendar, Save, AlertCircle, Loader2, Check } from 'lucide-react';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5106';
+const CLASS_DAY_OPTIONS = [
+  { value: 'Mon', label: 'Monday', shortLabel: 'Mon', aliases: ['mon', 'monday'] },
+  { value: 'Tue', label: 'Tuesday', shortLabel: 'Tue', aliases: ['tue', 'tues', 'tuesday'] },
+  { value: 'Wed', label: 'Wednesday', shortLabel: 'Wed', aliases: ['wed', 'wednesday'] },
+  { value: 'Thu', label: 'Thursday', shortLabel: 'Thu', aliases: ['thu', 'thur', 'thurs', 'thursday'] },
+  { value: 'Fri', label: 'Friday', shortLabel: 'Fri', aliases: ['fri', 'friday'] },
+  { value: 'Sat', label: 'Saturday', shortLabel: 'Sat', aliases: ['sat', 'saturday'] },
+  { value: 'Sun', label: 'Sunday', shortLabel: 'Sun', aliases: ['sun', 'sunday'] }
+];
+
+const normalizeClassDays = (classDays = '') => {
+  const source = String(classDays).toLowerCase();
+
+  return CLASS_DAY_OPTIONS
+    .filter(day => day.aliases.some(alias => source.includes(alias)))
+    .map(day => day.value)
+    .join('/');
+};
 
 export default function ScheduleForm({
   schedule,
@@ -20,7 +40,7 @@ export default function ScheduleForm({
     room_ID: schedule?.room_ID || '',
     time_Start: schedule?.time_Start || '',
     time_End: schedule?.time_End || '',
-    class_Days: schedule?.class_Days || ''
+    class_Days: normalizeClassDays(schedule?.class_Days)
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,10 +63,10 @@ export default function ScheduleForm({
 
       try {
         const [subRes, secRes, profRes, roomRes] = await Promise.all([
-          fetch('http://localhost:5000/api/subjects'),
-          fetch('http://localhost:5000/api/sections'),
-          fetch('http://localhost:5000/api/staff'),
-          fetch('http://localhost:5000/api/rooms')
+          fetch(`${API_BASE_URL}/api/subjects`),
+          fetch(`${API_BASE_URL}/api/sections`),
+          fetch(`${API_BASE_URL}/api/staff`),
+          fetch(`${API_BASE_URL}/api/rooms`)
         ]);
 
         const [subData, secData, profData, roomData] = await Promise.all([
@@ -81,6 +101,12 @@ export default function ScheduleForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+
+    if (!formData.class_Days) {
+      setError('Please select at least one class day.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     // CRITICAL: Inject the active termId into the payload
@@ -96,8 +122,8 @@ export default function ScheduleForm({
       } else if (isInternalSave) {
         // Section Roster View relies on the form to process the API call internally
         const url = schedule 
-           ? `http://localhost:5000/api/schedules/${schedule.schedule_ID}` 
-           : `http://localhost:5000/api/schedules`;
+           ? `${API_BASE_URL}/api/schedules/${schedule.schedule_ID}` 
+           : `${API_BASE_URL}/api/schedules`;
            
         const method = schedule ? 'PUT' : 'POST';
 
@@ -245,14 +271,40 @@ export default function ScheduleForm({
 
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Class Days</label>
-                  <input 
-                    type="text" 
-                    required 
-                    placeholder="e.g., Mon/Wed/Fri or Tue/Thu"
-                    value={formData.class_Days}
-                    onChange={(e) => setFormData({...formData, class_Days: e.target.value})}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {CLASS_DAY_OPTIONS.map(day => {
+                      const selectedDays = formData.class_Days ? formData.class_Days.split('/') : [];
+                      const isSelected = selectedDays.includes(day.value);
+
+                      return (
+                        <button
+                          key={day.value}
+                          type="button"
+                          aria-pressed={isSelected}
+                          title={day.label}
+                          onClick={() => {
+                            const nextDays = isSelected
+                              ? selectedDays.filter(value => value !== day.value)
+                              : [...selectedDays, day.value];
+                            const orderedDays = CLASS_DAY_OPTIONS
+                              .map(option => option.value)
+                              .filter(value => nextDays.includes(value));
+
+                            setFormData({ ...formData, class_Days: orderedDays.join('/') });
+                          }}
+                          className={`h-11 rounded-xl border text-sm font-black transition-all flex items-center justify-center gap-2 ${
+                            isSelected
+                              ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700'
+                          }`}
+                        >
+                          {isSelected && <Check size={15} strokeWidth={3} />}
+                          {day.shortLabel}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <input type="hidden" required value={formData.class_Days} readOnly />
                 </div>
               </div>
 

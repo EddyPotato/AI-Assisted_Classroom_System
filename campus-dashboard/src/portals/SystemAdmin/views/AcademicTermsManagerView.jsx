@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Clock, Plus, Edit2, CheckCircle, XCircle, Loader2, AlertCircle, Power } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5106';
+const TERMS_ENDPOINT = `${API_BASE_URL}/api/terms`;
+
 export default function AcademicTermsManagerView() {
   const [terms, setTerms] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,7 +31,7 @@ export default function AcademicTermsManagerView() {
 
     const loadTerms = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/terms');
+        const response = await fetch(TERMS_ENDPOINT);
         if (!response.ok) throw new Error('Failed to fetch academic terms from the server.');
         const data = await response.json();
         
@@ -59,7 +62,7 @@ export default function AcademicTermsManagerView() {
   const handleActivate = async (termId) => {
     setError(null);
     try {
-      const response = await fetch(`http://localhost:5000/api/terms/${termId}/activate`, {
+      const response = await fetch(`${TERMS_ENDPOINT}/${termId}/activate`, {
         method: 'PUT'
       });
       if (!response.ok) throw new Error('Failed to activate the selected term.');
@@ -110,8 +113,8 @@ export default function AcademicTermsManagerView() {
 
     try {
       const url = editingTerm 
-        ? `http://localhost:5000/api/terms/${editingTerm.term_ID}`
-        : 'http://localhost:5000/api/terms';
+        ? `${TERMS_ENDPOINT}/${editingTerm.term_ID}`
+        : TERMS_ENDPOINT;
       
       const method = editingTerm ? 'PUT' : 'POST';
 

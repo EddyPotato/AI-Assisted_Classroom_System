@@ -7,8 +7,8 @@ namespace campus_backend.Repositories
         Task<IEnumerable<User>> GetAllUsersAsync();
         Task<User?> GetUserByIdAsync(string id);
         Task CreateUserAsync(User user);
-        Task UpdateUserAsync(User user);
-        Task DeleteUserAsync(string id);
+        Task<int> UpdateUserAsync(User user);
+        Task<int> DeleteUserAsync(string id);
         Task UpdatePasswordAsync(string id, string newPassword);
     }
 }

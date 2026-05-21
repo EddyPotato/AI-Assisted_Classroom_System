@@ -1,7 +1,12 @@
 import { Clock, MapPin, UserCircle, BookOpen, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
-export default function MasterScheduleTable({ schedules, onZoom, sortConfig, onSort }) {
+export default function MasterScheduleTable({
+  schedules = [],
+  onZoom = () => {},
+  sortConfig = { key: 'section_Name', direction: 'asc' },
+  onSort = () => {}
+}) {
   const [cacheBuster] = useState(() => Date.now());
 
   const renderSortIcon = (key) => {

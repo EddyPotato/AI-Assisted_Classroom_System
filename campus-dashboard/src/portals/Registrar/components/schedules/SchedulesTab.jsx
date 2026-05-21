@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Calendar, Plus, AlertCircle, Loader2 } from 'lucide-react';
 import { useGlobalScheduleLogic } from './hooks/useGlobalScheduleLogic';
 import MasterScheduleTable from './MasterScheduleTable';
@@ -17,6 +17,7 @@ export default function SchedulesTab({ termId }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [formError, setFormError] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: 'section_Name', direction: 'asc' });
 
   const handleOpenForm = (schedule = null) => {
     setEditingSchedule(schedule);
@@ -55,6 +56,26 @@ export default function SchedulesTab({ termId }) {
       }
     }
   };
+
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const sortedSchedules = useMemo(() => {
+    return [...schedules].sort((a, b) => {
+      const aValue = a[sortConfig.key] ?? '';
+      const bValue = b[sortConfig.key] ?? '';
+      const comparison = String(aValue).localeCompare(String(bValue), undefined, {
+        numeric: true,
+        sensitivity: 'base'
+      });
+
+      return sortConfig.direction === 'asc' ? comparison : -comparison;
+    });
+  }, [schedules, sortConfig]);
 
   // STRICT BLOCK: Prevent accessing schedules without an active term
   if (!termId) {
@@ -119,7 +140,9 @@ export default function SchedulesTab({ termId }) {
           </div>
         ) : (
           <MasterScheduleTable 
-            schedules={schedules} 
+            schedules={sortedSchedules} 
+            sortConfig={sortConfig}
+            onSort={handleSort}
             onEdit={handleOpenForm} 
             onDelete={handleDelete} 
           />

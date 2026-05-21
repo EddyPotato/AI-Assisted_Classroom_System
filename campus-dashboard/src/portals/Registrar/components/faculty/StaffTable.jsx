@@ -1,5 +1,7 @@
 import { UserCircle, Edit2, Trash2, ArrowUpDown, ChevronUp, ChevronDown, Camera, RotateCcw } from 'lucide-react';
 
+const normalizeStatus = (status) => String(status || 'Active').trim().toLowerCase();
+
 export default function StaffTable({ staffList, sortConfig, onSort, onZoom, onViewProfile, onEdit, onDelete, viewMode }) {
   const renderSortIcon = (key) => {
     if (sortConfig.key !== key) return <ArrowUpDown size={14} className="text-slate-300" />;
@@ -24,7 +26,7 @@ export default function StaffTable({ staffList, sortConfig, onSort, onZoom, onVi
         </thead>
         <tbody className="divide-y-2 divide-slate-100">
             {staffList.map((staff) => (
-            <tr key={staff.user_ID} className={`hover:bg-indigo-50/40 transition-colors group ${staff.status === 'Inactive' ? 'opacity-70' : ''}`}>
+            <tr key={staff.user_ID} className={`hover:bg-indigo-50/40 transition-colors group ${normalizeStatus(staff.status) === 'inactive' ? 'opacity-70' : ''}`}>
                 <td className="p-4 font-bold text-slate-600 font-mono text-sm">{staff.user_ID}</td>
                 <td className="p-4 font-black text-slate-800 truncate">{staff.last_Name}</td>
                 <td className="p-4 font-bold text-slate-700 truncate">{staff.first_Name}</td>

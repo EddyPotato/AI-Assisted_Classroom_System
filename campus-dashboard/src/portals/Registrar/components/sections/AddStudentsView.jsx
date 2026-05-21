@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, ArrowLeft, CheckSquare, Square, Camera, UserPlus, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5106';
+
 export default function AddStudentsView({ section, termId, onBack, onAdd, currentEnrollees = [] }) {
   const [allStudents, setAllStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,7 +21,7 @@ export default function AddStudentsView({ section, termId, onBack, onAdd, curren
       if (!isMounted) return;
 
       try {
-        const response = await fetch('http://localhost:5000/api/student');
+        const response = await fetch(`${API_BASE_URL}/api/student`);
         if (!response.ok) throw new Error(`Server returned ${response.status}`);
         const data = await response.json();
         
@@ -128,7 +130,7 @@ export default function AddStudentsView({ section, termId, onBack, onAdd, curren
                 >
                   <div className="shrink-0 w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-sm bg-slate-100 flex items-center justify-center">
                     {student.face_Reference_Path && !student.face_Reference_Path.includes("C:") ? (
-                      <img src={`http://localhost:5000/ReferenceFaces/${student.face_Reference_Path}?t=${cacheBuster}`} alt="face" className="w-full h-full object-cover" />
+                      <img src={`${API_BASE_URL}/ReferenceFaces/${student.face_Reference_Path}?t=${cacheBuster}`} alt="face" className="w-full h-full object-cover" />
                     ) : (
                       <Camera size={20} className="text-slate-400" />
                     )}

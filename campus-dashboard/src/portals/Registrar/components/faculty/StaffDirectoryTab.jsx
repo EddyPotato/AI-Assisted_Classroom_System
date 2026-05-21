@@ -8,6 +8,10 @@ import StaffToolbar from './StaffToolbar';
 import StaffTable from './StaffTable';
 import FaceZoomModal from '../users/FaceZoomModal'; 
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5106';
+const USER_ENDPOINT = `${API_BASE_URL}/api/user`;
+const normalizeStatus = (status) => String(status || 'Active').trim().toLowerCase();
+
 export default function StaffDirectoryTab() {
   const [staffList, setStaffList] = useState([]);
   const [isLoading, setIsLoading] = useState(true); 
@@ -27,7 +31,7 @@ export default function StaffDirectoryTab() {
     let isMounted = true;
     const currentFetchTime = Date.now(); 
 
-    fetch('http://localhost:5106/api/user')
+    fetch(USER_ENDPOINT)
       .then(res => {
         if (!res.ok) throw new Error(`Server returned ${res.status}`);
         return res.json();
@@ -58,7 +62,7 @@ export default function StaffDirectoryTab() {
     const currentFetchTime = Date.now(); 
 
     try {
-      const res = await fetch('http://localhost:5106/api/user');
+      const res = await fetch(USER_ENDPOINT);
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
       const data = await res.json();
       if (Array.isArray(data)) {
@@ -87,7 +91,7 @@ export default function StaffDirectoryTab() {
   };
 
   const filteredStaff = staffList.filter(staff => {
-    const isInactive = staff.status === 'Inactive';
+    const isInactive = normalizeStatus(staff.status) === 'inactive';
     const matchesViewMode = viewMode === 'active' ? !isInactive : isInactive;
     const fullName = `${staff.first_Name} ${staff.middle_Name || ''} ${staff.last_Name}`.toLowerCase();
     const matchesSearch = staff.user_ID.toLowerCase().includes(searchQuery.toLowerCase()) || fullName.includes(searchQuery.toLowerCase());
@@ -138,6 +142,7 @@ export default function StaffDirectoryTab() {
     setModal({ ...modal, isOpen: false });
     
     const submitData = new FormData();
+    submitData.append('User_ID', staff.user_ID);
     submitData.append('First_Name', staff.first_Name);
     submitData.append('Middle_Name', staff.middle_Name || '');
     submitData.append('Last_Name', staff.last_Name);
@@ -148,25 +153,40 @@ export default function StaffDirectoryTab() {
     submitData.append('Status', newStatus); 
 
     try {
-      const res = await fetch(`http://localhost:5106/api/user/${staff.user_ID}`, { 
+      const res = await fetch(`${USER_ENDPOINT}/${staff.user_ID}`, { 
           method: 'PUT', body: submitData 
        });
       if (res.ok) {
-        fetchStaff();
+        setStaffList(prev => prev.map(item => 
+          item.user_ID === staff.user_ID ? { ...item, status: newStatus } : item
+        ));
+        setViewMode(newStatus === 'Inactive' ? 'inactive' : 'active');
+        await fetchStaff();
         triggerToast(successMsg);
-      } else alert("Failed to update staff status.");
-    } catch { alert("Network error."); }
+      } else {
+        const message = await res.text();
+        alert(message || "Failed to update staff status.");
+      }
+    } catch { 
+      alert("Network error."); 
+    }
   };
 
   const executeHardDelete = async (id) => {
     setModal({ ...modal, isOpen: false });
     try {
-      const res = await fetch(`http://localhost:5106/api/user/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${USER_ENDPOINT}/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        fetchStaff();
+        setStaffList(prev => prev.filter(staff => staff.user_ID !== id));
+        await fetchStaff();
         triggerToast("Staff account permanently deleted.");
-      } else alert("Failed to delete staff.");
-    } catch { alert("Network error."); }
+      } else {
+        const message = await res.text();
+        alert(message || "Failed to delete staff.");
+      }
+    } catch { 
+      alert("Network error."); 
+    }
   };
 
   if (currentView === 'enroll') return <StaffEnrollmentView onBack={handleBackToDirectory} onSuccess={fetchStaff} />;

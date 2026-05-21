@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5106';
+const SCHEDULES_ENDPOINT = `${API_BASE_URL}/api/schedules`;
+
 export function useScheduleLogic(sectionId, termId) {
   const [scheduleData, setScheduleData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +38,7 @@ export function useScheduleLogic(sectionId, termId) {
 
       try {
         // Fetch from the C# controller
-        const response = await fetch(`http://localhost:5000/api/schedules?termId=${termId}`);
+        const response = await fetch(`${SCHEDULES_ENDPOINT}?termId=${encodeURIComponent(termId)}`);
         if (!response.ok) throw new Error('Failed to fetch schedules for the active term.');
         const data = await response.json();
 
@@ -83,7 +86,7 @@ export function useScheduleLogic(sectionId, termId) {
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/schedules/${confirmSchedModal.scheduleId}`, {
+      const response = await fetch(`${SCHEDULES_ENDPOINT}/${confirmSchedModal.scheduleId}`, {
         method: 'DELETE'
       });
 
